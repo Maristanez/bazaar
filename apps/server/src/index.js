@@ -9,6 +9,7 @@ const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:9293",
 ];
 const MAX_ROUNDS = 4;
+const MAX_OFFER_QUANTITY = 10;
 const MIRROR_TTL_MS = 60_000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -465,20 +466,21 @@ async function makeOfferFromPayload(payload, message) {
   const mirror = await syncMirror();
   const match = findProductFromPayload({ ...payload, text: message }, mirror);
   if (!match) return { reply: "Pick a published product first, then send me a number like “Could you do $120?”", products: publicProducts(mirror).slice(0, 8) };
-  const dollars = parseMoney(message) ?? parseMoney(payload.amount);
-  if (dollars === null) {
+  const terms = parseOfferTerms(message, payload);
+  if (terms.dollars === null) {
     return {
       reply: `I can talk bundle, but I need your number first. Try “Could you do ${formatMoney(roundToShopper(match.item.list * 0.85))} if I add socks?” and give me a reason.`,
       products: prioritizePublicProducts(mirror, match.item).slice(0, 8),
     };
   }
-  const offered = dollarsToCents(dollars);
-  const negotiationId = String(payload.negotiationId || `${payload.shopperId || "shopper"}:${match.item.productId}:${match.item.size || "default"}`);
+  const quantity = terms.quantity;
+  const offered = dollarsToCents(terms.perUnit ? terms.dollars * quantity : terms.dollars);
+  const negotiationId = String(payload.negotiationId || `${payload.shopperId || "shopper"}:${match.item.productId}:${match.item.size || "default"}:${quantity}`);
   const previousRound = state.negotiations.get(negotiationId)?.round || 0;
   const round = Math.min(MAX_ROUNDS, previousRound + 1);
-  state.negotiations.set(negotiationId, { round, productId: match.item.productId });
+  state.negotiations.set(negotiationId, { round, productId: match.item.productId, quantity });
   const reason = analyzeBuyerReason(message);
-  const offer = priceOffer(match.item, offered, round, mirror, reason);
+  const offer = priceOffer(match.item, offered, round, mirror, reason, quantity);
   const offerId = randomId("offer");
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
   const card = {
@@ -494,7 +496,7 @@ async function makeOfferFromPayload(payload, message) {
         variantId: item.variantNumericId,
         title: item.title,
         ...(item.size ? { size: item.size } : {}),
-        qty: 1,
+        qty: item.qty || 1,
         ...(index > 0 ? { thrownIn: true } : {}),
       })),
       listTotal: offer.listTotal,
@@ -515,46 +517,49 @@ async function makeOfferFromPayload(payload, message) {
   return { reply: offer.line, card, products: prioritizePublicProducts(mirror, match.item).slice(0, 8) };
 }
 
-function priceOffer(main, offered, round, mirror, reason = { score: 0, label: null }) {
+function priceOffer(main, offered, round, mirror, reason = { score: 0, label: null }, quantity = 1) {
+  const mainQty = withQuantity(main, quantity);
   if (main.cost === null) {
-    return { kind: "closed", items: [main], listTotal: roundToShopper(main.list), total: roundToShopper(main.list), line: "I cannot safely haggle this item because the store cost is missing.", badges: ["missing cost"] };
+    return { kind: "closed", items: [mainQty], listTotal: roundToShopper(main.list * quantity), total: roundToShopper(main.list * quantity), line: "I cannot safely haggle this item because the store cost is missing.", badges: ["missing cost"] };
   }
-  if (offered >= main.list) {
-    return { kind: "accepted", items: [main], listTotal: roundToShopper(main.list), total: roundToShopper(main.list), line: `${main.title} is already ${formatMoney(roundToShopper(main.list))}. You can check out at list price, or send me a lower offer to haggle.`, badges: ["list price", "checkout ready"] };
+  const listTotal = roundToShopper(main.list * quantity);
+  if (offered >= listTotal) {
+    return { kind: "accepted", items: [mainQty], listTotal, total: listTotal, line: `${main.title} is already ${formatMoney(roundToShopper(main.list))}${quantity > 1 ? " each" : ""}. You can check out at list price, or send me a lower offer to haggle.`, badges: ["list price", "checkout ready"] };
   }
-  const floor = Math.ceil(main.cost * (1 + FLOOR_PCT / 100));
-  const baseTarget = targetOf(main, floor);
-  const sellerTarget = sellerTargetFor(main, floor, baseTarget, reason, round);
-  const ask = sellerAskFor(main, sellerTarget, round, reason);
+  const pricedMain = { ...main, list: main.list * quantity };
+  const floor = Math.ceil(main.cost * quantity * (1 + FLOOR_PCT / 100));
+  const baseTarget = targetOf(pricedMain, floor);
+  const sellerTarget = sellerTargetFor(pricedMain, floor, baseTarget, reason, round);
+  const ask = sellerAskFor(pricedMain, sellerTarget, round, reason);
   const safeOffered = roundToShopper(offered);
-  const hasConvincingReason = reason.score >= 2 || reason.hasBulkIntent;
-  const isLowball = safeOffered < roundToShopper(main.list * 0.8);
-  if (safeOffered >= floor && safeOffered >= sellerTarget && safeOffered <= main.list && round >= 2 && hasConvincingReason) {
-    return { kind: "accepted", items: [main], listTotal: roundToShopper(main.list), total: safeOffered, line: `${reasonPrefix(reason)}Deal — I can hold ${formatMoney(safeOffered)} for 15 minutes.`, badges: reasonBadges(reason, ["good intent", "held 15:00"]) };
+  const hasConvincingReason = reason.score >= 2 || reason.hasBulkIntent || quantity > 1;
+  const isLowball = safeOffered < roundToShopper(main.list * quantity * 0.8);
+  if (safeOffered >= floor && safeOffered >= sellerTarget && safeOffered <= listTotal && round >= 2 && hasConvincingReason) {
+    return { kind: "accepted", items: [mainQty], listTotal, total: safeOffered, line: `${reasonPrefix(reason)}Deal — I can hold ${formatMoney(safeOffered)} for 15 minutes.`, badges: reasonBadges(reason, ["good intent", "held 15:00"]) };
   }
   const addOn = mirror.items.find((item) => item.isAddOn && item.inStock && item.cost !== null);
   if (round === 1 && reason.score > 0) {
-    const openingAsk = sellerAskFor(main, sellerTarget, 1, reason);
+    const openingAsk = sellerAskFor(pricedMain, sellerTarget, 1, reason);
     return {
       kind: "counter",
-      items: [main],
-      listTotal: roundToShopper(main.list),
+      items: [mainQty],
+      listTotal,
       total: openingAsk,
       line: `${reasonPrefix(reason)}I can start at ${formatMoney(openingAsk)}. If you can show stronger intent — bundle, checkout today, or a real comparison — I may be able to sharpen it.`,
       badges: reasonBadges(reason, ["opening counter", "seller guarded"]),
     };
   }
-  if (addOn && round < MAX_ROUNDS && reason.hasBulkIntent) {
+  if (addOn && round < MAX_ROUNDS && reason.hasAddOnIntent) {
     const addonPart = Math.ceil(addOn.cost + (addOn.list - addOn.cost) / 2);
     const bundleFloor = floor + Math.ceil(addOn.cost * (1 + FLOOR_PCT / 100));
     const bundleTotal = roundToShopper(Math.max(ask + addonPart, bundleFloor));
-    return { kind: "bundle", items: [main, addOn], listTotal: roundToShopper(main.list + addOn.list), total: bundleTotal, line: `${reasonPrefix(reason)}I would rather protect the single-item price, but I can make the cart better: ${formatMoney(bundleTotal)} with ${addOn.title} included.`, badges: reasonBadges(reason, [`＋ ${addOn.title}`, "bundle value"]) };
+    return { kind: "bundle", items: [mainQty, addOn], listTotal: roundToShopper(main.list * quantity + addOn.list), total: bundleTotal, line: `${reasonPrefix(reason)}I would rather protect the single-item price, but I can make the cart better: ${formatMoney(bundleTotal)} with ${addOn.title} included.`, badges: reasonBadges(reason, [`＋ ${addOn.title}`, "bundle value"]) };
   }
   if (reason.score === 0 && (round >= 3 || isLowball)) {
     return {
       kind: "counter",
-      items: [main],
-      listTotal: roundToShopper(main.list),
+      items: [mainQty],
+      listTotal,
       total: ask,
       line: `I am going to hold firm at ${formatMoney(ask)} on this one. I need a stronger reason to move lower — a real bundle, checkout today, or a fair comparison.`,
       badges: ["holding margin", "reason needed"],
@@ -564,14 +569,15 @@ function priceOffer(main, offered, round, mirror, reason = { score: 0, label: nu
   const line = round === MAX_ROUNDS
     ? `${reasonPrefix(reason)}I would stay at ${formatMoney(ask)} here. Going lower does not make sense for the store on this ask.`
     : `${weakReasonNudge}${reasonPrefix(reason)}I can do ${formatMoney(ask)} if you want to move forward.`;
-  return { kind: "counter", items: [main], listTotal: roundToShopper(main.list), total: ask, line, badges: reasonBadges(reason, [round === MAX_ROUNDS ? "firm counter" : reason.score === 0 ? "reason needed" : "seller counter"]) };
+  return { kind: "counter", items: [mainQty], listTotal, total: ask, line, badges: reasonBadges(reason, [round === MAX_ROUNDS ? "firm counter" : reason.score === 0 ? "reason needed" : "seller counter"]) };
 }
 
 function analyzeBuyerReason(message) {
   const text = String(message || "").toLowerCase();
   const signals = [
     { pattern: /\b(student|college|school|tight budget|budget is|payday|saving up)\b/, score: 1, label: "budget" },
-    { pattern: /\b(buying|grab|take|get|adding|add).*\b(two|2|both|bundle|pair|socks|cap|gaiters|vest|flask|kit)\b|\b(bundle|multiple items|full kit|whole kit)\b/, score: 2, label: "bundle intent", key: "bulk" },
+    { pattern: /\b(buy|buying|grab|take|get|adding|add|order).*\b(two|2|both|multiple|pair|tees|shirts|items|bundle|socks|cap|gaiters|vest|flask|kit)\b|\b(bundle|multiple items|full kit|whole kit)\b/, score: 2, label: "quantity intent", key: "bulk" },
+    { pattern: /\b(socks?|cap|gaiters?|vest|flask|kit)\b/, score: 1, label: "add-on intent", key: "addon" },
     { pattern: /\b(returning|repeat|loyal|bought before|customer already|local)\b/, score: 1, label: "repeat shopper" },
     { pattern: /\b(last season|older model|clearance|sale|price match|competitor|elsewhere|same shoe)\b/, score: 2, label: "market comparison", key: "market" },
     { pattern: /\b(race|marathon|trail day|trip|weekend hike|gift|birthday|team|club)\b/, score: 1, label: "real use case" },
@@ -585,6 +591,7 @@ function analyzeBuyerReason(message) {
     label: primary?.label || null,
     labels: matched.map((signal) => signal.label),
     hasBulkIntent: matched.some((signal) => signal.key === "bulk"),
+    hasAddOnIntent: matched.some((signal) => signal.key === "addon"),
     hasMarketComparison: matched.some((signal) => signal.key === "market"),
     isReadyToBuy: matched.some((signal) => signal.key === "ready"),
   };
@@ -618,6 +625,7 @@ function maxSellerDiscount(reason, round) {
   const score = Math.max(0, Math.min(4, reason.score || 0));
   let discount = baseByScore[score][Math.max(1, Math.min(MAX_ROUNDS, round)) - 1];
   if (reason.hasBulkIntent) discount += 0.03;
+  if (reason.hasAddOnIntent) discount += 0.02;
   if (reason.isReadyToBuy) discount += 0.02;
   if (reason.hasMarketComparison) discount += 0.02;
   return Math.min(0.22, discount);
@@ -698,7 +706,7 @@ async function mintDiscount(offer) {
 }
 
 function checkoutUrl(items, code) {
-  const cart = items.map((item) => `${item.variantNumericId}:1`).join(",");
+  const cart = items.map((item) => `${item.variantNumericId}:${item.qty || 1}`).join(",");
   const discount = code ? `?discount=${encodeURIComponent(code)}` : "";
   return `${shopBaseUrl()}/cart/${cart}${discount}`;
 }
@@ -762,6 +770,7 @@ function productSearchTokens(item, type) {
   const tokens = new Set(source.split(" ").filter((token) => token.length >= 3 && !PRODUCT_STOP_WORDS.has(token)));
   for (const token of [...tokens]) {
     if (token.endsWith("s") && token.length > 3) tokens.add(token.slice(0, -1));
+    if (!token.endsWith("s")) tokens.add(`${token}s`);
   }
   return tokens;
 }
@@ -870,15 +879,44 @@ function fallbackReply(context = {}) {
 
 function isOfferIntent(text) {
   const message = String(text || "");
-  const hasMoney = /(?:c\$|\$)\s*\d+(?:\.\d{1,2})?|\b\d+(?:\.\d{1,2})?\s*(?:cad|dollars?|bucks?)\b/i.test(message);
-  const hasOfferLanguage = /\b(offer|deal|discount|haggle|checkout|could you do|can you do|would you take|best price|can i get|could i get)\b/i.test(message);
+  const hasMoney = parseMoney(message) !== null;
+  const hasOfferLanguage = /\b(offer|deal|discount|haggle|checkout|could you do|can you do|would you take|best price|can i get|could i get|give it to me|give them to me|buy)\b/i.test(message);
   return hasMoney || hasOfferLanguage;
+}
+
+function parseOfferTerms(message, payload = {}) {
+  const quantity = parseQuantity(message);
+  const textDollars = parseMoney(message);
+  const payloadDollars = parseMoney(payload.amount);
+  return {
+    dollars: textDollars ?? payloadDollars,
+    quantity,
+    perUnit: isPerUnitOffer(message),
+  };
 }
 
 function parseMoney(value) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
-  const match = String(value || "").match(/(?:C\$|\$)?\s*(\d+(?:\.\d{1,2})?)/i);
-  return match ? Number(match[1]) : null;
+  const text = String(value || "");
+  const match = text.match(/(?:c\$|\$)\s*(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s*(?:\$|cad|dollars?|bucks?)/i);
+  if (match) return Number(match[1] || match[2]);
+  if (/^\s*\d+(?:\.\d{1,2})?\s*$/.test(text)) return Number(text);
+  return null;
+}
+
+function parseQuantity(value) {
+  const text = normalizeSearchText(value);
+  const match = text.match(/\b(?:buy|get|take|grab|want|order|add)\s+(\d{1,2})\b|\b(\d{1,2})\s*(?:x|pcs?|pieces?|items?|tees?|shirts?|socks?|pairs?)\b/i);
+  const quantity = match ? Number(match[1] || match[2]) : 1;
+  return Math.max(1, Math.min(MAX_OFFER_QUANTITY, Number.isFinite(quantity) ? quantity : 1));
+}
+
+function isPerUnitOffer(value) {
+  return /\b(each|apiece|a piece|per piece|per item|per unit|each one)\b/i.test(String(value || ""));
+}
+
+function withQuantity(item, qty) {
+  return { ...item, qty };
 }
 
 function targetOf(item, floor) {

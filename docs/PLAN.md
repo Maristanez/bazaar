@@ -157,6 +157,8 @@ Everything a shopper sees, plus the store's products behind it: the offer card, 
   _Sat 17:10 Codex note:_ the live server haggling policy now behaves more like a profit-protecting store negotiator than a scripted concession ladder. Multiple rounds by themselves do not reach the floor; weak/no-reason asks can be held firm, stronger intent is scored cumulatively, and bundle-specific value is offered only when the buyer actually signals bundle intent.
 
   _Sat 17:20 Codex note:_ fixed product selection for offer messages such as “I want the socks for $15.” Explicit product words in the shopper message now beat the page/default product, so “socks” routes to Merino Socks instead of falling back to Everyday Heavyweight Tee.
+
+  _Sat 17:35 Codex note:_ tested “I will buy 2 tees if you give it to me for 50$ cad a piece.” The old path treated it as non-binding chat because `50$ cad` was not parsed as money. The server now parses suffix-dollar prices, quantity phrases, and per-piece offers, so two tees at $50 each becomes a $100 total shopper offer with quantity 2 in the binding card/checkout path.
 - [ ] **S4** Deal flow on the storefront: accept → checkout opens; sparkles [§4.1] · _needs S1, R6, R7_ · ~1 h · **Done when:** **gate 1 passes**
 
   _Sat 09:52 Codex note:_ the preview card deliberately disables Deal and says the API is required. S4 remains blocked on R6/R7 so the first real Deal button mints a constrained Shopify discount and opens checkout.
