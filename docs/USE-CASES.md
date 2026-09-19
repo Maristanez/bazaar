@@ -75,6 +75,7 @@ Seed store: Trailhead Co. Policy: floor 25%, "Ask me" on, 4 rounds, 15-minute ho
 
 - **TR3:** urgency = clamp((12 − 60)/60, 0, 1) = 0 → target = $169 → every ask is $169. The price never moves.
 - **Ridge Lite:** 40 days → urgency 0 → target $99.
+- **Rounding:** the engine works in cents; every shopper-facing total is rounded **up** to a whole dollar, so rounding can never take a price below the floor. Below, $119.82 is shown to the shopper as **$120**, $126.47 as $127, $134.53 as $135, $143.48 as $144.
 - **TR2:** urgency = (94 − 60)/60 = 0.567 → target = 149 − 0.567 × (149 − 97.50) = 149 − 29.18 = **$119.82**. Exponent = 1/1.567 = 0.638.
   - ask(1) = **$149.00** · ask(2) = 149 − (1/3)^0.638 × 29.18 = 149 − 14.47 = **$134.53** · ask(3) = 149 − (2/3)^0.638 × 29.18 = 149 − 22.53 = **$126.47** · ask(4) = **$119.82**. Steps: 14.47, 8.06, 6.65 — shrinking.
 - **Add-on parts** (cost + ½ margin): socks 6 + 6 = **$12.00** · gaiters 12 + 11.50 = **$23.50** · flask 9 + 8 = **$17.00**.
@@ -274,7 +275,7 @@ These figures are computed from the formulas and rounded to the cent. Whole-doll
 
 **Main flow**
 1. Shopper offers $105.
-2. Engine: $105 < ask(4) = $119.82 → option A is labelled **final offer** at $119.82.
+2. Engine: $105 < ask(4) = $119.82 → option A is labelled **final offer** at $119.82 (shown as **$120**).
 3. System sends the card with the `final offer` badge.
 4. Shopper refuses. $105 is above the floor ($97.50), so this is not a thin-margin case.
 5. Shopkeeper lets them walk, politely. The final-offer card stays live until its 15 minutes run out.
@@ -307,7 +308,7 @@ These figures are computed from the formulas and rounded to the cent. Whole-doll
 5. Shopper clicks Deal → UC-S9 (amount off $59, minimum subtotal $149).
 
 **Alternate and failure flows**
-- A1 **Decline** → the shopkeeper restates its own final offer as a fresh live offer: "My best stays $119.82." It does not drop to the floor.
+- A1 **Decline** → the shopkeeper restates its own final offer as a fresh live offer: "My best stays $120." It does not drop to the floor.
 - A2 **Timeout** (45 s) → same as Decline.
 - A3 x ≤ cost ($78 or less) → the owner is never asked; the shopkeeper lets them walk.
 - A4 "Ask me" off, or already asked once, or the surface is ChatGPT → no request; the shopkeeper lets them walk.
@@ -755,6 +756,6 @@ These figures are computed from the formulas and rounded to the cent. Whole-doll
 **Open points for the spec writer**
 - Layer naming: the spec's feed type uses `understand` for what §7 and the Gym call `validate`. This file uses `validate`.
 - Display rounding of prices (cents vs whole dollars) is not specified.
-- What "profit %" on the Approve card is a percentage of (this file assumes cost).
+- ~~What "profit %" on the Approve card is a percentage of~~ — settled: it is **% over cost**, the same basis as the floor slider (SPEC §6).
 - Behaviour when `bazaar.stocked_at` is missing (this file assumes urgency 0).
 - How the shopper "refuses" a final offer so that ask-the-owner fires (this file assumes: any non-accepting reply after the round-4 card, using their last offer amount).

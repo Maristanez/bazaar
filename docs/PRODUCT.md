@@ -108,7 +108,7 @@ Up to four offers per negotiation (four **rounds**). Questions and small talk ar
 | Zone | Example: Trail Runner 2, cost $78, floor 25% → $97.50 | Rule |
 |---|---|---|
 | At or below cost | ≤ $78.00 | **Never.** Nobody can override this — not the shopper, the LLM, or the owner. |
-| **Thin-margin zone** (cost → floor) | $78.01 – $97.49 | The owner decides live, through an Approve/Decline card. The shopper sees only "Let me check with the owner…". 45 seconds, once per negotiation, storefront only, and only if "Ask me" is on. After Decline or a timeout, the shopkeeper restates its own final offer — it does not drop to the floor. |
+| **Thin-margin zone** (cost → floor) | $79 – $97 (prices are shown in whole dollars) | The owner decides live, through an Approve/Decline card. The shopper sees only "Let me check with the owner…". 45 seconds, once per negotiation, storefront only, and only if "Ask me" is on. After Decline or a timeout, the shopkeeper restates its own final offer — it does not drop to the floor. |
 | At or above floor | ≥ $97.50 | The shopkeeper deals alone (within the asks above). |
 
 ### 5.4 The menu rule — six steps, one of them an LLM
