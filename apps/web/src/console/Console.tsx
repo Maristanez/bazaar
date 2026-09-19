@@ -4,6 +4,8 @@ import type { ConsolePort } from "./data/port";
 import { Approvals } from "./Approvals";
 import { PolicyPanel } from "./PolicyPanel";
 import { Feed } from "./Feed";
+import { Gym } from "./Gym";
+import { RedTeamSummary } from "./RedTeamSummary";
 export function Console({ port, onSignOut }: { port: ConsolePort; onSignOut?: () => void }) {
   const policyRevision = useRef(0);
   const [state, setState] = useState<ConsoleState>();
@@ -12,6 +14,7 @@ export function Console({ port, onSignOut }: { port: ConsolePort; onSignOut?: ()
   const [streamMessage, setStreamMessage] = useState("");
   const [error, setError] = useState("");
   const [events, setEvents] = useState<ConsoleEvent[]>([]);
+  const [gymDraft, setGymDraft] = useState<Pick<Policy, "floorPct" | "askOwner">>();
   useEffect(() => {
     let active = true;
     const approvalEvents: ConsoleEvent[] = [];
@@ -56,13 +59,24 @@ export function Console({ port, onSignOut }: { port: ConsolePort; onSignOut?: ()
     });
     return () => { active = false; unsubscribe(); };
   }, [port, attempt]);
+  useEffect(() => {
+    if (state?.pausePersistence !== "pending") return;
+    let active = true;
+    const timer = window.setInterval(() => {
+      void port.load().then(snapshot => {
+        if (!active || snapshot.pausePersistence !== "saved") return;
+        setState(current => current && { ...current, pausePersistence: "saved" });
+      }).catch(() => undefined);
+    }, 1_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [port, state?.pausePersistence]);
   if (!state) return <main className="paper config-error">{error ? <><p role="alert">{error}</p><button onClick={() => setAttempt(value => value + 1)}>Retry</button></> : <p role="status">Loading Console…</p>}</main>;
   async function togglePause() {
     setBusy(true); setError("");
     try {
-      const policy = await port.setPaused(!state!.policy.paused);
+      const result = await port.setPaused(!state!.policy.paused);
       policyRevision.current++;
-      setState(value => value && { ...value, policy: { ...value.policy, paused: policy.paused, updatedAt: policy.updatedAt } });
+      setState(value => value && { ...value, pausePersistence: result.persistence, policy: { ...value.policy, paused: result.policy.paused, updatedAt: result.policy.updatedAt } });
     } catch { setError("Could not change pause. Please try again."); }
     finally { setBusy(false); }
   }
@@ -78,9 +92,11 @@ export function Console({ port, onSignOut }: { port: ConsolePort; onSignOut?: ()
     </header>
     <main className="console-layout">
       {error && <p className="paper" role="alert">{error}</p>}
+      {state.pausePersistence === "pending" && <p className="paper" role="status">{state.policy.paused ? "PAUSE is active on this server." : "Deals are live on this server."} Saving that state to Supabase is still retrying.</p>}
       {streamMessage && <p className="paper" role="status">{streamMessage}</p>}
-      <div className="console-columns"><Feed events={events} /><aside><PolicyPanel products={state.products} policy={state.policy} port={port} onPolicy={adopted} /><Approvals approvals={state.pendingApprovals} port={port} onResolved={id => setState(value => value && { ...value, pendingApprovals: value.pendingApprovals.filter(approval => approval.id !== id) })} /></aside></div>
-      <section className="paper gym" aria-labelledby="gym-title"><div className="section-heading"><div><h2 id="gym-title">The Gym</h2><p>Rehearse your pricing rules before shoppers meet them.</p></div><button disabled>Run the Gym</button></div></section>
+      <div className="console-columns"><Feed events={events} /><aside><PolicyPanel products={state.products} policy={state.policy} port={port} onPolicy={policy => { setGymDraft(undefined); adopted(policy); }} onDraft={setGymDraft} /><Approvals approvals={state.pendingApprovals} port={port} onResolved={id => setState(value => value && { ...value, pendingApprovals: value.pendingApprovals.filter(approval => approval.id !== id) })} /></aside></div>
+      <RedTeamSummary result={state.redteam} />
+      <Gym products={state.products} policy={state.policy} draft={gymDraft} />
     </main>
   </>;
 }

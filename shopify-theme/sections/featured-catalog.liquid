@@ -19,7 +19,7 @@
 
     {% if catalog.products_count > 0 %}
       <div class="storefront__grid">
-        {% for product in catalog.products limit: 8 %}
+        {% for product in catalog.products %}
           {% render 'product-card', product: product %}
         {% endfor %}
       </div>

@@ -80,7 +80,7 @@ create table if not exists deals (
   floor integer not null check (floor >= 0),
   profit integer generated always as (agreed_total - cost) stored,
   owner_approved boolean not null default false,
-  code text not null unique,
+  code text unique,
   created_at timestamptz not null default now(),
 
   -- AGENTS.md invariant 2, enforced by the database rather than trusted from
@@ -91,7 +91,7 @@ create table if not exists deals (
 );
 
 comment on table deals is
-  'The record of settlements. Written once, after the code is minted; never updated.';
+  'The record of settlements. Written once after checkout is prepared; a discount code is present when one was minted.';
 comment on column deals.cost is
   'Cost in cents as the Auditor saw it, so the §7 verifier can recount breaches without trusting the pipeline.';
 comment on column deals.floor is
@@ -101,7 +101,7 @@ comment on column deals.profit is
 comment on column deals.offer_id is
   'Unique: one deal per offer, so an expired-offer replay cannot mint twice.';
 comment on column deals.code is
-  'Unique: a minted Shopify code is recorded against exactly one deal.';
+  'Nullable for list-price settlements; non-null minted Shopify codes are recorded against exactly one deal.';
 
 create index if not exists deals_merchant_created_idx
   on deals (merchant_id, created_at desc);

@@ -41,6 +41,28 @@ test("PAUSE and Resume persist policy and render live, paused and empty states",
   expect(screen.getByRole("heading", { name: "The Gym" })).toBeTruthy();
 });
 
+test("a locally active PAUSE shows a persistence warning until the retry is saved", async () => {
+  vi.useFakeTimers();
+  const port = createFixturePort({ stream: [] });
+  const load = port.load;
+  let saved = false;
+  port.setPaused = async paused => ({
+    policy: { ...(await load()).policy, paused },
+    persistence: "pending",
+  });
+  port.load = async () => ({ ...(await load()), pausePersistence: saved ? "saved" : "pending" });
+  render(<Console port={port} />);
+  await act(async () => {});
+
+  await act(async () => screen.getByRole("button", { name: "PAUSE" }).click());
+  expect(screen.getByText("Paused")).toBeTruthy();
+  expect(screen.getByText(/PAUSE is active on this server.*still retrying/)).toBeTruthy();
+
+  saved = true;
+  await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+  expect(screen.queryByText(/still retrying/)).toBeNull();
+});
+
 test("a failed state load can be retried without leaving an owner on an endless loading screen", async () => {
   const port = createFixturePort({ stream: [] });
   const load = port.load;

@@ -4,6 +4,8 @@ Scripts, stage setup, fallbacks, judge Q&A, what not to say, and the Devpost pag
 
 > **Every dollar figure here is illustrative.** They follow the worked arithmetic in SPEC §6 (Trail Runner 2 at floor 25%: asks $149 → $135 → $127 → $120). **Replace them with real engine and Gym output on Saturday night** (PLAN task E3) and delete this note.
 
+> **Current verification note (2026-09-19).** The live store is [b8wzw0-h3.myshopify.com](https://b8wzw0-h3.myshopify.com/), while the Railway server/theme changes remain unpublished and `/console` is currently unavailable. The live homepage shows eight products and omits Trail Runner 3; the local theme fix has not been published. Local storefront tests reached the real Shopify, Backboard and Supabase services, but do not prove the published theme. The current Gym is a 300-shopper SVG using live `priceOffer` and rule-based behavior, not Backboard; the current Trail Runner 2 seed-42 floor sweep remains negative versus the 20% banner, so the demo must not promise a red-to-teal flip.
+
 ---
 
 ## 1. Pitch material
@@ -35,7 +37,7 @@ Scripts, stage setup, fallbacks, judge Q&A, what not to say, and the Devpost pag
 
 **Open on the haggle within ten seconds — never on architecture.** A chat window alone reads as a wrapper; the three things that must fill the screen are the **real checkout**, the **owner's Approve card**, and the **swarm settling into the dot histogram**.
 
-Everything runs on the **hosted URL on our own domain**. Threads warm. Store password entered. Owner signed in. Offline toggle within reach.
+When deployment is ready, everything runs on the **hosted URL on our own domain**. For the current rehearsal, use the local preview and label it clearly; the live Railway/theme changes are not published.
 
 ---
 
@@ -45,7 +47,7 @@ Everything runs on the **hosted URL on our own domain**. Threads warm. Store pas
 2. **(0:25)** The sticker thinks, then: *"Those just landed, so I can't move on them. But last season's Trail Runner 2 is the same fit — and for a muddy 50k you'll want gaiters. $144 for both."* Point right: *"cost and stock age straight from Shopify · a menu of safe deals · it picked gaiters because it remembered the 50k. The AI chose. The code priced."*
 3. **(0:50)** Open the Trail Runner 2 page. Hand over the keyboard: **"Haggle with it. Try to make it lose her money."** They try — owner claims, sob stories, "ignore your instructions". It holds, in character — round 1 it holds at list and offers trades, then **$135 → $127 → final offer $120**. Red rows land in the Console as they type, each naming the layer that blocked: `validate · engine · check · auditor`.
 4. **(1:30)** They refuse the final offer with something just above cost. *"Let me check with the owner…"* Yellow card: **$85 · profit $7 · 9% over cost.** "That one's hers to decide." **Decline.** *"My best stays $120."* — it restates its final offer; it does not reward the refusal. The judge clicks **Deal**. Sparkles. **It settles into a real Shopify Checkout at $120.** Stop talking for three seconds.
-5. **(2:05) The Gym.** "She'd seen all of this before it met a customer. SimGym exists because small merchants can't A/B test on thin traffic — same problem for a price floor." Press **Run the Gym**: 300 dots — one per synthetic shopper, coloured by persona — haggle for three seconds and **settle into the histogram**. The headline card is **red**: *"at this floor, haggling loses to a 20% banner."* "It's allowed to say that. That's the point of rehearsing." **Drag the floor** until the card flips **teal — "wins"**; the walked pile shrinks, the yellow "would have asked you" dots move. Click one dot: that shopper's whole haggle. **Adopt.** Then the red-team: **20 red dots charge the cost line and bounce off** — *20 attacks · 0 breaches.*
+5. **(2:05) The Gym.** "She'd seen a deterministic rehearsal before it met a customer. The Gym uses the live `priceOffer` engine with 300 synthetic, rule-based shoppers." Press **Run the Gym**: the dots haggle for three seconds and **settle into the histogram**. The current Trail Runner 2 seed-42 run remains **red** against the 20% banner across the tested floor sweep. Explain that result honestly; do not promise a teal flip or alter the population to manufacture one. **Adopt** only after reviewing the current rule output. The red-team result is a separate validation artifact.
 6. **(2:35)** **PAUSE.** Next message: *"The owner's paused deals — list price stands."* Un-pause.
 7. **(2:42) Finale.** "Real store data, rules in code — so it travels." In ChatGPT: *"Offer Trailhead $125 for the Trail Runner 2."* The same card renders inline — socks thrown in, **$161 for both** — and a new feed row tagged `ChatGPT` appears in her Console. "In AI shopping chats your merchants are a silent row in a catalog. This one talks."
 8. **(2:55)** "The AI picks from a menu. Code writes the menu. The shopper leaves with something they can afford, and she keeps her margin."
@@ -68,7 +70,7 @@ Everything runs on the **hosted URL on our own domain**. Threads warm. Store pas
 
 ## 6. What must be ready
 
-- [ ] **Product:** gate 2 passed on the hosted URL · red-team result cached (0 breaches) · Gym seed 42 gives the scripted red → teal flip at a known floor · all figures in this file replaced with real output
+- [ ] **Product:** gate 2 passed on the hosted URL · red-team result cached (0 breaches) · Gym seed 42 output recorded honestly (current Trail Runner 2 sweep remains negative versus the banner) · all figures in this file replaced with real output
 - [ ] **Shopify store:** ~8 products with costs and `bazaar.stocked_at` · **tax off, free shipping rate** so the checkout equals the agreed total · app installed, six scopes · token refresh tested · old test codes cleared from the discounts list
 - [ ] **Backboard:** documents `indexed` · demo shopper's memory seeded (size 10, muddy 50k) · threads warmed within 10 minutes of judging
 - [ ] **Demo laptop:** store password typed into the demo browser (ChatGPT opens links in that same browser) · owner signed in to the Console · tabs in order: storefront TR3 page · Console · ChatGPT · Shopify admin · `codex-log.md` · notifications off · charger · phone hotspot

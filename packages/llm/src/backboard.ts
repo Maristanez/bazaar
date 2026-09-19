@@ -69,6 +69,8 @@ export type BackboardClientConfig = {
   memory?: "Auto" | "Readonly" | "off";
   isolateMemoryByShopper?: boolean;
   seededShopperIds?: readonly string[];
+  /** Resolve memory policy per shopper; returning `off` isolates ordinary shoppers. */
+  memoryForShopper?: (shopperId: string) => "Auto" | "Readonly" | "off";
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
   now?: () => number;
@@ -112,7 +114,8 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
   const endpoint = config.endpoint ?? DEFAULT_ENDPOINT;
   const provider = config.provider ?? "openai";
   const model = config.model ?? "gpt-4.1-mini";
-  const memory = config.memory ?? "Readonly";
+  const defaultMemory = config.memory ?? "off";
+  const memoryForShopper = config.memoryForShopper ?? (() => defaultMemory);
   const isolateMemoryByShopper = config.isolateMemoryByShopper ?? false;
   const seededShopperIds = new Set(config.seededShopperIds ?? []);
   const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -122,8 +125,9 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
   const shopperAssistants = new Map<string, Promise<string>>();
 
   async function assistantFor(shopperId: string, signal: AbortSignal): Promise<{ id: string; memory: "Auto" | "Readonly" | "off" }> {
-    if (!isolateMemoryByShopper || memory !== "Auto") return { id: assistantId, memory };
-    if (!shopperId || shopperId === "anonymous-shopper") return { id: assistantId, memory: "Readonly" };
+    const shopperMemory = memoryForShopper(shopperId);
+    if (!isolateMemoryByShopper || shopperMemory !== "Auto") return { id: assistantId, memory: shopperMemory };
+    if (!shopperId || shopperId === "anonymous-shopper") return { id: assistantId, memory: "off" };
     let pending = shopperAssistants.get(shopperId);
     if (!pending) {
       pending = resolveOrCloneShopperAssistant({
@@ -138,14 +142,15 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
       shopperAssistants.set(shopperId, pending);
     }
     try {
-      return { id: await pending, memory };
+      return { id: await pending, memory: shopperMemory };
     } catch (error) {
       shopperAssistants.delete(shopperId);
       throw error;
     }
   }
+  const queuedRuns = new Map<string, Promise<{ content: string; trace: BackboardRunTrace }>>();
 
-  async function run(input: {
+  async function performRun(input: {
     shopperId: string;
     negotiationId: string;
     content: string;
@@ -209,6 +214,25 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
       throw new BackboardError(error instanceof Error ? error.message : String(error));
     } finally {
       clearTimeout(timeout);
+    }
+  }
+
+  // A thread id is assigned only when a run ends. Serialize same-thread runs so
+  // concurrent requests cannot both create a fresh thread before either stores it.
+  async function run(input: {
+    shopperId: string;
+    negotiationId: string;
+    content: string;
+    systemPrompt: string;
+  }): Promise<{ content: string; trace: BackboardRunTrace }> {
+    const key = threadKey(input.shopperId, input.negotiationId);
+    const previous = queuedRuns.get(key) ?? Promise.resolve(undefined);
+    const current = previous.catch(() => undefined).then(() => performRun(input));
+    queuedRuns.set(key, current);
+    try {
+      return await current;
+    } finally {
+      if (queuedRuns.get(key) === current) queuedRuns.delete(key);
     }
   }
 

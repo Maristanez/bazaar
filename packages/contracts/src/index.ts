@@ -18,12 +18,14 @@ export type OfferCard = { negotiationId: string; offerId: string;
                    trail: { label: string; amount: number; by: "shopper"|"shop" }[];
                    expiresAt: string; pendingUntil?: string;   // pendingUntil drives the 45 s bar on a pending_owner card
                    disclosure: [string, string] };
-export type Settlement = { offerId: string; code: string; agreedTotal: number; checkoutUrl: string; expiresAt: string };
+export type Settlement = { offerId: string; code: string | null; agreedTotal: number; checkoutUrl: string; expiresAt: string };
 export type ChatEvent = { t: "products"; items: ProductCard[] } | { t: "card"; card: OfferCard } | { t: "text"; delta: string }  // delta = CHECKED text only
                | { t: "settled"; settlement: Settlement } | { t: "paused" };
 
 // ── OWNER-ONLY: Console routes behind the Supabase token. May carry everything. ──
 export type Policy       = { floorPct: number; askOwner: boolean; paused: boolean; updatedAt: string };
+export type PausePersistence = "saved"|"pending";
+export type PauseResult = { policy: Policy; persistence: PausePersistence };
 export type OwnerProduct = ProductCard & { variants: { variantId: string; size?: string; price: number; unitCost: number|null; inStock: boolean }[];
                                     productType: string; stockedAt: string|null; missingCost: boolean /* red */; missingStockedAt: boolean /* amber, urgency 0 */ };
 export type Approval     = { id: string; negotiationId: string; items: Option["items"]; offer: number; cost: number; profit: number; pctOverCost: number;  // same basis as the floor slider
@@ -36,10 +38,26 @@ export type ConsoleEvent = { at: string; surface: "storefront"|"chatgpt"; negoti
                       blockedBy?: "validate"|"engine"|"check"|"auditor"; llm?: { provider: string; model: string; ms: number; costUsd: number|null } };
 export type Deal         = { id: string; merchantId: string; offerId: string; surface: "storefront"|"chatgpt"; items: Option["items"];
                       listTotal: number; agreedTotal: number; cost: number; floor: number; profit: number; ownerApproved: boolean;
-                      code: string; createdAt: string };                                    // mirrors the `deals` table, column for column
-export type ConsoleState = { policy: Policy; products: OwnerProduct[]; pendingApprovals: Approval[]; redteam: RedTeamResult };
-export type RedTeamResult = { ranAt: string; attacks: { name: string; blockedBy: "validate"|"engine"|"check"|"auditor"|"shopify_code" }[];
-                       breaches: number };                                                  // required: 0, recounted by the verifier
+                      code: string | null; createdAt: string };                             // mirrors the `deals` table, column for column
+export type ConsoleState = { policy: Policy; pausePersistence: PausePersistence; products: OwnerProduct[]; pendingApprovals: Approval[]; redteam: RedTeamResult };
+export type RedTeamLayer = "validate"|"engine"|"check"|"auditor"|"shopify_code";
+export type RedTeamResult = {
+  ranAt: string;
+  attacks: { name: string; blockedBy: RedTeamLayer|null; passed: boolean; outcome: string }[];
+  breaches: number;                                                                        // required: 0, recounted by the verifier
+  scope: {
+    mode: "isolated";
+    server: string;
+    backboard: string;
+    shopify: string;
+    database: string;
+    liveShopifyValidated: false;
+    productionRequests: number;
+    productionDatabaseWrites: number;
+    dryRunDiscounts: number;
+    settlementRows: number;
+  };
+};
 export type GymShopper = { id: number; persona: "bargain"|"budgeted"|"impatient"|"loyal"|"lowballer"; willingness: number;
                     rounds: { offer: number; ask: number }[];
                     outcome: "bought"|"walked"|"would_ask_owner"; agreed?: number; trade?: "accepted"|"held"|"bundle"|"final";

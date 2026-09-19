@@ -6,4 +6,6 @@ export { frame, settle } from "./layout";
 export type { DotPosition } from "./layout";
 export { PERSONAS } from "./personas";
 export type { Persona, SimulatedPersona } from "./personas";
+export { runLiveGym } from "./live";
+export type { LiveGymInput } from "./live";
 export { gymResultProblems } from "./invariants";

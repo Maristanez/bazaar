@@ -33,7 +33,7 @@ function ApprovalCard({ approval, port, onResolved }: { approval: Approval; port
     <h2>Your decision</h2><p>This offer is below your floor, but above cost.</p>
     {approval.items.map(item => <p key={item.variantId}>{item.title}{item.size ? ` · size ${item.size}` : ""} × {item.qty}</p>)}
     <p className="approval-offer">{money(approval.offer)}</p>
-    <p className="approval-profit">Profit {money(approval.profit)} · {approval.pctOverCost}% over cost</p>
+    <p className="approval-profit">Profit {money(approval.profit)} · {Number(approval.pctOverCost.toFixed(1))}% over cost</p>
     <p className="countdown-label">{seconds}s to decide</p>
     <div className="countdown-track" role="progressbar" aria-label="Decision time remaining" aria-valuemin={0} aria-valuemax={45} aria-valuenow={seconds}><span style={{ width: `${seconds / 45 * 100}%` }} /></div>
     <div className="decision-actions"><button disabled={busy || seconds === 0} onClick={() => void decide("approved")}>Approve</button><button className="secondary" disabled={busy || seconds === 0} onClick={() => void decide("declined")}>Decline</button></div>

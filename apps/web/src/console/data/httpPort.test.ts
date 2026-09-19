@@ -5,13 +5,13 @@ test("owner requests use fresh bearer tokens and the documented R15 wire shapes"
   const request = vi.fn<typeof fetch>()
     .mockResolvedValueOnce(Response.json(state))
     .mockResolvedValueOnce(Response.json({ ...state.policy, floorPct: 40, askOwner: false }))
-    .mockResolvedValueOnce(Response.json({ ...state.policy, paused: true }))
+    .mockResolvedValueOnce(Response.json({ policy: { ...state.policy, paused: true }, persistence: "saved" }))
     .mockResolvedValueOnce(Response.json({ ...state.pendingApprovals[0], status: "approved" }));
   const token = vi.fn().mockResolvedValueOnce("first").mockResolvedValue("refreshed");
   const port = createHttpPort({ token, fetch: request });
   expect(await port.load()).toEqual(state);
   expect((await port.setPolicy({ floorPct: 40, askOwner: false })).floorPct).toBe(40);
-  expect((await port.setPaused(true)).paused).toBe(true);
+  expect((await port.setPaused(true)).policy.paused).toBe(true);
   await port.resolveApproval("approval/1", "approved");
   expect(request.mock.calls.map(([url]) => url)).toEqual(["/api/console/state", "/api/policy", "/api/pause", "/api/approvals/approval%2F1"]);
   expect(new Headers(request.mock.calls[0]![1]!.headers).get("Authorization")).toBe("Bearer first");

@@ -102,7 +102,7 @@ describe("Backboard choose and say", () => {
       requestHeaders = new Headers(init?.headers);
       return completed("OPTION: D\nThe bundle is ready at $144.");
     }) as unknown as typeof fetch;
-    const client = createBackboardShopkeeper({ apiKey: "test-secret", assistantId: "assistant-1", fetchImpl });
+    const client = createBackboardShopkeeper({ apiKey: "test-secret", assistantId: "assistant-1", memory: "Readonly", fetchImpl });
 
     await client.chooseAndSay([unsafe], context);
 
@@ -130,6 +130,46 @@ describe("Backboard choose and say", () => {
     expect(menu[0]).not.toHaveProperty("profit");
     expect(menu[0]).not.toHaveProperty("target");
     expect(JSON.stringify(requestBody)).not.toContain("test-secret");
+  });
+
+  it("keeps memory off for ordinary shoppers while allowing an explicit demo shopper", async () => {
+    const memories: unknown[] = [];
+    const fetchImpl = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      memories.push(body.memory);
+      return completed("OPTION: D\nThe bundle is ready at $144.");
+    }) as unknown as typeof fetch;
+    const client = createBackboardShopkeeper({
+      apiKey: "key",
+      assistantId: "assistant",
+      fetchImpl,
+      memoryForShopper: shopperId => shopperId === "demo-shopper" ? "Readonly" : "off",
+    });
+
+    await client.chooseAndSay([option], context);
+    await client.chooseAndSay([option], { ...context, shopperId: "demo-shopper" });
+
+    expect(memories).toEqual(["off", "Readonly"]);
+  });
+
+  it("serializes concurrent runs for one shopper negotiation before reusing its thread", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    let call = 0;
+    const fetchImpl = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      call += 1;
+      return completed("OPTION: D\nThe bundle is ready at $144.", `thread-${call}`);
+    }) as unknown as typeof fetch;
+    const client = createBackboardShopkeeper({ apiKey: "key", assistantId: "assistant", fetchImpl });
+
+    await Promise.all([
+      client.chooseAndSay([option], context),
+      client.chooseAndSay([option], context),
+    ]);
+
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0]?.thread_id).toBeUndefined();
+    expect(bodies[1]?.thread_id).toBe("thread-1");
   });
 
   it.each([
@@ -268,7 +308,7 @@ describe("Backboard document and memory answers", () => {
     await client.answerQuestion({ shopperId: "anonymous-shopper", negotiationId: "one", shopperMessage: "Do these run small?" });
 
     expect(body?.assistant_id).toBe("base-assistant");
-    expect(body?.memory).toBe("Readonly");
+    expect(body?.memory).toBe("off");
   });
 
   it("answers through the same negotiation thread and keeps citations in owner telemetry", async () => {
@@ -290,7 +330,7 @@ describe("Backboard document and memory answers", () => {
         },
       ]);
     }) as unknown as typeof fetch;
-    const client = createBackboardShopkeeper({ apiKey: "key", assistantId: "assistant-1", fetchImpl });
+    const client = createBackboardShopkeeper({ apiKey: "key", assistantId: "assistant-1", memory: "Readonly", fetchImpl });
 
     const answer = await client.answerQuestion({
       shopperId: "shopper-1",
@@ -364,8 +404,8 @@ function clientFor(events: Record<string, unknown>[]) {
   return createBackboardShopkeeper({ apiKey: "key", assistantId: "assistant", fetchImpl });
 }
 
-function completed(content: string): Response {
-  return sseResponse([{ type: "run_ended", status: "completed", final_content: content, thread_id: "thread", assistant_id: "assistant" }]);
+function completed(content: string, threadId = "thread"): Response {
+  return sseResponse([{ type: "run_ended", status: "completed", final_content: content, thread_id: threadId, assistant_id: "assistant" }]);
 }
 
 function sseResponse(events: Record<string, unknown>[], splitAt: number[] = []): Response {

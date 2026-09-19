@@ -51,7 +51,7 @@ type DealRow = {
   floor: number;
   profit: number;
   owner_approved: boolean;
-  code: string;
+  code: string | null;
   created_at: string;
 };
 
