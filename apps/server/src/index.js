@@ -471,7 +471,8 @@ async function makeOfferFromPayload(payload, message) {
   const previousRound = state.negotiations.get(negotiationId)?.round || 0;
   const round = Math.min(MAX_ROUNDS, previousRound + 1);
   state.negotiations.set(negotiationId, { round, productId: match.item.productId });
-  const offer = priceOffer(match.item, offered, round, mirror);
+  const reason = analyzeBuyerReason(message);
+  const offer = priceOffer(match.item, offered, round, mirror, reason);
   const offerId = randomId("offer");
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
   const card = {
@@ -508,7 +509,7 @@ async function makeOfferFromPayload(payload, message) {
   return { reply: offer.line, card, products: publicProducts(mirror).slice(0, 8) };
 }
 
-function priceOffer(main, offered, round, mirror) {
+function priceOffer(main, offered, round, mirror, reason = { score: 0, label: null }) {
   if (main.cost === null) {
     return { kind: "closed", items: [main], listTotal: roundToShopper(main.list), total: roundToShopper(main.list), line: "I cannot safely haggle this item because the store cost is missing.", badges: ["missing cost"] };
   }
@@ -516,19 +517,53 @@ function priceOffer(main, offered, round, mirror) {
     return { kind: "accepted", items: [main], listTotal: roundToShopper(main.list), total: roundToShopper(main.list), line: `${main.title} is already ${formatMoney(roundToShopper(main.list))}. You can check out at list price, or send me a lower offer to haggle.`, badges: ["list price", "checkout ready"] };
   }
   const floor = Math.ceil(main.cost * (1 + FLOOR_PCT / 100));
-  const target = targetOf(main, floor);
+  const baseTarget = targetOf(main, floor);
+  const target = reasonAdjustedTarget(main.list, baseTarget, reason.score);
   const ask = roundToShopper(askFor(main.list, target, main.stockedAt, round));
   const safeOffered = roundToShopper(offered);
-  if (safeOffered >= floor && safeOffered >= target && safeOffered <= main.list) {
-    return { kind: "accepted", items: [main], listTotal: roundToShopper(main.list), total: safeOffered, line: `Deal — I can hold ${formatMoney(safeOffered)} for 15 minutes.`, badges: ["safe margin", "held 15:00"] };
+  const hasConvincingReason = reason.score >= 2;
+  if (safeOffered >= floor && safeOffered >= target && safeOffered <= main.list && (hasConvincingReason || round >= 3)) {
+    return { kind: "accepted", items: [main], listTotal: roundToShopper(main.list), total: safeOffered, line: `${reasonPrefix(reason)}Deal — I can hold ${formatMoney(safeOffered)} for 15 minutes.`, badges: reasonBadges(reason, ["safe margin", "held 15:00"]) };
   }
   const addOn = mirror.items.find((item) => item.isAddOn && item.inStock && item.cost !== null);
-  if (addOn && round < MAX_ROUNDS) {
+  if (addOn && round < MAX_ROUNDS && (reason.score > 0 || round > 1)) {
     const addonPart = Math.ceil(addOn.cost + (addOn.list - addOn.cost) / 2);
     const bundleTotal = roundToShopper(Math.max(ask + addonPart, floor + addonPart));
-    return { kind: "bundle", items: [main, addOn], listTotal: roundToShopper(main.list + addOn.list), total: bundleTotal, line: `I cannot do ${formatMoney(safeOffered)} on that alone, but I can do ${formatMoney(bundleTotal)} with ${addOn.title} included.`, badges: [`＋ ${addOn.title}`, "safe bundle"] };
+    return { kind: "bundle", items: [main, addOn], listTotal: roundToShopper(main.list + addOn.list), total: bundleTotal, line: `${reasonPrefix(reason)}I cannot do ${formatMoney(safeOffered)} on that alone, but I can do ${formatMoney(bundleTotal)} with ${addOn.title} included.`, badges: reasonBadges(reason, [`＋ ${addOn.title}`, "safe bundle"]) };
   }
-  return { kind: "counter", items: [main], listTotal: roundToShopper(main.list), total: ask, line: round === MAX_ROUNDS ? `My best is ${formatMoney(ask)}.` : `I can hold ${formatMoney(ask)} for 15 minutes.`, badges: [round === MAX_ROUNDS ? "final offer" : "held 15:00"] };
+  const weakReasonNudge = reason.score === 0 && round < MAX_ROUNDS ? "Give me a real reason and I can try harder. " : "";
+  return { kind: "counter", items: [main], listTotal: roundToShopper(main.list), total: ask, line: round === MAX_ROUNDS ? `My best is ${formatMoney(ask)}.` : `${weakReasonNudge}${reasonPrefix(reason)}I can hold ${formatMoney(ask)} for 15 minutes.`, badges: reasonBadges(reason, [round === MAX_ROUNDS ? "final offer" : reason.score === 0 ? "reason needed" : "held 15:00"]) };
+}
+
+function analyzeBuyerReason(message) {
+  const text = String(message || "").toLowerCase();
+  const signals = [
+    { pattern: /\b(student|college|school|tight budget|budget is|payday|saving up)\b/, score: 1, label: "budget reason" },
+    { pattern: /\b(buying|grab|take|get).*\b(two|2|both|bundle|pair|socks|cap|gaiters|vest|flask)\b|\b(bundle|multiple items|full kit|whole kit)\b/, score: 2, label: "bundle intent" },
+    { pattern: /\b(returning|repeat|loyal|bought before|customer already|local)\b/, score: 1, label: "repeat shopper" },
+    { pattern: /\b(last season|older model|clearance|sale|price match|competitor|elsewhere|same shoe)\b/, score: 2, label: "market reason" },
+    { pattern: /\b(race|marathon|trail day|trip|weekend hike|gift|birthday|team|club)\b/, score: 1, label: "real use case" },
+    { pattern: /\b(today|right now|checkout now|buy now|order now)\b/, score: 1, label: "ready to buy" },
+  ];
+  return signals.reduce((best, signal) => {
+    if (!signal.pattern.test(text) || signal.score <= best.score) return best;
+    return { score: signal.score, label: signal.label };
+  }, { score: 0, label: null });
+}
+
+function reasonAdjustedTarget(list, baseTarget, score) {
+  const strength = score >= 2 ? 0.75 : score === 1 ? 0.55 : 0.3;
+  return Math.ceil(list - strength * (list - baseTarget));
+}
+
+function reasonPrefix(reason) {
+  if (!reason || !reason.label) return "";
+  return `That is a better reason (${reason.label}). `;
+}
+
+function reasonBadges(reason, badges) {
+  if (!reason || !reason.label) return badges;
+  return [`reason: ${reason.label}`].concat(badges);
 }
 
 async function acceptOffer(offerId) {
@@ -567,14 +602,14 @@ const DISCOUNT_MUTATION = `#graphql
 
 async function mintDiscount(offer) {
   if (offer.items.some((item) => String(item.variantId).startsWith("seed://"))) throw new Error("This offer came from the seed fallback, so I will not create a fake Shopify checkout.");
-  const code = `BAZAAR-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+  const code = `TRAIL-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
   const discountAmount = Math.max(0, offer.listTotal - offer.total);
   if (discountAmount <= 0) {
     return { offerId: offer.offerId, code: null, agreedTotal: offer.total, checkoutUrl: checkoutUrl(offer.items), expiresAt: offer.expiresAt.toISOString() };
   }
   const variables = {
     basicCodeDiscount: {
-      title: `Bazaar offer ${code}`,
+      title: `Trailhead offer ${code}`,
       code,
       startsAt: new Date().toISOString(),
       endsAt: offer.expiresAt.toISOString(),
@@ -695,7 +730,7 @@ function isProbablyTruncated(text) {
 
 function systemPrompt() {
   return [
-    "You are Bazaar's AI shopkeeper for a Shopify clothing and trail gear store.",
+    "You are Trailhead's AI shopkeeper for a Shopify clothing and trail gear store.",
     "Use only the public product context supplied by the server.",
     "Help shoppers with outfit ideas, sizing, shipping, returns, and product discovery.",
     "You may mention visible storefront prices if supplied.",
@@ -718,7 +753,7 @@ function fallbackReply(context = {}) {
 function isOfferIntent(text) {
   const message = String(text || "");
   const hasMoney = /(?:c\$|\$)\s*\d+(?:\.\d{1,2})?|\b\d+(?:\.\d{1,2})?\s*(?:cad|dollars?|bucks?)\b/i.test(message);
-  const hasOfferLanguage = /\b(offer|deal|discount|haggle|checkout|could you do|can you do|would you take|best price|can i get|could i get|for)\b/i.test(message);
+  const hasOfferLanguage = /\b(offer|deal|discount|haggle|checkout|could you do|can you do|would you take|best price|can i get|could i get)\b/i.test(message);
   return hasMoney || hasOfferLanguage;
 }
 

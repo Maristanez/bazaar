@@ -77,6 +77,15 @@
 - **What we changed or threw away, and why:** We stopped telling shoppers that the live endpoint failed; that belongs in developer logs, not the demo/customer surface.
 - **Outcome:** Product and price questions always have a visual product card, and a Trail Runner 3 offer links to Trail Runner 3 even from the all-products page.
 
+### #8 — `Sat 16:45` · `Ritvik` · `Trailhead brand + reasoned haggling`
+
+- **Prompt:**
+  > Make it a little harder to haggle, look for good and convincing reasons by the buyer, and the name of the store is Trailhead with this logo.
+- **What Codex produced:** The Trailhead wordmark was added to the Shopify theme, visible My Store/Bazaar copy was moved to Trailhead, and the offer engine now scores buyer reasons before deciding how far to move.
+- **What we kept:** The hard safety boundary stays the same: every offer is still priced from server-side cost data and never below the floor.
+- **What we changed or threw away, and why:** Weak “give me $50” asks now get firmer counters and a prompt to give a real reason. Stronger reasons such as bundle intent, repeat shopper, real budget, market comparison, or race/trip/gift context earn better counters.
+- **Outcome:** The demo can show that the AI is not a coupon machine: it reacts to buyer context while code still controls the money.
+
 <!-- Copy the block above for each new entry. Never edit an old entry to make it sound better — add a follow-up entry instead. -->
 
 ### R14 follow-up — 2026-09-19 · Ricardo / Codex · merchant domain correction

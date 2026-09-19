@@ -4,7 +4,7 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 15:05 EDT — live storefront chat hardened: product cards render on every answer, endpoint fallback wording removed, and named-product offer cards link to the right product (Codex/Ritvik)
+**Last updated:** Sat 19 Sep 16:45 EDT — Trailhead branding/logo added and haggling made stricter unless shoppers give convincing reasons (Codex/Ritvik)
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
@@ -18,7 +18,7 @@
 
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
-| 🛍️ A. Storefront + Shopify store | Ritvik | Live storefront chat renders product cards on every assistant turn and server-generated offer cards for haggles; endpoint fallback no longer exposes internal failure copy | **① S13 Devpost assets ② S3 gate-0 decision ③** browser click-through to confirm the checkout total, screenshots while the path is warm | Manual checkout-total and remove-bundle-item verification |
+| 🛍️ A. Storefront + Shopify store | Ritvik | Trailhead logo/name is wired into the live theme, and chat haggling now asks for stronger buyer reasons before sharper discounts | **① S13 Devpost assets ② S3 gate-0 decision ③** browser click-through to confirm the checkout total, screenshots while the path is warm | Shopify admin store name may still need manual rename for Checkout branding |
 | ⚙️ B. Engine, core, Gym + Console | Bryan | Part B backbone COMPLETE — B1 B2 B3 B4 B5 B6 B11 ticked and merged. **R2/R6/R7 were briefly reassigned to Bryan at 11:55 and handed straight back** — Platform had already shipped them; `codex-prompt-settlement.txt` is obsolete, do not run it | S5 Console shell (fixtures exist, no R5 dependency) → S6 policy panel → B12 dot histogram | — |
 | 🔌 C. Platform | Ricardo | R2 token wrapper, R4 product mirror, `/api/products`, `/api/stream`, offer cards, `discountCodeBasicCreate` and cart permalinks are **live on Railway deploy `6f1032c6`** | Manual checkout-total / free-shipping / tax verification; then R16 remove-bundle-item test; then R12 pin + R13 domain before 13:00 | Store checkout settings / manual checkout verification |
 | 🤖 D. Agents + guardrails | **STILL UNOWNED — name someone at the 14:00 Devpost check** | Gemini answers basic shopper Q&A. The official OpenAI and Backboard paths are not started, and B5/B6 have been finished and unconsumed since 11:00 | R9 *understand* (the OpenAI track is judged on a direct OpenAI call) → R10/R11 Backboard. **Three of the four sponsor tracks live in this part** | an owner |
@@ -149,6 +149,8 @@ Everything a shopper sees, plus the store's products behind it: the offer card, 
   _Sat 11:50 Codex note:_ after Railway env vars were added, live `/health` reports `shopifyConfigured: true`, `mirrorSource: shopify-admin`, 9 products, and no warnings. Live `/api/products?sync=1` returns real Shopify products and variants.
 
   _Sat 15:05 Codex note:_ the chat now adds a compact product card to every assistant turn when public products are available, removes the shopper-facing “could not reach the live endpoint” fallback wording, accepts either a base endpoint or full `/api/chat` endpoint, and links offer-card “View item” to the product named in the offer instead of blindly using the current page product.
+
+  _Sat 16:45 Codex note:_ Trailhead wordmark asset added to the theme header, visible theme copy/metadata switched from My Store/Bazaar to Trailhead, and the chat now tells shoppers to include a reason. The live offer engine scores buyer reasons (bundle intent, repeat shopper, budget, market/last-season, race/trip/gift, ready-to-buy) and gives firmer counters when the shopper just asks for a lower price without a convincing reason.
 - [ ] **S4** Deal flow on the storefront: accept → checkout opens; sparkles [§4.1] · _needs S1, R6, R7_ · ~1 h · **Done when:** **gate 1 passes**
 
   _Sat 09:52 Codex note:_ the preview card deliberately disables Deal and says the API is required. S4 remains blocked on R6/R7 so the first real Deal button mints a constrained Shopify discount and opens checkout.

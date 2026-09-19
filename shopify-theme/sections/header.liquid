@@ -1,6 +1,8 @@
 <header>
   <h2 class="header__title">
-    {{ shop.name | link_to: routes.root_url }}
+    <a class="header__brand" href="{{ routes.root_url }}" aria-label="Trailhead home">
+      <img src="{{ 'trailhead-logo.png' | asset_url }}" alt="Trailhead" width="1648" height="399">
+    </a>
   </h2>
 
   <div class="header__menu">
@@ -34,6 +36,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 1.5rem;
+  }
+  header .header__title {
+    margin: 0;
   }
   header a {
     position: relative;
@@ -51,6 +57,14 @@
   }
   header svg {
     width: 2rem;
+  }
+  header .header__brand {
+    justify-content: flex-start;
+  }
+  header .header__brand img {
+    display: block;
+    width: min(12rem, 42vw);
+    height: auto;
   }
   header .header__menu,
   header .header__icons {

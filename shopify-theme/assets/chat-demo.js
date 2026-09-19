@@ -68,10 +68,10 @@
       if (shopperId === 'demo') {
         return 'Eyeing ' + currentProduct.title + '? Welcome back — still a size 10? Ask about fit or try “Could you do $120?”';
       }
-      return 'Eyeing ' + currentProduct.title + '? Ask about fit, or name a price and I will build a real offer card.';
+      return 'Eyeing ' + currentProduct.title + '? Name a price and give me a reason — bundles, budget, or race-day plans help.';
     }
     if (products.length) {
-      return 'Hi, I can see ' + products.length + ' published products. Ask for prices, outfit ideas, sizing, or make an offer.';
+      return 'Hi, I can see ' + products.length + ' published products. Ask for prices, outfit ideas, sizing, or make an offer with a good reason.';
     }
     return 'Hi, I can help with products, sizing, and offers. Try one of the prompts below.';
   }
@@ -98,7 +98,7 @@
       },
       {
         terms: ['offer', 'deal', 'discount', 'checkout', 'haggle', '$'],
-        text: 'Send a specific number like “Could you do $120?” and I will show the offer card shape. The live server creates the binding version.'
+        text: 'Send a specific number and a reason, like “Could you do $120? I’m buying socks too.” Stronger reasons get sharper offers.'
       }
     ];
   }
@@ -203,7 +203,7 @@
       '<span>' + escapeHtml(statusLabel(card)) + '</span>',
       '<span data-offer-countdown="' + escapeHtml(card.expiresAt) + '">15:00</span>',
       '</div>',
-      '<h3>' + escapeHtml(firstItem.title || 'Bazaar offer') + '</h3>',
+      '<h3>' + escapeHtml(firstItem.title || 'Trailhead offer') + '</h3>',
       '<p class="ai-chat__offer-price"><span>' + money(card.option.listTotal) + '</span><strong>' + money(card.option.total) + '</strong></p>',
       '<p>' + escapeHtml(card.line || 'I can hold this for 15 minutes.') + '</p>',
       '<div class="ai-chat__badges">' + (card.badges || []).map(function (badge) { return '<span>' + escapeHtml(badge) + '</span>'; }).join('') + '</div>',
