@@ -1,0 +1,11 @@
+{
+  "name": "@bazaar/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bazaar/contracts": "workspace:*"
+  }
+}
