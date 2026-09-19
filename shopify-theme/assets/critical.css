@@ -254,6 +254,31 @@ select:focus-visible {
   font-size: 1.15rem;
 }
 
+.ai-chat__badges,
+.ai-chat__trail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.ai-chat__badges span,
+.ai-chat__trail span {
+  border-radius: 999px;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.ai-chat__badges span {
+  background: #fed7aa;
+  color: #7c2d12;
+}
+
+.ai-chat__trail span {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
 .ai-chat__offer-actions a,
 .ai-chat__offer-actions button {
   display: inline-flex;
@@ -275,8 +300,15 @@ select:focus-visible {
 }
 
 .ai-chat__offer-actions button {
+  background: #ea580c;
+  color: #fff;
+  cursor: pointer;
+}
+
+.ai-chat__offer-actions button:disabled {
   background: #e5e7eb;
   color: #4b5563;
+  cursor: not-allowed;
 }
 
 .ai-chat__offer-footer {

@@ -44,10 +44,12 @@
 <script type="application/json" data-ai-chat-current-product>
   {
     "productId": {{ product.id | json }},
+    "handle": {{ product.handle | json }},
     "title": {{ product.title | json }},
     "url": {{ product.url | json }},
     "type": {{ product.type | json }},
     "price": {{ product.price | money_without_trailing_zeros | json }},
+    "listPrice": {{ product.price | json }},
     "selectedVariantId": {{ product.selected_or_first_available_variant.id | json }},
     "variants": [
       {%- for variant in product.variants -%}

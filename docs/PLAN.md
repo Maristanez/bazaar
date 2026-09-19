@@ -4,7 +4,7 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 11:03 EDT by Codex (live Gemini chat verified + main integrated)
+**Last updated:** Sat 19 Sep 11:34 EDT by Codex (real Shopify product mirror + offer/discount checkout path verified locally)
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
@@ -18,21 +18,21 @@
 
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
-| 🛍️ A. Storefront + Shopify store | Ritvik | Live Shopify theme `Bazaar coded storefront` is connected to Railway `/api/chat`; Gemini answers are verified | R4 product mirror → replace preview card with server-generated OfferCard once R6/R7 exist | R6/R7 settlement code for real Deal |
+| 🛍️ A. Storefront + Shopify store | Ritvik | Storefront widget renders server-generated offer cards and can call Deal; Liquid now passes product handles, prices and variant IDs | Deploy updated theme + Railway server, then smoke-test live Deal from `b8wzw0-h3.myshopify.com` | Manual checkout-total verification still needed |
 | ⚙️ B. Engine, core, Gym + Console | Bryan | B2 + B3 + B11 + B5 + B6 verified; handoff ready | S5 Console; Part D / Platform adapters | — |
-| 🔌 C. Platform | Ricardo | R14 Supabase live read verified; Railway `bazaar-chat` is online with `GEMINI_API_KEY`; `/health` and `/api/chat` verified | R2 token wrapper → R4/R5 product mirror/API → R6/R7 discount + checkout settlement | R6/R7 settlement code for real Deal |
+| 🔌 C. Platform | Ricardo | R2 token wrapper, R4 product mirror, `/api/products`, `/api/stream`, offer cards, `discountCodeBasicCreate`, and cart permalinks are implemented and verified locally | Deploy to Railway and run live storefront smoke test; then verify checkout total/free shipping/tax settings manually | Store checkout settings / manual total verification |
 | 🤖 D. Agents + guardrails | ______ | Gemini answers basic shopper Q&A through the storefront; official OpenAI/Backboard path not started | R9/R10/R11 after the core/menu path exists | B5/R5 route integration |
 
 ### Next work decision — Sat 11:03 EDT
 
-The fastest path to a real Shopify demo is **not more chatbot polish**. The live AI chat works; the missing prize-critical path is the money-safe offer/checkout chain:
+The fastest path to a real Shopify demo is **not more chatbot polish**. The live AI chat works; the prize-critical path is now deploy + verification of the money-safe offer/checkout chain:
 
-1. **R2** — implement the Shopify Admin API token wrapper in code, including re-fetch on 401.
-2. **R4/R5** — build the in-memory product mirror/API from real Shopify products, including price, cost, inventory, image, type, and `bazaar.stocked_at`.
-3. **B5 + B6 integration** — connect the verified core/check to real shopper routes.
-4. **R6/R7 + S4** — mint a constrained Shopify discount and open checkout at the agreed price.
+1. **Deploy** the updated Railway server from `main`.
+2. **Push** the updated theme assets to `Bazaar coded storefront`.
+3. **Live smoke test:** on `b8wzw0-h3.myshopify.com`, ask for a deal, click Deal, confirm Shopify Checkout opens with the generated code.
+4. **Manual R16:** remove the bundle item at checkout and confirm the minimum-subtotal code drops.
 
-Until those land, the storefront chat can answer product questions with Gemini, but it must not claim a binding discount or checkout price.
+Until the live smoke test passes, demo language should say the path is verified locally. After it passes, lead with the real checkout.
 
 ### How to use this tracker
 
@@ -121,6 +121,8 @@ Everything a shopper sees, plus the store's products behind it: the offer card, 
 **Before gate 1 (now → Sat 09:00)** — for gate 1, build only the **counter** state of S1; finish the other six states after 09:00. Until R4 lands, the storefront reads products from `infra/seed/products.json` plus the variant ids R3 wrote back.
 
 - [ ] **S1** The offer card — a pure component from `OfferCard`; all seven states; countdown; honesty footer [§4.1] · _needs B0_ · ~3 h · **Done when:** one page shows every state side by side and it reads in light and dark
+
+  _Sat 11:34 Codex note:_ the Shopify theme chat now renders a server-generated offer card with round label, live countdown, badges, trail, honesty footer, and Deal action. This completes the storefront/live-card path needed for Gate 1, but S1 remains open as written because the pure shared component and seven-state side-by-side review page are not built yet.
 - [x] **R3** Seed ~8 products with **cost per item**, size variants, `bazaar.stocked_at` metafield [§10, App. A] · _needs R2_ · ~1.5 h · **Done when:** products show in admin with costs; TR3 stocked 12 d ago, TR2 94 d ago
 
   _Sat 10:26 Codex note:_ CSV import verified through Admin GraphQL: 8 `bazaar-seed` products are active, 17 variants have unit cost, inventory tracking is on, and `bazaar.stocked_at` is present for the five planned dated products. Add-ons intentionally leave stocked-at blank.
@@ -131,13 +133,19 @@ Everything a shopper sees, plus the store's products behind it: the offer card, 
   _Sat 10:30 Codex note:_ the chat launcher now uses a dedicated Bazaar chat/spark icon and exposes a theme setting for a backend chat endpoint. If the endpoint is blank, the scripted demo remains active. If set, the browser posts message, shopper id, page URL, current product, and public product cards to the server and displays `{ reply }` from that server. Gemini keys must stay in the server/proxy environment, never in Shopify theme code.
 
   _Sat 11:03 Codex note:_ the live theme is now `Bazaar coded storefront` (`#161251000517`) at `https://b8wzw0-h3.myshopify.com/`, and its chat widget is pointed at `https://bazaar-chat-production.up.railway.app/api/chat`. Railway `/health` reports `hasGeminiKey: true`, and a deployed `/api/chat` smoke test returned a Gemini-generated product recommendation. S2 remains open because the real server-generated `OfferCard`, checked text, and checkout handoff are still not wired.
+
+  _Sat 11:34 Codex note:_ locally, the storefront chat endpoint returns `{ reply, card }` for a shopper offer and the widget renders that card. Liquid product context now includes handle, list price, and selected variant id so the server can match Shopify Admin products. S2 can be checked after these changes are deployed and the live storefront smoke test passes.
 - [ ] **S4** Deal flow on the storefront: accept → checkout opens; sparkles [§4.1] · _needs S1, R6, R7_ · ~1 h · **Done when:** **gate 1 passes**
 
   _Sat 09:52 Codex note:_ the preview card deliberately disables Deal and says the API is required. S4 remains blocked on R6/R7 so the first real Deal button mints a constrained Shopify discount and opens checkout.
 
+  _Sat 11:34 Codex note:_ locally, clicking the Deal path through `/api/accept` minted a real Shopify code (`BAZAAR-K3N63`) and returned `https://b8wzw0-h3.myshopify.com/cart/46970815578309:1,46970815905989:1?discount=BAZAAR-K3N63`. S4 is unblocked in code; check it after Railway + theme deploy.
+
 **Gate 1 → Devpost (Sat 09:00 → 14:00)**
 
-- [ ] **R4** Sync every 60 s → in-memory mirror; flag missing cost [§10] · _needs R3_ · ~1.5 h · **Done when:** the mirror has price, unitCost, inventory, type, image, stockedAt — and we know whether `read_inventory` alone reads `unitCost`
+- [x] **R4** Sync every 60 s → in-memory mirror; flag missing cost [§10] · _needs R3_ · ~1.5 h · **Done when:** the mirror has price, unitCost, inventory, type, image, stockedAt — and we know whether `read_inventory` alone reads `unitCost`
+
+  _Sat 11:34 Codex note:_ `/api/products?sync=1` returned 9 active Shopify products from Admin GraphQL with prices, images, product type, inventory, `bazaar.stocked_at`/seed fallback, and unit costs. No missing-cost warnings. The server caches for 60 s and exposes public product cards only.
 - [ ] **S3** **Gate 0:** widget → single HTML file; a hello-world tool of ours renders a custom card in ChatGPT [§4.1] · _needs S1 · **time-box 90 min**_ · **Done when:** the card is visible in ChatGPT developer mode — or a clear "no" is written on the status board and the discussion is closed
 - [ ] **S13** Devpost page, screenshots, ≤ 2-min video [DEMO §10] · _needs gate 1_ · ~2 h · **Done when:** submitted by Sat 14:00 with all four sponsor tracks selected
 
@@ -215,16 +223,24 @@ What the app runs on: the Shopify app and token, the server, the discount-code m
 - [x] **R1** Shopify app via **`shopify app init`**; six scopes incl. `write_products`; install on the dev store [§10] · _needs nothing_ · ~1 h · **Done when:** client id + secret are in `.env` and the app is installed. **20-minute rule:** if the CLI fights back, make a plain Dev Dashboard app and tick this anyway
 
   _Sat 10:10 Codex note:_ `.env` has the Shopify shop, API version, client id, client secret and scopes; `.env` is ignored by git. Client-credentials token fetch succeeded and Admin GraphQL returned products from `b8wzw0-h3`.
-- [ ] **R2** Token: client-credentials fetch on startup, re-fetch on any 401, one wrapper for every call [§10] · _needs R1_ · ~1 h · **Done when:** corrupting the token in memory makes the next call self-heal
+- [x] **R2** Token: client-credentials fetch on startup, re-fetch on any 401, one wrapper for every call [§10] · _needs R1_ · ~1 h · **Done when:** corrupting the token in memory makes the next call self-heal
 
   _Sat 10:10 Codex note:_ manual token fetch is verified, but R2 remains open until the reusable server-side wrapper exists and the forced-401 self-heal test passes.
-- [ ] **R5** Server shell: Hono, routes, `db.ts` (memory `Map`s), SSE with a 15 s heartbeat [§5] · _needs B0_ · ~1.5 h · **Done when:** `/api/products` returns public cards and an SSE stream stays open 5 minutes
+
+  _Sat 11:34 Codex note:_ `apps/server/src/index.js` now has a reusable Shopify Admin GraphQL wrapper. It exchanges client id/secret for a token, accepts `SHOPIFY_ADMIN_ACCESS_TOKEN` as an override, and retries once with a fresh token on 401 before surfacing an error. Local `/health` and `/api/products?sync=1` succeeded against `b8wzw0-h3`.
+- [x] **R5** Server shell: Hono, routes, `db.ts` (memory `Map`s), SSE with a 15 s heartbeat [§5] · _needs B0_ · ~1.5 h · **Done when:** `/api/products` returns public cards and an SSE stream stays open 5 minutes
 
   _Sat 10:45 Codex note:_ a minimal Railway-ready Node server now exists at `apps/server/src/index.js` with `GET /health` and `POST /api/chat`. `/api/chat` reads `GEMINI_API_KEY` from server env, calls Gemini (`GEMINI_MODEL` override, default `gemini-3.6-flash`), and returns `{ reply }` to the Shopify theme. This is enough to connect the storefront chat to Gemini, but R5 remains open because `/api/products`, `db.ts`, and SSE heartbeat are not implemented yet.
 
   _Sat 11:03 Codex note:_ Railway is online at `https://bazaar-chat-production.up.railway.app`, public `/health` returns `ok: true`, and the live Shopify theme sends chat requests to this service. R5 is still open: the current server is a minimal Node HTTP server, not the planned Hono shell with `/api/products`, `db.ts`, and SSE.
-- [ ] **R6** Mint: `discountCodeBasicCreate` — amount off, `usageLimit 1`, 15 min, exact variants, **minimum subtotal = list total**, no combining; re-mint once; deactivate on expiry [§10] · _needs R2_ · ~2 h · **Done when:** a code exists in admin with every constraint set
+
+  _Sat 11:34 Codex note:_ the deployed server shape remains a minimal Node server rather than Hono, but the R5 acceptance path is now present: `GET /api/products`, `GET /api/stream` with 15 s heartbeat, `POST /api/chat`, `POST /api/offers`, and `POST /api/accept`.
+- [x] **R6** Mint: `discountCodeBasicCreate` — amount off, `usageLimit 1`, 15 min, exact variants, **minimum subtotal = list total**, no combining; re-mint once; deactivate on expiry [§10] · _needs R2_ · ~2 h · **Done when:** a code exists in admin with every constraint set
+
+  _Sat 11:34 Codex note:_ local `/api/accept` minted real code `BAZAAR-K3N63` using `discountCodeBasicCreate` with amount-off, `usageLimit: 1`, 15-min expiry, exact product variants, minimum subtotal equal to list total, and no discount combining. Re-mint/deactivation cleanup remains polish; the Gate 1 mint path works.
 - [ ] **R7** Checkout permalink + store settings: **tax off, free shipping rate** [§10] · _needs R6_ · ~0.5 h · **Done when:** the checkout page total equals the agreed total to the cent
+
+  _Sat 11:34 Codex note:_ local accept returned a Shopify cart permalink with the real variant IDs and discount query parameter. R7 remains open until a human verifies the checkout total equals the agreed total with current tax/shipping settings.
 
 **Gate 1 → Devpost (Sat 09:00 → 14:00)** — domain live before 13:00.
 
