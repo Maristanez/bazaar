@@ -4,7 +4,11 @@
 
 {%- liquid
   assign store_name = 'Trailhead'
-  assign og_title = page_title | default: store_name
+  assign display_title = page_title | default: store_name
+  if display_title == shop.name
+    assign display_title = store_name
+  endif
+  assign og_title = display_title
   assign og_url = canonical_url | default: request.origin
   assign og_type = 'website'
   assign og_description = page_description | default: shop.description | default: store_name
@@ -87,10 +91,10 @@
 >
 
 <title>
-  {{ page_title }}
+  {{ display_title }}
   {%- if current_tags %} &ndash; tagged "{{ current_tags | join: ', ' }}"{% endif -%}
   {%- if current_page != 1 %} &ndash; Page {{ current_page }}{% endif -%}
-  {%- unless page_title contains store_name %} &ndash; {{ store_name }}{% endunless -%}
+  {%- unless display_title contains store_name %} &ndash; {{ store_name }}{% endunless -%}
 </title>
 
 <link
