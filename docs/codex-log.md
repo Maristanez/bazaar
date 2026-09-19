@@ -59,6 +59,15 @@
 - **What we changed or threw away, and why:** We skipped adding a Gemini SDK dependency for this slice because Node 22 has native `fetch`, which keeps the Railway deploy smaller and faster.
 - **Outcome:** The live storefront chat now reaches `https://bazaar-chat-production.up.railway.app/api/chat`; `/health` reports `hasGeminiKey: true`, and a deployed smoke test returned a Gemini-generated product recommendation.
 
+### #6 — `Sat 11:34` · `Ritvik` · `R4/R6/S4 real offer path`
+
+- **Prompt:**
+  > lets get it all done
+- **What Codex produced:** The server-side Shopify Admin wrapper, 60-second product mirror, `/api/products`, SSE heartbeat, offer-card responses from `/api/chat`, `/api/accept`, and a Shopify theme widget that renders the card and opens Deal.
+- **What we kept:** Private cost data stays on the server. The browser receives only product cards, offer-card totals, expiry, badges, trail, and checkout URL after accept.
+- **What we changed or threw away, and why:** We kept the Railway server as plain Node instead of switching to Hono during the hack window; the acceptance path matters more than a framework migration.
+- **Outcome:** Local smoke test read 9 real Shopify products with no missing-cost warnings, created a card for “Could you do $120?” on Trail Runner 3, minted real code `BAZAAR-K3N63`, and returned a Shopify cart permalink with the discount applied.
+
 <!-- Copy the block above for each new entry. Never edit an old entry to make it sound better — add a follow-up entry instead. -->
 
 ### R14 follow-up — 2026-09-19 · Ricardo / Codex · merchant domain correction

@@ -109,7 +109,7 @@ select:focus-visible {
   display: grid;
   justify-items: end;
   gap: 0.75rem;
-  width: min(24rem, calc(100vw - 2rem));
+  width: min(30rem, calc(100vw - 2rem));
   pointer-events: none;
 }
 
@@ -119,7 +119,10 @@ select:focus-visible {
 }
 
 .ai-chat__panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
   width: 100%;
+  max-height: min(44rem, calc(100svh - 6rem));
   overflow: hidden;
   border: 1px solid rgb(15 23 42 / 12%);
   border-radius: 1rem;
@@ -173,19 +176,24 @@ select:focus-visible {
 
 .ai-chat__messages {
   display: grid;
+  align-content: start;
   gap: 0.75rem;
-  max-height: min(19rem, 48svh);
+  min-height: 0;
+  max-height: none;
   padding: 1rem;
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
 }
 
 .ai-chat__message {
-  max-width: 85%;
+  max-width: min(92%, 24rem);
   padding: 0.75rem 0.85rem;
   border-radius: 0.85rem;
   font-size: 0.9rem;
   line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .ai-chat__message--bot {
@@ -206,10 +214,12 @@ select:focus-visible {
   display: grid;
   gap: 0.7rem;
   padding: 0.9rem;
+  width: 100%;
   border: 1px dashed #f59e0b;
   border-radius: 0.9rem;
   background: #fff7ed;
   color: #2f1604;
+  overflow-wrap: anywhere;
 }
 
 .ai-chat__offer-topline,
@@ -254,6 +264,31 @@ select:focus-visible {
   font-size: 1.15rem;
 }
 
+.ai-chat__badges,
+.ai-chat__trail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.ai-chat__badges span,
+.ai-chat__trail span {
+  border-radius: 999px;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.ai-chat__badges span {
+  background: #fed7aa;
+  color: #7c2d12;
+}
+
+.ai-chat__trail span {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
 .ai-chat__offer-actions a,
 .ai-chat__offer-actions button {
   display: inline-flex;
@@ -267,6 +302,7 @@ select:focus-visible {
   font-size: 0.8rem;
   font-weight: 800;
   text-decoration: none;
+  text-align: center;
 }
 
 .ai-chat__offer-actions a {
@@ -275,8 +311,15 @@ select:focus-visible {
 }
 
 .ai-chat__offer-actions button {
+  background: #ea580c;
+  color: #fff;
+  cursor: pointer;
+}
+
+.ai-chat__offer-actions button:disabled {
   background: #e5e7eb;
   color: #4b5563;
+  cursor: not-allowed;
 }
 
 .ai-chat__offer-footer {
@@ -407,6 +450,16 @@ select:focus-visible {
 
   .ai-chat__panel {
     max-height: calc(100svh - 6rem);
+  }
+
+  .ai-chat__message {
+    max-width: 94%;
+  }
+
+  .ai-chat__offer-topline,
+  .ai-chat__offer-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

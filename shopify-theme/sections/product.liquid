@@ -5,49 +5,264 @@
   https://shopify.dev/docs/storefronts/themes/architecture/templates/product
 {% endcomment %}
 
-<div class="product-images">
-  {% for image in product.images %}
-    {% render 'image', class: 'product-image', image: image %}
-  {% endfor %}
-</div>
+{% assign current_variant = product.selected_or_first_available_variant %}
 
-<div class="product-info">
-  <h1>{{ product.title }}</h1>
-  <p>{{ product.price | money }}</p>
-  <p>{{ product.description }}</p>
-</div>
-
-<div class="product-form">
-  {% form 'product', product %}
-    {% assign current_variant = product.selected_or_first_available_variant %}
-
-    <select name="id">
-      {% for variant in product.variants %}
-        <option
-          value="{{ variant.id }}"
-          {% if variant == current_variant %}
-            selected="selected"
-          {% endif %}
-        >
-          {{ variant.title }} - {{ variant.price | money }}
-        </option>
+<section class="product-shell">
+  <div class="product-shell__media">
+    {% if product.images.size > 0 %}
+      {% for image in product.images %}
+        <figure class="product-shell__image {% if forloop.first %}product-shell__image--primary{% endif %}">
+          {% render 'image', class: 'product-image', image: image %}
+        </figure>
       {% endfor %}
-    </select>
+    {% else %}
+      <div class="product-shell__image product-shell__image--primary product-shell__placeholder">
+        <span>{{ product.title | slice: 0, 1 }}</span>
+      </div>
+    {% endif %}
+  </div>
 
-    <input type="text" name="quantity" min="1" value="1">
+  <div class="product-shell__panel">
+    <p class="product-shell__kicker">{{ product.type | default: 'Trail gear' }}</p>
+    <h1>{{ product.title }}</h1>
+    <p class="product-shell__price">{{ product.price | money }}</p>
 
-    <input type="submit" value="Add to cart">
-    {{ form | payment_button }}
-  {% endform %}
-</div>
+    {% if product.description != blank %}
+      <div class="product-shell__description">
+        {{ product.description }}
+      </div>
+    {% else %}
+      <p class="product-shell__description">
+        A clean, hard-working piece for the current Trailhead edit. Ask the AI shopkeeper about fit, bundles, or a fair offer.
+      </p>
+    {% endif %}
+
+    <div class="product-shell__callout">
+      <span aria-hidden="true">✦</span>
+      <p>Name a price in the AI chat and Bazaar will only show offers that keep the shop above its floor.</p>
+    </div>
+
+    <div class="product-form product-shell__form">
+      {% form 'product', product %}
+        <label for="ProductSelect-{{ section.id }}">Choose variant</label>
+        <select id="ProductSelect-{{ section.id }}" name="id">
+          {% for variant in product.variants %}
+            <option
+              value="{{ variant.id }}"
+              {% if variant == current_variant %}
+                selected="selected"
+              {% endif %}
+              {% unless variant.available %}
+                disabled
+              {% endunless %}
+            >
+              {{ variant.title }} — {{ variant.price | money }}{% unless variant.available %} · sold out{% endunless %}
+            </option>
+          {% endfor %}
+        </select>
+
+        <label for="Quantity-{{ section.id }}">Quantity</label>
+        <input id="Quantity-{{ section.id }}" type="number" name="quantity" min="1" value="1">
+
+        <input class="product-shell__submit" type="submit" value="Add to cart">
+        <div class="product-shell__payment">
+          {{ form | payment_button }}
+        </div>
+      {% endform %}
+    </div>
+
+    <ul class="product-shell__notes" aria-label="Store promises">
+      <li>Real Shopify checkout</li>
+      <li>Single-use AI deals</li>
+      <li>Demo shipping set at checkout</li>
+    </ul>
+  </div>
+</section>
+
+{% stylesheet %}
+  .product-shell {
+    --spruce: #064e3b;
+    --spruce-2: #0f766e;
+    --lichen: #e7f2e8;
+    --bone: #fbf7ef;
+    --ink: #17211c;
+    --trail: #ea580c;
+    display: grid;
+    grid-template-columns: minmax(0, 1.12fr) minmax(21rem, 0.88fr);
+    gap: clamp(1.25rem, 4vw, 4rem);
+    align-items: start;
+    padding: clamp(2rem, 6vw, 5rem) var(--page-margin) clamp(4rem, 8vw, 7rem);
+    background:
+      radial-gradient(circle at 12% 6%, rgb(15 118 110 / 14%), transparent 28rem),
+      linear-gradient(180deg, #fbf7ef 0%, #f5f0e7 100%);
+    color: var(--ink);
+  }
+
+  .product-shell__media {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(0.75rem, 1.5vw, 1.25rem);
+  }
+
+  .product-shell__image {
+    position: relative;
+    overflow: hidden;
+    min-height: 14rem;
+    border-radius: 1.35rem;
+    background: var(--lichen);
+    box-shadow: inset 0 0 0 1px rgb(6 78 59 / 10%);
+  }
+
+  .product-shell__image--primary {
+    grid-column: 1 / -1;
+    min-height: clamp(25rem, 54vw, 42rem);
+  }
+
+  .product-shell__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .product-shell__placeholder {
+    display: grid;
+    place-items: center;
+    color: var(--spruce);
+    font-size: clamp(5rem, 14vw, 12rem);
+    font-weight: 900;
+  }
+
+  .product-shell__panel {
+    position: sticky;
+    top: 1.25rem;
+    display: grid;
+    gap: 1rem;
+    padding: clamp(1.25rem, 3vw, 2rem);
+    border: 1px solid rgb(6 78 59 / 14%);
+    border-radius: 1.35rem;
+    background: rgb(255 255 255 / 82%);
+    box-shadow: 0 24px 80px rgb(23 33 28 / 10%);
+    backdrop-filter: blur(14px);
+  }
+
+  .product-shell__kicker {
+    width: fit-content;
+    border-radius: 999px;
+    padding: 0.4rem 0.65rem;
+    background: var(--spruce);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 800;
+  }
+
+  .product-shell h1 {
+    color: var(--spruce);
+    font-size: clamp(2.6rem, 6vw, 5.25rem);
+    letter-spacing: -0.065em;
+    line-height: 0.92;
+  }
+
+  .product-shell__price {
+    color: var(--trail);
+    font-size: clamp(1.65rem, 3vw, 2.4rem);
+    font-weight: 900;
+  }
+
+  .product-shell__description {
+    max-width: 42rem;
+    color: #3f4d45;
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+
+  .product-shell__callout {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.7rem;
+    align-items: start;
+    padding: 0.9rem;
+    border-radius: 1rem;
+    background: #fff7ed;
+    color: #7c2d12;
+    font-size: 0.92rem;
+    line-height: 1.45;
+  }
+
+  .product-shell__form form {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .product-shell__form label {
+    color: var(--spruce);
+    font-size: 0.82rem;
+    font-weight: 850;
+  }
+
+  .product-shell__form select,
+  .product-shell__form input[type='number'] {
+    min-height: 3rem;
+    width: 100%;
+    border: 1px solid rgb(6 78 59 / 18%);
+    border-radius: 0.85rem;
+    padding: 0 0.9rem;
+    background: #fff;
+    color: var(--ink);
+  }
+
+  .product-shell__submit,
+  .shopify-payment-button__button {
+    min-height: 3.15rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--trail);
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 900;
+  }
+
+  .product-shell__payment {
+    display: grid;
+  }
+
+  .product-shell__notes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .product-shell__notes li {
+    border-radius: 999px;
+    padding: 0.4rem 0.6rem;
+    background: var(--lichen);
+    color: var(--spruce);
+    font-size: 0.78rem;
+    font-weight: 800;
+  }
+
+  @media (max-width: 850px) {
+    .product-shell {
+      grid-template-columns: 1fr;
+    }
+
+    .product-shell__panel {
+      position: static;
+    }
+  }
+{% endstylesheet %}
 
 <script type="application/json" data-ai-chat-current-product>
   {
     "productId": {{ product.id | json }},
+    "handle": {{ product.handle | json }},
     "title": {{ product.title | json }},
     "url": {{ product.url | json }},
     "type": {{ product.type | json }},
     "price": {{ product.price | money_without_trailing_zeros | json }},
+    "listPrice": {{ product.price | json }},
     "selectedVariantId": {{ product.selected_or_first_available_variant.id | json }},
     "variants": [
       {%- for variant in product.variants -%}
