@@ -25,7 +25,7 @@
   if (mode && endpoint) mode.textContent = 'Live AI + offers';
 
   function normalizeEndpoint(value) {
-    return String(value || '').trim().replace(/\/$/, '').replace(/\/api\/chat$/, '');
+    return String(value || '').trim().replace(/\/$/, '');
   }
 
   function readJsonArray(source) {
@@ -68,10 +68,10 @@
       if (shopperId === 'demo') {
         return 'Eyeing ' + currentProduct.title + '? Welcome back — still a size 10? Ask about fit or try “Could you do $120?”';
       }
-      return 'Eyeing ' + currentProduct.title + '? Ask about fit, or name a price and I will build a real offer card.';
+      return 'Eyeing ' + currentProduct.title + '? Name a price and give me a reason — bundles, budget, or race-day plans help.';
     }
     if (products.length) {
-      return 'Hi, I can see ' + products.length + ' published products. Ask for prices, outfit ideas, sizing, or make an offer.';
+      return 'Hi, I can see ' + products.length + ' published products. Ask for prices, outfit ideas, sizing, or make an offer with a good reason.';
     }
     return 'Hi, I can help with products, sizing, and offers. Try one of the prompts below.';
   }
@@ -98,7 +98,7 @@
       },
       {
         terms: ['offer', 'deal', 'discount', 'checkout', 'haggle', '$'],
-        text: 'Send a specific number like “Could you do $120?” and I will show the offer card shape. The live server creates the binding version.'
+        text: 'Send a specific number and a reason, like “Could you do $120? I’m buying socks too.” Stronger reasons get sharper offers.'
       }
     ];
   }
@@ -114,7 +114,7 @@
   }
 
   function askEndpoint(text) {
-    return window.fetch(endpoint + '/api/chat', {
+    return window.fetch(chatUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(getContextPayload(text))
@@ -124,10 +124,21 @@
     });
   }
 
+  function chatUrl() {
+    if (/\/api\/chat$/i.test(endpoint)) return endpoint;
+    return endpoint + '/api/chat';
+  }
+
+  function acceptUrl() {
+    if (/\/api\/chat$/i.test(endpoint)) return endpoint.replace(/\/api\/chat$/i, '/api/accept');
+    if (/\/api\/accept$/i.test(endpoint)) return endpoint;
+    return endpoint + '/api/accept';
+  }
+
   function acceptOffer(card, button) {
     button.disabled = true;
     button.textContent = 'Minting...';
-    return window.fetch(endpoint + '/api/accept', {
+    return window.fetch(acceptUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -178,7 +189,7 @@
     messages.scrollTop = messages.scrollHeight;
   }
 
-  function addOfferCard(card) {
+  function addOfferCard(card, sourceProducts) {
     if (!card || !card.option) return;
     var article = document.createElement('article');
     var dealButton = document.createElement('button');
@@ -192,7 +203,7 @@
       '<span>' + escapeHtml(statusLabel(card)) + '</span>',
       '<span data-offer-countdown="' + escapeHtml(card.expiresAt) + '">15:00</span>',
       '</div>',
-      '<h3>' + escapeHtml(firstItem.title || 'Bazaar offer') + '</h3>',
+      '<h3>' + escapeHtml(firstItem.title || 'Trailhead offer') + '</h3>',
       '<p class="ai-chat__offer-price"><span>' + money(card.option.listTotal) + '</span><strong>' + money(card.option.total) + '</strong></p>',
       '<p>' + escapeHtml(card.line || 'I can hold this for 15 minutes.') + '</p>',
       '<div class="ai-chat__badges">' + (card.badges || []).map(function (badge) { return '<span>' + escapeHtml(badge) + '</span>'; }).join('') + '</div>',
@@ -201,7 +212,8 @@
       '<p class="ai-chat__offer-footer">' + escapeHtml((card.disclosure && card.disclosure[1]) || 'Only this card is binding.') + '</p>'
     ].join('');
 
-    productLink.href = currentProduct && currentProduct.url ? currentProduct.url : '/collections/all';
+    var cardProduct = findProductByTitle(firstItem.title, sourceProducts) || currentProduct || getPrimaryProduct();
+    productLink.href = cardProduct && cardProduct.url ? cardProduct.url : '/collections/all';
     productLink.textContent = 'View item';
     dealButton.type = 'button';
     dealButton.textContent = endpoint ? 'Deal' : 'Deal needs API';
@@ -214,6 +226,24 @@
     article.querySelector('[data-offer-actions]').appendChild(dealButton);
     messages.appendChild(article);
     startCountdown(article.querySelector('[data-offer-countdown]'), expires, dealButton);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function addProductCard(product) {
+    if (!product) return;
+    var card = document.createElement('a');
+    var meta = [product.type, product.available === false ? 'Sold out' : 'Open to offers'].filter(Boolean).join(' · ');
+    card.className = 'ai-chat__product-card';
+    card.href = product.url || '/collections/all';
+    card.innerHTML = [
+      product.image ? '<span class="ai-chat__product-image"><img src="' + escapeHtml(product.image) + '" alt=""></span>' : '<span class="ai-chat__product-image ai-chat__product-image--empty" aria-hidden="true">◎</span>',
+      '<span class="ai-chat__product-copy">',
+      '<strong>' + escapeHtml(product.title || 'Shop product') + '</strong>',
+      '<small>' + escapeHtml(meta || 'View product') + '</small>',
+      '</span>',
+      '<span class="ai-chat__product-price">' + escapeHtml(product.price || money(product.listPrice)) + '</span>'
+    ].join('');
+    messages.appendChild(card);
     messages.scrollTop = messages.scrollHeight;
   }
 
@@ -277,6 +307,30 @@
     return currentProduct || products[0] || null;
   }
 
+  function getTurnProduct(text, sourceProducts, card) {
+    var pool = Array.isArray(sourceProducts) && sourceProducts.length ? sourceProducts : products;
+    if (card && card.option && card.option.items && card.option.items[0]) {
+      var cardProduct = findProductByTitle(card.option.items[0].title, pool);
+      if (cardProduct) return cardProduct;
+    }
+    var normalized = String(text || '').toLowerCase();
+    var named = pool.find(function (product) {
+      return product && (
+        normalized.indexOf(String(product.title || '').toLowerCase()) !== -1 ||
+        normalized.indexOf(String(product.handle || '').toLowerCase()) !== -1
+      );
+    });
+    return named || currentProduct || pool[0] || null;
+  }
+
+  function findProductByTitle(title, sourceProducts) {
+    if (!title) return null;
+    var pool = Array.isArray(sourceProducts) && sourceProducts.length ? sourceProducts : products;
+    return pool.find(function (product) {
+      return String(product.title || '').toLowerCase() === String(title || '').toLowerCase();
+    }) || null;
+  }
+
   function summarizeCatalog(items) {
     if (!items.length) return '';
     return 'I can see these storefront prices: ' + formatProductList(items.slice(0, 4)) + '.';
@@ -315,7 +369,19 @@
     else closeChat();
   });
 
-  close.addEventListener('click', closeChat);
+  if (close) {
+    close.addEventListener('click', function (event) {
+      event.preventDefault();
+      closeChat();
+    });
+  }
+
+  document.addEventListener('click', function (event) {
+    if (event.target && event.target.closest && event.target.closest('[data-ai-chat-close]')) {
+      event.preventDefault();
+      closeChat();
+    }
+  });
 
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape' && !panel.hidden) closeChat();
@@ -342,9 +408,11 @@
       var thinking = addMessage('Thinking...', 'bot');
       askEndpoint(text).then(function (data) {
         replaceMessage(thinking, data.reply || data.text || data.message || 'Here is what I found.');
-        if (data.card) addOfferCard(data.card);
+        addProductCard(getTurnProduct(text, data.products, data.card));
+        if (data.card) addOfferCard(data.card, data.products);
       }).catch(function () {
-        replaceMessage(thinking, getScriptedResponse(text) + ' I could not reach the live endpoint, so I used the storefront fallback.');
+        replaceMessage(thinking, getScriptedResponse(text));
+        addProductCard(getTurnProduct(text));
         if (/offer|deal|discount|checkout|haggle|\$/i.test(text)) addPreviewOfferCard();
       }).finally(function () {
         setLoading(false);
@@ -355,6 +423,7 @@
 
     window.setTimeout(function () {
       addMessage(getScriptedResponse(text), 'bot');
+      addProductCard(getTurnProduct(text));
       if (/offer|deal|discount|checkout|haggle|\$/i.test(text)) addPreviewOfferCard();
     }, 350);
   });

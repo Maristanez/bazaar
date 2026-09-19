@@ -9,7 +9,7 @@
  */
 {
   "current": {
-    "ai_chat_label": "AI chat",
+    "ai_chat_label": "Trailhead AI",
     "ai_chat_endpoint": "https://bazaar-chat-production.up.railway.app/api/chat"
   }
 }

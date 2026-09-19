@@ -68,6 +68,41 @@
 - **What we changed or threw away, and why:** We kept the Railway server as plain Node instead of switching to Hono during the hack window; the acceptance path matters more than a framework migration.
 - **Outcome:** Local smoke test read 9 real Shopify products with no missing-cost warnings, created a card for “Could you do $120?” on Trail Runner 3, minted real code `BAZAAR-K3N63`, and returned a Shopify cart permalink with the discount applied.
 
+### #7 — `Sat 15:05` · `Ritvik` · `Live chat card hardening`
+
+- **Prompt:**
+  > always show the product card and i keep getting this “I could not reach the live endpoint…”
+- **What Codex produced:** A storefront chat patch that renders a compact product card on every assistant turn, accepts either a base Railway URL or a full `/api/chat` URL, removes the shopper-facing endpoint failure copy, and links offer cards to the product named in the offer.
+- **What we kept:** The graceful offline/scripted fallback still exists, but it now looks like normal shopkeeper behavior instead of exposing internal infrastructure.
+- **What we changed or threw away, and why:** We stopped telling shoppers that the live endpoint failed; that belongs in developer logs, not the demo/customer surface.
+- **Outcome:** Product and price questions always have a visual product card, and a Trail Runner 3 offer links to Trail Runner 3 even from the all-products page.
+
+### #8 — `Sat 16:45` · `Ritvik` · `Trailhead brand + reasoned haggling`
+
+- **Prompt:**
+  > Make it a little harder to haggle, look for good and convincing reasons by the buyer, and the name of the store is Trailhead with this logo.
+- **What Codex produced:** The Trailhead wordmark was added to the Shopify theme, visible My Store/Bazaar copy was moved to Trailhead, and the offer engine now scores buyer reasons before deciding how far to move.
+- **What we kept:** The hard safety boundary stays the same: every offer is still priced from server-side cost data and never below the floor.
+- **What we changed or threw away, and why:** Weak “give me $50” asks now get firmer counters and a prompt to give a real reason. Stronger reasons such as bundle intent, repeat shopper, real budget, market comparison, or race/trip/gift context earn better counters.
+- **Outcome:** The demo can show that the AI is not a coupon machine: it reacts to buyer context while code still controls the money.
+
+### #9 — `Sat 17:00` · `Ritvik` · `Transcript-driven haggle pacing`
+
+- **Prompt:**
+  > read my current chat transcript with browser control. There should be a little back and forth before the really final price.
+- **What Codex found:** The transcript showed “give me a bundle deal” being treated as if the shopper had offered $48, and the existing negotiation was already on round 3. That made the bot look like it invented a price and jumped ahead.
+- **What Codex changed:** Bundle/deal requests without a number now ask for a concrete offer first. Strong first-turn reasons get an opening counter with a “one more move” badge instead of immediately jumping to the sharper bundle/final-style offer.
+- **Outcome:** The chat now has a more natural negotiation rhythm: ask → reason/number → opening counter → sharper counter/final later.
+
+### #10 — `Sat 17:10` · `Ritvik` · `Profit-protecting negotiator`
+
+- **Prompt:**
+  > Even with multiple back and forth, don't go to the floor price if the reason is bad or not bulk buying. Act as an actual store negotiator who wants to make as much profit as possible.
+- **What Codex changed:** The server pricing policy no longer treats round count as permission to walk toward the floor. It now keeps a seller-protected target based on reason quality, bundle intent, checkout readiness, market comparison, and margin safety.
+- **What we kept:** The money decision remains deterministic server code; Gemini can phrase the conversation, but the binding card cannot go below the guarded seller target or private floor.
+- **What we changed or threw away, and why:** We moved away from phrase-specific demo behavior. Weak/no-reason haggles can now get a firm “hold” even after multiple rounds, while credible bundle or ready-to-buy context can unlock a better cart value.
+- **Outcome:** The negotiation should feel less like a coupon machine and more like a merchant trying to win the order without giving away margin.
+
 <!-- Copy the block above for each new entry. Never edit an old entry to make it sound better — add a follow-up entry instead. -->
 
 ### R14 follow-up — 2026-09-19 · Ricardo / Codex · merchant domain correction

@@ -109,7 +109,7 @@ select:focus-visible {
   display: grid;
   justify-items: end;
   gap: 0.75rem;
-  width: min(30rem, calc(100vw - 2rem));
+  width: min(24rem, calc(100vw - 2rem));
   pointer-events: none;
 }
 
@@ -119,10 +119,7 @@ select:focus-visible {
 }
 
 .ai-chat__panel {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
   width: 100%;
-  max-height: min(44rem, calc(100svh - 6rem));
   overflow: hidden;
   border: 1px solid rgb(15 23 42 / 12%);
   border-radius: 1rem;
@@ -176,10 +173,8 @@ select:focus-visible {
 
 .ai-chat__messages {
   display: grid;
-  align-content: start;
   gap: 0.75rem;
-  min-height: 0;
-  max-height: none;
+  max-height: min(19rem, 48svh);
   padding: 1rem;
   overflow-y: auto;
   overflow-x: hidden;
@@ -187,7 +182,7 @@ select:focus-visible {
 }
 
 .ai-chat__message {
-  max-width: min(92%, 24rem);
+  max-width: 85%;
   padding: 0.75rem 0.85rem;
   border-radius: 0.85rem;
   font-size: 0.9rem;
@@ -210,11 +205,72 @@ select:focus-visible {
   color: #fff;
 }
 
+.ai-chat__product-card {
+  display: grid;
+  grid-template-columns: 3.25rem 1fr auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.65rem;
+  border: 1px solid #d1fae5;
+  border-radius: 0.9rem;
+  background: #ffffff;
+  color: #064e3b;
+  text-decoration: none;
+  box-shadow: 0 10px 24px rgba(6, 78, 59, 0.08);
+}
+
+.ai-chat__product-image {
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: #ecfdf5;
+  color: #047857;
+  font-weight: 900;
+}
+
+.ai-chat__product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ai-chat__product-copy {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.ai-chat__product-copy strong,
+.ai-chat__product-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-chat__product-copy strong {
+  font-size: 0.88rem;
+  line-height: 1.2;
+}
+
+.ai-chat__product-copy small {
+  color: #6b7280;
+  font-size: 0.72rem;
+}
+
+.ai-chat__product-price {
+  color: #111827;
+  font-size: 0.86rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .ai-chat__offer-card {
   display: grid;
   gap: 0.7rem;
   padding: 0.9rem;
-  width: 100%;
   border: 1px dashed #f59e0b;
   border-radius: 0.9rem;
   background: #fff7ed;
@@ -450,16 +506,6 @@ select:focus-visible {
 
   .ai-chat__panel {
     max-height: calc(100svh - 6rem);
-  }
-
-  .ai-chat__message {
-    max-width: 94%;
-  }
-
-  .ai-chat__offer-topline,
-  .ai-chat__offer-actions {
-    align-items: stretch;
-    flex-direction: column;
   }
 }
 

@@ -4,7 +4,7 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 13:34 EDT — Part B S5/S6 fixture Console complete (Bryan); other lanes retain their last reported status below
+**Last updated:** Sat 19 Sep 13:42 EDT — Part B's S5/S6 fixture Console is complete (Bryan) and the live haggling policy now protects margin by buyer intent (Codex/Ritvik). *An earlier line on this row read 17:10 EDT; that time had not happened — clocks on this board are EDT.*
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
@@ -18,8 +18,8 @@
 
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
-| 🛍️ A. Storefront + Shopify store | Ritvik | Live theme renders server-generated offer cards; live Railway minted real code `BAZAAR-2180U` and returned a checkout permalink | **① S13 Devpost — 14:00 hard, still unstarted ② S3 gate-0 decision, due now ③** browser click-through to confirm the checkout total, screenshots while the path is warm | Manual checkout-total and remove-bundle-item verification |
-| ⚙️ B. Engine, core, Gym + Console | Bryan | S5/S6 fixture Console complete: login, PAUSE, feed, policy Adopt and fixture approvals; typed HTTP adapter ready | B12 Gym in the reserved 480px region | Live shopper acceptance awaits R15/B14; live approval lifecycle awaits B8/S7 |
+| 🛍️ A. Storefront + Shopify store | Ritvik | Trailhead logo/name wired into the live theme; chat haggling now asks for stronger buyer reasons before sharper discounts; live Railway minted `BAZAAR-2180U` | **① S13 DEVPOST — 14:00 HARD, still unstarted. Select all four tracks even if unbuilt; selection locks and cannot be added later ② S3 gate-0 decision, 100 min overdue ③** browser click-through of the checkout total | Shopify admin store rename for Checkout branding; remove-bundle-item check |
+| ⚙️ B. Engine, core, Gym + Console | Bryan | **S5 + S6 done** — login, PAUSE, feed with red blocked rows, policy slider + Adopt, fixture approvals, and a typed `httpPort` waiting on R15. 125 tests green | B12 Gym in the reserved 480px region — design reference and build spec are committed at `docs/design/gym-b12.{md,html}` | Live shopper feed awaits R15/B14; live approval lifecycle awaits B8/S7 (both Part D, unowned) |
 | 🔌 C. Platform | Ricardo | R2 token wrapper, R4 product mirror, `/api/products`, `/api/stream`, offer cards, `discountCodeBasicCreate` and cart permalinks are **live on Railway deploy `6f1032c6`** | Manual checkout-total / free-shipping / tax verification; then R16 remove-bundle-item test; then R12 pin + R13 domain before 13:00 | Store checkout settings / manual checkout verification |
 | 🤖 D. Agents + guardrails | **STILL UNOWNED — name someone at the 14:00 Devpost check** | Gemini answers basic shopper Q&A. The official OpenAI and Backboard paths are not started, and B5/B6 have been finished and unconsumed since 11:00 | R9 *understand* (the OpenAI track is judged on a direct OpenAI call) → R10/R11 Backboard. **Three of the four sponsor tracks live in this part** | an owner |
 
@@ -147,6 +147,14 @@ Everything a shopper sees, plus the store's products behind it: the offer card, 
   _Sat 11:45 Codex note:_ the updated theme was pushed to live theme `#161251000517`. The updated Railway server is deployed as `6f1032c6`, but live `/health` reports `shopifyConfigured: false`, so it is using seed fallback until Shopify env vars are added to Railway.
 
   _Sat 11:50 Codex note:_ after Railway env vars were added, live `/health` reports `shopifyConfigured: true`, `mirrorSource: shopify-admin`, 9 products, and no warnings. Live `/api/products?sync=1` returns real Shopify products and variants.
+
+  _Sat 15:05 Codex note:_ the chat now adds a compact product card to every assistant turn when public products are available, removes the shopper-facing “could not reach the live endpoint” fallback wording, accepts either a base endpoint or full `/api/chat` endpoint, and links offer-card “View item” to the product named in the offer instead of blindly using the current page product.
+
+  _Sat 16:45 Codex note:_ Trailhead wordmark asset added to the theme header, visible theme copy/metadata switched from My Store/Bazaar to Trailhead, and the chat now tells shoppers to include a reason. The live offer engine scores buyer reasons (bundle intent, repeat shopper, budget, market/last-season, race/trip/gift, ready-to-buy) and gives firmer counters when the shopper just asks for a lower price without a convincing reason.
+
+  _Sat 17:00 Codex note:_ after reading the live chat transcript, fixed the “give me a bundle deal” path so the server asks for a concrete number instead of inventing an implicit $48 offer. Strong-reason first turns now start with an opening counter and “one more move” rather than jumping straight to the sharper bundle/final price.
+
+  _Sat 17:10 Codex note:_ the live server haggling policy now behaves more like a profit-protecting store negotiator than a scripted concession ladder. Multiple rounds by themselves do not reach the floor; weak/no-reason asks can be held firm, stronger intent is scored cumulatively, and bundle-specific value is offered only when the buyer actually signals bundle intent.
 - [ ] **S4** Deal flow on the storefront: accept → checkout opens; sparkles [§4.1] · _needs S1, R6, R7_ · ~1 h · **Done when:** **gate 1 passes**
 
   _Sat 09:52 Codex note:_ the preview card deliberately disables Deal and says the API is required. S4 remains blocked on R6/R7 so the first real Deal button mints a constrained Shopify discount and opens checkout.
@@ -285,7 +293,11 @@ What the app runs on: the Shopify app and token, the server, the discount-code m
 
 - [ ] **R14** Thin Supabase: `schema.sql` (3 tables, RLS on, no public policies), owner user, auth middleware, policy cache, one `deals` write per settlement [§5.2] · _needs R5, gate 1 · **start by 16:00**_ · ~1.5 h · **Done when:** a shopper route can't read owner data, Adopt inserts a row, and a restart reloads the policy
 
-  **Progress Sat 11:00:** the remote project is healthy; `schema.sql` is applied; the owner is bound; RLS is enabled; the pinned Supabase client, query adapter and smoke command are implemented; a live server-key read returned the seeded merchant and current 25% policy. Still required before checking R14: wire auth, policy and deal writes into the Hono routes; prove public denial; perform one live Adopt insert; prove restart reload.
+  **Supabase status: partially complete. R14 remains unchecked.**
+
+  **Completed:** the Supabase project is healthy; `schema.sql` is applied; the three tables exist; RLS is enabled with no public policies; the merchant is seeded and bound to the owner; the live shop domain is `b8wzw0-h3.myshopify.com`; the pinned Supabase client, query adapter and smoke command are implemented; and a live service role read returned the seeded merchant and current 25% policy.
+
+  **Not completed:** Supabase Auth middleware is not wired into the owner routes; anonymous and shopper access denial has not been proven through the application routes; policy updates and deal settlement writes are not connected; no live Adopt insert has been demonstrated; and restart recovery of the saved policy has not been proven. Do not check R14 until all of these pass.
 - [ ] **R15** `GET /api/console/state` + owner routes (`policy`, `approvals/:id`, `pause`, `stream`) [§5.3] · _needs R5, B8_ · ~1 h · **Done when:** the Console loads policy + products with costs + pending approvals + red-team result in one call, and every owner route returns 401 without a token
 
 **After gate 2 (Sun 00:00 → 08:00) — stretch is optional, see §8**
