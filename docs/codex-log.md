@@ -23,14 +23,14 @@
 - **What we changed or threw away, and why:** We did not merge generated Liquid files into `apps/web`; the app's storefront task still depends on the shared contracts and should stay within the pnpm architecture.
 - **Outcome:** `shopify-theme/` contains a clean Shopify Skeleton baseline; Theme Check inspected 39 files with no offenses.
 
-### #2 — `<Sat HH:MM>` · `<name>` · `<task id, e.g. B3>`
+### #2 — `Sat 09:32` · `Ritvik` · `S2 theme preview`
 
 - **Prompt** (paste it, trimmed):
-  > …
-- **What Codex produced:** …
-- **What we kept:** …
-- **What we changed or threw away, and why:** …
-- **Outcome** (time saved, bug caught, test that now exists — with a commit hash or file path): …
+  > keep the plan.md updated with whatever you do. lets get closer to building the reality
+- **What Codex produced:** A public-catalog bridge in the Shopify theme: Liquid emits published product names, prices, type, availability and URL into JSON; the scripted chat reads it before answering product and price questions.
+- **What we kept:** The browser only receives public storefront data. The copy explicitly says private cost, floors, and discount codes require the server app.
+- **What we changed or threw away, and why:** We did not pretend this is the real haggle. The Admin API/server path remains required for safe offers and checkout settlement.
+- **Outcome** (time saved, bug caught, test that now exists — with a commit hash or file path): The demo widget now reflects live storefront prices while preserving the plan's security boundary.
 
 ### #3 — `<Sat HH:MM>` · `<name>` · `<task id>`
 
