@@ -4,7 +4,7 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 11:34 EDT by Codex (real Shopify product mirror + offer/discount checkout path verified locally)
+**Last updated:** Sat 19 Sep 11:45 EDT by Codex (theme + server deployed; Railway needs Shopify env vars for live minting)
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
@@ -18,21 +18,21 @@
 
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
-| 🛍️ A. Storefront + Shopify store | Ritvik | Storefront widget renders server-generated offer cards and can call Deal; Liquid now passes product handles, prices and variant IDs | Deploy updated theme + Railway server, then smoke-test live Deal from `b8wzw0-h3.myshopify.com` | Manual checkout-total verification still needed |
+| 🛍️ A. Storefront + Shopify store | Ritvik | Updated live theme `Bazaar coded storefront` renders server-generated offer cards and can call Deal | Add/approve Shopify env vars on Railway, then smoke-test live Deal from `b8wzw0-h3.myshopify.com` | Railway lacks Shopify env vars; manual checkout-total verification still needed |
 | ⚙️ B. Engine, core, Gym + Console | Bryan | B2 + B3 + B11 + B5 + B6 verified; handoff ready | S5 Console; Part D / Platform adapters | — |
-| 🔌 C. Platform | Ricardo | R2 token wrapper, R4 product mirror, `/api/products`, `/api/stream`, offer cards, `discountCodeBasicCreate`, and cart permalinks are implemented and verified locally | Deploy to Railway and run live storefront smoke test; then verify checkout total/free shipping/tax settings manually | Store checkout settings / manual total verification |
+| 🔌 C. Platform | Ricardo | R2 token wrapper, R4 product mirror, `/api/products`, `/api/stream`, offer cards, `discountCodeBasicCreate`, and cart permalinks are implemented; Railway deploy `6f1032c6` is live but using seed fallback | Set Railway `SHOPIFY_SHOP`, `SHOPIFY_API_VERSION`, `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET`; then live smoke test | Explicit approval needed before Codex copies local secrets to Railway |
 | 🤖 D. Agents + guardrails | ______ | Gemini answers basic shopper Q&A through the storefront; official OpenAI/Backboard path not started | R9/R10/R11 after the core/menu path exists | B5/R5 route integration |
 
 ### Next work decision — Sat 11:03 EDT
 
 The fastest path to a real Shopify demo is **not more chatbot polish**. The live AI chat works; the prize-critical path is now deploy + verification of the money-safe offer/checkout chain:
 
-1. **Deploy** the updated Railway server from `main`.
-2. **Push** the updated theme assets to `Bazaar coded storefront`.
-3. **Live smoke test:** on `b8wzw0-h3.myshopify.com`, ask for a deal, click Deal, confirm Shopify Checkout opens with the generated code.
+1. **Set/approve Railway Shopify env vars** so live Railway can use Shopify Admin API instead of seed fallback.
+2. **Live smoke test:** on `b8wzw0-h3.myshopify.com`, ask for a deal, click Deal, confirm Shopify Checkout opens with the generated code.
+3. **Manual R7:** confirm checkout total equals the agreed total with tax/shipping settings.
 4. **Manual R16:** remove the bundle item at checkout and confirm the minimum-subtotal code drops.
 
-Until the live smoke test passes, demo language should say the path is verified locally. After it passes, lead with the real checkout.
+Until Railway has Shopify credentials and the live smoke test passes, demo language should say the path is deployed but live minting is waiting on server env. After it passes, lead with the real checkout.
 
 ### How to use this tracker
 
@@ -135,6 +135,8 @@ Everything a shopper sees, plus the store's products behind it: the offer card, 
   _Sat 11:03 Codex note:_ the live theme is now `Bazaar coded storefront` (`#161251000517`) at `https://b8wzw0-h3.myshopify.com/`, and its chat widget is pointed at `https://bazaar-chat-production.up.railway.app/api/chat`. Railway `/health` reports `hasGeminiKey: true`, and a deployed `/api/chat` smoke test returned a Gemini-generated product recommendation. S2 remains open because the real server-generated `OfferCard`, checked text, and checkout handoff are still not wired.
 
   _Sat 11:34 Codex note:_ locally, the storefront chat endpoint returns `{ reply, card }` for a shopper offer and the widget renders that card. Liquid product context now includes handle, list price, and selected variant id so the server can match Shopify Admin products. S2 can be checked after these changes are deployed and the live storefront smoke test passes.
+
+  _Sat 11:45 Codex note:_ the updated theme was pushed to live theme `#161251000517`. The updated Railway server is deployed as `6f1032c6`, but live `/health` reports `shopifyConfigured: false`, so it is using seed fallback until Shopify env vars are added to Railway.
 - [ ] **S4** Deal flow on the storefront: accept → checkout opens; sparkles [§4.1] · _needs S1, R6, R7_ · ~1 h · **Done when:** **gate 1 passes**
 
   _Sat 09:52 Codex note:_ the preview card deliberately disables Deal and says the API is required. S4 remains blocked on R6/R7 so the first real Deal button mints a constrained Shopify discount and opens checkout.
@@ -238,6 +240,8 @@ What the app runs on: the Shopify app and token, the server, the discount-code m
 - [x] **R6** Mint: `discountCodeBasicCreate` — amount off, `usageLimit 1`, 15 min, exact variants, **minimum subtotal = list total**, no combining; re-mint once; deactivate on expiry [§10] · _needs R2_ · ~2 h · **Done when:** a code exists in admin with every constraint set
 
   _Sat 11:34 Codex note:_ local `/api/accept` minted real code `BAZAAR-K3N63` using `discountCodeBasicCreate` with amount-off, `usageLimit: 1`, 15-min expiry, exact product variants, minimum subtotal equal to list total, and no discount combining. Re-mint/deactivation cleanup remains polish; the Gate 1 mint path works.
+
+  _Sat 11:45 Codex note:_ code is deployed to Railway, but production minting is blocked because Railway does not have the Shopify credentials/env vars. Codex attempted to set them from local `.env`, but the app correctly required explicit user approval before exporting local secrets to Railway.
 - [ ] **R7** Checkout permalink + store settings: **tax off, free shipping rate** [§10] · _needs R6_ · ~0.5 h · **Done when:** the checkout page total equals the agreed total to the cent
 
   _Sat 11:34 Codex note:_ local accept returned a Shopify cart permalink with the real variant IDs and discount query parameter. R7 remains open until a human verifies the checkout total equals the agreed total with current tax/shipping settings.
