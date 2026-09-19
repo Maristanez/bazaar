@@ -4,7 +4,7 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 10:10 EDT by Codex (Shopify Admin API access verified)
+**Last updated:** Sat 19 Sep 10:22 EDT by Codex (R3 seed CSV ready)
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
@@ -18,7 +18,7 @@
 
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
-| 🛍️ A. Storefront + Shopify store | Ritvik | Theme preview has product-aware chat, shopper id, `?shopper=demo`, preview offer card, and seed files under `infra/seed` | R1/R2 app credentials → seed real Shopify products/costs → replace preview card with server-generated OfferCard | Shopify Admin API app install for private cost data and discount minting |
+| 🛍️ A. Storefront + Shopify store | Ritvik | Theme preview has product-aware chat, shopper id, `?shopper=demo`, preview offer card, and Shopify product import CSV at `infra/seed/trailhead-products.csv` | Import seed CSV → verify products/costs/metafields through Admin API → replace preview card with server-generated OfferCard | R2 token wrapper and R6/R7 settlement code for real Deal |
 | ⚙️ B. Engine, core, Gym + Console | Bryan | B1 + B4 done; checks green | B2 → B3 | — |
 | 🔌 C. Platform | ______ | R1 done; Admin API client-credentials token verified against `b8wzw0-h3` | R2 token wrapper in code, then R3/R4 product seed + sync | — |
 | 🤖 D. Agents + guardrails | ______ | — | R9 (after gate 1) | — |
@@ -112,7 +112,7 @@ Everything a shopper sees, plus the store's products behind it: the offer card, 
 - [ ] **S1** The offer card — a pure component from `OfferCard`; all seven states; countdown; honesty footer [§4.1] · _needs B0_ · ~3 h · **Done when:** one page shows every state side by side and it reads in light and dark
 - [ ] **R3** Seed ~8 products with **cost per item**, size variants, `bazaar.stocked_at` metafield [§10, App. A] · _needs R2_ · ~1.5 h · **Done when:** products show in admin with costs; TR3 stocked 12 d ago, TR2 94 d ago
 
-  _Sat 09:52 Codex note:_ seed fixtures now exist in `infra/seed/products.json`, plus Backboard-ready `store-notes.md`, `sizing-guide.md`, and `policy.md`. R3 is still not complete until those products are created in Shopify Admin with costs and `bazaar.stocked_at`.
+  _Sat 10:22 Codex note:_ seed fixtures now exist in `infra/seed/products.json`, plus Backboard-ready `store-notes.md`, `sizing-guide.md`, and `policy.md`. A Shopify product import CSV now exists at `infra/seed/trailhead-products.csv` and user-facing copy at `outputs/trailhead-products.csv`. R3 is still not complete until the CSV is imported and Admin API verification shows the products, variant costs, inventory, and `bazaar.stocked_at` dates.
 - [ ] **S2** Storefront: grid, product page, sticker, chat panel, `localStorage` shopper id, `?shopper=demo`, typing effect from checked text [§4.2] · _needs S1, R5_ · ~3 h · **Done when:** opening the TR3 page greets by product and a card appears in the chat
 
   _Sat 09:52 Codex note:_ the standalone `shopify-theme/` preview now has a storefront product grid and a bottom-right scripted shopkeeper chat that reads public Online Store product titles/prices from Liquid. Product pages pass the current product into the chat, `localStorage` stores a shopper id, and `?shopper=demo` triggers the seeded greeting. It can render a **non-binding preview** offer card. This is useful for demo feel, but it does **not** complete S2: the real server-generated offer card, checked text, private costs, and checkout flow still require the planned app/server path.
