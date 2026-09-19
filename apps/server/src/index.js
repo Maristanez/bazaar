@@ -710,7 +710,10 @@ function fallbackReply(context = {}) {
 }
 
 function isOfferIntent(text) {
-  return /\b(offer|deal|discount|haggle|checkout|could you do|can you do|would you take|best price|\$|c\$)\b/i.test(String(text));
+  const message = String(text || "");
+  const hasMoney = /(?:c\$|\$)\s*\d+(?:\.\d{1,2})?|\b\d+(?:\.\d{1,2})?\s*(?:cad|dollars?|bucks?)\b/i.test(message);
+  const hasOfferLanguage = /\b(offer|deal|discount|haggle|checkout|could you do|can you do|would you take|best price|can i get|could i get|for)\b/i.test(message);
+  return hasMoney || hasOfferLanguage;
 }
 
 function parseMoney(value) {
