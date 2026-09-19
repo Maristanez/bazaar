@@ -51,7 +51,10 @@ export function buildNegotiationMenu(input: NegotiationMenuInput): NegotiationMe
       unique.push(offer);
     }
   }
-  return unique.map((offer, index) => ({ id: String.fromCharCode(65 + index), offer }));
+  const explicitBundles = requestedName
+    ? unique.filter(offer => offer.kind === "bundle" && requested && offer.items.some(item => item.productId === requested.productId))
+    : unique;
+  return explicitBundles.map((offer, index) => ({ id: String.fromCharCode(65 + index), offer }));
 }
 
 /** Deterministic option-A fallback, shared by the server and synthetic rehearsals. */

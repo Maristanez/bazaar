@@ -89,19 +89,24 @@ export function priceOffer(
   const safeOffered = roundToShopper(offered);
   const hasConvincingReason = reason.score >= 2 || reason.hasBulkIntent || quantity > 1;
   const isLowball = safeOffered < roundToShopper(main.list * quantity * 0.8);
-  if (safeOffered >= floor && safeOffered >= sellerTarget && safeOffered <= listTotal && round >= 2 && hasConvincingReason) {
-    return { kind: "accepted", items: [mainQty], listTotal, total: safeOffered, line: `${reasonPrefix(reason)}Deal — I can hold ${formatMoney(safeOffered)} for 15 minutes.`, badges: reasonBadges(reason, ["good intent", "held 15:00"]) };
-  }
   const addOn = mirror.items.find(item => item.isAddOn && validItem(item) && item.inStock && item.cost !== null && item.productId !== main.productId);
-  if (addOn && !main.isAddOn && round < MAX_ROUNDS && reason.hasAddOnIntent) {
+  if (addOn && !main.isAddOn && reason.hasAddOnIntent) {
     const addonPart = Math.ceil(addOn.cost! + (addOn.list - addOn.cost!) / 2);
     const bundleCost = main.cost * quantity + addOn.cost!;
     const bundleList = main.list * quantity + addOn.list;
     const bundleFloor = Math.max(bundleCost + 1, Math.ceil(bundleCost * (1 + options.floorPct / 100)));
     const bundleTotal = roundToShopper(Math.max(ask + addonPart, bundleFloor));
     if (bundleFloor <= bundleList && bundleTotal > bundleCost && bundleTotal >= bundleFloor && bundleTotal <= bundleList) {
-      return { kind: "bundle", items: [mainQty, { ...addOn, qty: 1 }], listTotal: bundleList, total: bundleTotal, line: `${reasonPrefix(reason)}I would rather protect the single-item price, but I can make the cart better: ${formatMoney(bundleTotal)} with ${addOn.title} included.`, badges: reasonBadges(reason, [`＋ ${addOn.title}`, "bundle value"]) };
+      const accepted = round >= 2 && hasConvincingReason && safeOffered >= bundleTotal;
+      const total = accepted ? Math.min(bundleList, safeOffered) : bundleTotal;
+      const line = accepted
+        ? `${reasonPrefix(reason)}Deal — I can hold ${formatMoney(total)} for 15 minutes with ${addOn.title} included.`
+        : `${reasonPrefix(reason)}I would rather protect the single-item price, but I can make the cart better: ${formatMoney(total)} with ${addOn.title} included.`;
+      return { kind: "bundle", items: [mainQty, { ...addOn, qty: 1 }], listTotal: bundleList, total, line, badges: reasonBadges(reason, [`＋ ${addOn.title}`, accepted ? "held 15:00" : "bundle value"]) };
     }
+  }
+  if (safeOffered >= floor && safeOffered >= sellerTarget && safeOffered <= listTotal && round >= 2 && hasConvincingReason) {
+    return { kind: "accepted", items: [mainQty], listTotal, total: safeOffered, line: `${reasonPrefix(reason)}Deal — I can hold ${formatMoney(safeOffered)} for 15 minutes.`, badges: reasonBadges(reason, ["good intent", "held 15:00"]) };
   }
   const total = round === 1 && reason.score > 0 ? sellerAskFor(pricedMain, sellerTarget, 1, reason, options.now) : ask;
   const safeTotal = Math.min(listTotal, Math.max(floor, total));

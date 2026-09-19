@@ -37,10 +37,10 @@ describe("buildNegotiationMenu", () => {
     expect(bundle?.offer.items.some(item => item.productId === "socks")).toBe(false);
   });
 
-  it("keeps the known TR2 price as A and puts the requested gaiters bundle at B", () => {
+  it("returns only the requested gaiters bundle when the shopper names that add-on", () => {
     const menu = buildNegotiationMenu(input({ main: tr2, mirror: { items: [tr2, socks, gaiters] }, offered: 12000, reason: analyzeBuyerReason(""), requestedAddOn: "Trail Gaiters", allowAlternatives: false }));
-    expect(menu[0]).toMatchObject({ id: "A", offer: { total: 14900, listTotal: 14900, items: [{ productId: "tr2", qty: 1 }] } });
-    expect(menu[1]).toMatchObject({ id: "B", offer: { kind: "bundle", total: 17300, items: [{ productId: "tr2" }, { productId: "gaiters", qty: 1 }] } });
+    expect(menu).toHaveLength(1);
+    expect(menu[0]).toMatchObject({ id: "A", offer: { kind: "bundle", total: 17300, items: [{ productId: "tr2" }, { productId: "gaiters", qty: 1 }] } });
   });
 
   it("does not add an arbitrary add-on to a normal primary offer", () => {
@@ -72,10 +72,43 @@ describe("buildNegotiationMenu", () => {
     expect(menu.some(candidate => candidate.offer.items[0]?.productId === "mid")).toBe(true);
   });
 
+  it("keeps an explicitly requested pair of socks in a final-round five-tee cart", () => {
+    const tee: NegotiationItem = {
+      variantId: "tee-xs",
+      productId: "tee",
+      handle: "everyday-heavyweight-tee",
+      title: "Everyday Heavyweight Tee",
+      size: "XS",
+      productType: "T-Shirts",
+      list: 5800,
+      cost: 2000,
+      stockedAt: "2026-06-01",
+      inStock: true,
+      isAddOn: false,
+    };
+    const menu = buildNegotiationMenu(input({
+      main: tee,
+      mirror: { items: [tee, socks] },
+      offered: 28000,
+      round: 4,
+      reason: analyzeBuyerReason("five tees and one pair of socks as a gift"),
+      quantity: 5,
+      requestedAddOn: "Merino Socks",
+      allowAlternatives: false,
+    }));
+
+    const bundle = menu.find(candidate => candidate.offer.kind === "bundle");
+    expect(bundle?.offer.items).toEqual([
+      expect.objectContaining({ title: "Everyday Heavyweight Tee", qty: 5 }),
+      expect.objectContaining({ title: "Merino Socks", qty: 1 }),
+    ]);
+    expect(bundle?.offer.listTotal).toBe(30800);
+    expect(bundle?.offer.total).toBe(28000);
+  });
+
   it("does not replace a missing requested add-on with another add-on", () => {
     const unavailableGaiters = { ...gaiters, inStock: false };
     const menu = buildNegotiationMenu(input({ mirror: { items: [tr3, socks, unavailableGaiters] }, requestedAddOn: "Trail Gaiters", reason: analyzeBuyerReason("gaiters"), allowAlternatives: false }));
-    expect(menu).toHaveLength(1);
-    expect(menu[0]?.offer.items).toHaveLength(1);
+    expect(menu).toEqual([]);
   });
 });

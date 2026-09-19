@@ -220,6 +220,23 @@ describe("multi-product shopper API integration", () => {
     expect(JSON.stringify(response.body)).not.toMatch(/"(?:cost|floor|profit|ownerRank|facts)"/);
   });
 
+  it("adds explicitly requested socks to an existing negotiation on the final round", async () => {
+    const base = await start();
+    const trail2 = (await products(base)).find(product => product.title === "Trail Runner 2")!;
+    const shopperId = "final-round-bundle-shopper";
+    const first = await chat(base, productPayload(trail2, shopperId, "Could you do $110?"));
+    const second = await chat(base, productPayload(trail2, shopperId, "Could you do $115?", { negotiationId: first.body.negotiationId }));
+    const third = await chat(base, productPayload(trail2, shopperId, "Could you do $120?", { negotiationId: second.body.negotiationId }));
+    const fourth = await chat(base, productPayload(trail2, shopperId, "Could you do $150 with one pair of socks as a gift?", { negotiationId: third.body.negotiationId }));
+
+    expect(fourth.body.card.round).toBe(4);
+    expect(fourth.body.card.option.items).toEqual([
+      expect.objectContaining({ title: "Trail Runner 2", qty: 1 }),
+      expect.objectContaining({ title: "Merino Socks", qty: 1, thrownIn: true }),
+    ]);
+    expect(fourth.body.card.option.listTotal).toBe(16700);
+  });
+
   it("resumes negotiation A at its quantity after negotiation B uses the same shopper", async () => {
     const base = await start();
     const catalog = await products(base);

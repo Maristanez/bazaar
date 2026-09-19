@@ -247,3 +247,13 @@
 **Merge:** Preserve upstream planning and revival documents. User explicitly authorized merging all work to main; a push can trigger Railway auto-deployment. Shopify theme publication and the nullable deal-code migration are separate outstanding deployment steps.
 
 **Final merge review follow-up:** Rejected clearly named unavailable products in price-for-product requests, preserved the shopper's size when switching footwear, and kept an authoritative new page selection ahead of previous chat context. Added five catalog regressions. Final verification: **272/272 tests across 37 files**, all workspace type checks, production build, JavaScript syntax and diff checks pass. All existing remote branches are ancestors of the combined main history. Credentials remain ignored and the merged-source/browser-bundle scans passed.
+
+### #12 — `Sat 18:52` · `Ricardo / Codex` · `Explicit combo offer repair`
+
+**Prompt:** Diagnose a live transcript where the shopper offered $280 for five tees plus socks, but the binding card contained only five tees. Fix it and push it.
+
+**What Codex found:** The engine accepted a safe main-item amount before evaluating an explicitly requested add-on. It also disabled bundle generation on round four. Backboard was selecting from the server menu correctly; the server menu itself no longer contained the requested combination.
+
+**What changed:** Explicitly named add-ons now constrain the menu to cards containing that item. Bundle pricing runs before single-item acceptance and remains available on the final round. If the requested add-on is unavailable or cannot be priced safely, the server returns no misleading main-only offer. Two regressions cover the five-tee cart and a late final-round add-on.
+
+**Outcome:** The actual Shopify catalog replay produced five Everyday Heavyweight Tees plus one Merino Socks item, list $308, accepted at $280 on round four with “I can do $280 for both.” Full verification reports 278 passing tests, green workspace type checks and a green production web build.
