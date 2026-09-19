@@ -16,7 +16,7 @@ function fixture(): CorePorts {
       policy: { floorPct: 25, askOwner: true, paused: false, updatedAt: now.toISOString() },
     }),
     understand: async () => ({ kind: "offer", amount: 12000 }),
-    chooseAndSay: async () => ({ optionId: "C1", line: "Trail Runner 2 is ready at $120." }),
+    chooseAndSay: async (options) => ({ optionId: "C1", line: `Trail Runner 2 is ready at $${(options.find((option) => option.id === "C1")?.total ?? 12000) / 100}.` }),
     mint: async () => ({ code: "DEAL120", checkoutUrl: "https://example.test/checkout" }),
     clock: { now: () => now, within: async (work) => ({ timedOut: false, value: await work() }) },
     events: { chat: () => {}, console: () => {} },

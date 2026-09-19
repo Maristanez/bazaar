@@ -29,3 +29,11 @@ Further implementation-specific decisions and verification evidence are recorded
 - B4/SPEC single-use rejection takes precedence over the older acceptance example that suggests returning a settlement again on replay. Negotiation serialization prevents concurrent requests from minting twice; a failed mint releases its claim for retry.
 - The no-op Auditor hook returns an audit, rather than a boolean, so B7 can pass fresh engine-derived cost/floor/target/profit to the minter and owner event. It does not implement the fresh Shopify read or authorize below-floor offers.
 - Question/document answers remain a static placeholder until the store-document adapter exists. They preserve the live offer and consume no round.
+
+
+## B6 wording and owner events
+
+- Deterministic code cannot prove arbitrary natural-language paraphrases. The check fails closed: one neutral offer sentence followed by exact normalized fact clauses. It accepts case/whitespace changes, decimal or grouped dollar notation, and dash/semicolon/comma/sentence-break/“because” separators. Unknown paraphrases or extra clauses use A/template.
+- Neutral forms are “I can do/offer $TOTAL”, “How about $TOTAL”, “I can hold $TOTAL for 15 minutes”, an item title “is ready at $TOTAL”, “for both” for a two-item cart, and “My best is/stays $TOTAL” for a final offer. “I can hold this price” is also neutral: the card supplies the binding amount. No rule requires prose to repeat a dollar amount.
+- List and item figures are allowed in their factual context, but cannot masquerade as the agreed total in the leading offer sentence. Every offered amount must equal the selected total; there is no recalculation of prices.
+- A rejected pick creates one Console row with kind `blocked`, `blockedBy: check`, code-written reason, full menu and the fallback A audit. It does not emit a second normal decision row for the same turn. Shopper events remain one card followed by the safe text.

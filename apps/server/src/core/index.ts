@@ -2,6 +2,7 @@ import type { ChatEvent, ConsoleEvent, OfferCard, Option, ProductCard, PublicOpt
 import { auditAccepted, buildMenu, toShopper, type PriceAudit } from "@bazaar/engine";
 import { checkAcceptable, createOffer, markUsed, type Offer } from "./offers";
 import { noOpHooks } from "./hooks";
+import { check } from "./check";
 import type { Blocked, CorePorts, MakeOfferInput, MirroredItem, Negotiation, Route, Timed, Understood } from "./ports";
 
 const MAX_ROUNDS = 4;
@@ -264,6 +265,7 @@ export async function makeOffer(ports: CorePorts, input: MakeOfferInput): Promis
     let audit: PriceAudit;
     let line: string;
     let menuOptions: Option[];
+    let checkFailure: string | undefined;
     if (menu.outcome === "accept") {
       selected = acceptedOption(main, menu.total);
       audit = auditAccepted({ main, total: menu.total, floorPct: ports.db.getPolicy().floorPct, now: start })!;
@@ -281,12 +283,14 @@ export async function makeOffer(ports: CorePorts, input: MakeOfferInput): Promis
         ...(understood.wants === undefined ? {} : { wants: understood.wants }),
       }));
       const validPick = !picked.timedOut && isPick(picked.value);
-      selected = validPick && menu.options.some((option) => option.id === picked.value.optionId)
+      const checked = validPick ? check({ menu: menu.options, pick: picked.value }) : { ok: false as const, reason: "malformed_pick" };
+      selected = validPick && checked.ok
         ? menu.options.find((option) => option.id === picked.value.optionId)!
         : fallback;
-      line = validPick && selected.id === picked.value.optionId ? picked.value.line : template(fallback);
+      line = validPick && checked.ok ? picked.value.line : template(fallback);
       audit = menu.internals[selected.id]!;
       menuOptions = menu.options;
+      if (!picked.timedOut && !checked.ok) checkFailure = checked.reason;
     }
     negotiation.round = explicitOffer ? round : negotiation.round;
     ports.db.setNegotiation(negotiation);
@@ -295,7 +299,10 @@ export async function makeOffer(ports: CorePorts, input: MakeOfferInput): Promis
     const events: ChatEvent[] = [];
     emit(ports, route, { t: "card", card: cardFor(route, round, created, line) }, events);
     emit(ports, route, { t: "text", delta: line }, events);
-    ports.events.console(route, consoleDecision(route, offer, round, menuOptions, selected, audit, ports.clock.now()));
+    const decision = consoleDecision(route, offer, round, menuOptions, selected, audit, ports.clock.now());
+    ports.events.console(route, checkFailure === undefined ? decision : {
+      ...decision, kind: "blocked", blockedBy: "check", reasoning: `check blocked: ${checkFailure}; option A template`,
+    });
     return events;
   });
 }
