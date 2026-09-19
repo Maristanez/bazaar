@@ -525,7 +525,8 @@ type Option   = { id: string; kind: "held" | "bundle" | "else" | "final" | "owne
                   items: { variantId: string; title: string; size?: string; qty: number; thrownIn?: boolean }[];
                   listTotal: number; total: number; ownerRank: number; facts: string[] };   // cents; NO cost fields
 // Option is SERVER + CONSOLE only. The shopper's browser and the ChatGPT card get PublicOption.
-type PublicOption = Pick<Option, "id" | "kind" | "items" | "listTotal" | "total">;          // no ownerRank, no facts
+type PublicOption = Pick<Option, "id" | "kind" | "items" | "listTotal" | "total">
+                  & { ownerRank?: never; facts?: never };   // a bare Pick is structural — a full Option would pass silently. `never` makes the leak a compile error.
 
 // ── PUBLIC: the only shapes a shopper route or the ChatGPT card may send (rule 11) ──
 type ProductCard = { productId: string; title: string; image: string; listPrice: number; sizes?: string[]; openToOffers: boolean };

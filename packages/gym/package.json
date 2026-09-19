@@ -1,0 +1,16 @@
+{
+  "name": "@bazaar/gym",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@bazaar/contracts": "workspace:*",
+    "@bazaar/engine": "workspace:*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
