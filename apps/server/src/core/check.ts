@@ -27,11 +27,12 @@ function normalize(text: string): string {
 function neutralOffer(line: string, option: Option): boolean {
   if (line === "i can hold this price") return true;
   const price = `$${option.total / 100}`;
+  const quantity = option.items.reduce((sum, item) => sum + (item.qty || 1), 0);
   const phrases = [
     `i can do ${price}`, `i can offer ${price}`, `how about ${price}`,
     `i can hold ${price} for 15 minutes`,
     ...option.items.map((item) => `${normalize(item.title)} is ready at ${price}`),
-    ...(option.items.length === 2 ? [`i can do ${price} for both`, `i can offer ${price} for both`] : []),
+    ...(option.items.length === 2 || quantity === 2 ? [`i can do ${price} for both`, `i can offer ${price} for both`] : []),
     ...(option.kind === "final" ? [`my best is ${price}`, `my best stays ${price}`] : []),
   ];
   return phrases.includes(line);

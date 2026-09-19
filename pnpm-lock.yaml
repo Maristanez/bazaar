@@ -32,6 +32,9 @@ importers:
       '@bazaar/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@bazaar/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
       '@supabase/supabase-js':
         specifier: 2.116.0
         version: 2.116.0
@@ -92,6 +95,12 @@ importers:
       '@bazaar/engine':
         specifier: workspace:*
         version: link:../engine
+
+  packages/llm:
+    dependencies:
+      '@bazaar/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
 packages:
 

@@ -17,6 +17,8 @@ export type Understood = {
 };
 export type Blocked = { blocked: "validate" | "engine" | "offer_ids" | "auditor" | "mint" };
 export type Timed<T> = { timedOut: true } | { timedOut: false; value: T };
+export type LlmTrace = { provider: string; model: string; ms: number; costUsd: number | null; threadId: string; memory?: string };
+export type ShopkeeperChoice = { optionId: string; line: string; trace?: LlmTrace };
 
 export interface CoreDb {
   getItems(): readonly MirroredItem[];
@@ -42,7 +44,17 @@ export type CoreHooks = {
 export type CorePorts = {
   db: CoreDb;
   understand: (input: { text: string; product: Pick<MirroredItem, "productId" | "title" | "size"> }) => Promise<Understood>;
-  chooseAndSay: (options: readonly Option[], context: { productId: string; title: string; size?: string; round: number; budget?: number; wants?: string }) => Promise<{ optionId: string; line: string }>;
+  chooseAndSay: (options: readonly Option[], context: {
+    shopperId: string;
+    negotiationId: string;
+    shopperMessage: string;
+    productId: string;
+    title: string;
+    size?: string;
+    round: number;
+    budget?: number;
+    wants?: string;
+  }) => Promise<ShopkeeperChoice>;
   mint: (offer: Offer, audit: PriceAudit) => Promise<{ code: string; checkoutUrl: string }>;
   clock: { now(): Date; within<T>(work: () => Promise<T>, milliseconds: number): Promise<Timed<T>> };
   events: { chat(route: Route, event: ChatEvent): void; console(route: Route, event: ConsoleEvent): void };

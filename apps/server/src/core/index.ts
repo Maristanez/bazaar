@@ -3,7 +3,7 @@ import { auditAccepted, buildMenu, toShopper, type PriceAudit } from "@bazaar/en
 import { checkAcceptable, createOffer, markUsed, type Offer } from "./offers";
 import { noOpHooks } from "./hooks";
 import { check } from "./check";
-import type { Blocked, CorePorts, MakeOfferInput, MirroredItem, Negotiation, Route, Timed, Understood } from "./ports";
+import type { Blocked, CorePorts, LlmTrace, MakeOfferInput, MirroredItem, Negotiation, Route, Timed, Understood } from "./ports";
 
 const MAX_ROUNDS = 4;
 const TURN_MS = 4_000;
@@ -266,6 +266,7 @@ export async function makeOffer(ports: CorePorts, input: MakeOfferInput): Promis
     let line: string;
     let menuOptions: Option[];
     let checkFailure: string | undefined;
+    let choiceTrace: LlmTrace | undefined;
     if (menu.outcome === "accept") {
       selected = acceptedOption(main, menu.total);
       audit = auditAccepted({ main, total: menu.total, floorPct: ports.db.getPolicy().floorPct, now: start })!;
@@ -278,11 +279,13 @@ export async function makeOffer(ports: CorePorts, input: MakeOfferInput): Promis
         return [{ t: "text", delta: "I cannot make a safe offer for that cart." }];
       }
       const picked = finalRefusal ? { timedOut: true as const } : await timed(ports, start, TURN_MS, () => ports.chooseAndSay(menu.options, {
+        shopperId: route.shopperId, negotiationId: route.negotiationId, shopperMessage: input.text ?? "",
         productId: main.productId, title: main.title, ...(main.size === undefined ? {} : { size: main.size }), round,
         ...(understood.budget === undefined ? {} : { budget: understood.budget }),
         ...(understood.wants === undefined ? {} : { wants: understood.wants }),
       }));
       const validPick = !picked.timedOut && isPick(picked.value);
+      choiceTrace = validPick ? picked.value.trace : undefined;
       const checked = validPick ? check({ menu: menu.options, pick: picked.value }) : { ok: false as const, reason: "malformed_pick" };
       selected = validPick && checked.ok
         ? menu.options.find((option) => option.id === picked.value.optionId)!
@@ -299,7 +302,13 @@ export async function makeOffer(ports: CorePorts, input: MakeOfferInput): Promis
     const events: ChatEvent[] = [];
     emit(ports, route, { t: "card", card: cardFor(route, round, created, line) }, events);
     emit(ports, route, { t: "text", delta: line }, events);
-    const decision = consoleDecision(route, offer, round, menuOptions, selected, audit, ports.clock.now());
+    const baseDecision = consoleDecision(route, offer, round, menuOptions, selected, audit, ports.clock.now());
+    const decision: ConsoleEvent = choiceTrace === undefined ? baseDecision : {
+      ...baseDecision,
+      threadId: choiceTrace.threadId,
+      ...(choiceTrace.memory === undefined ? {} : { memory: choiceTrace.memory }),
+      llm: { provider: choiceTrace.provider, model: choiceTrace.model, ms: choiceTrace.ms, costUsd: choiceTrace.costUsd },
+    };
     ports.events.console(route, checkFailure === undefined ? decision : {
       ...decision, kind: "blocked", blockedBy: "check", reasoning: `check blocked: ${checkFailure}; option A template`,
     });

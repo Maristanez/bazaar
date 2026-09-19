@@ -97,6 +97,8 @@ it("checks total, list and fact figures with exact cents and word boundaries", (
   expect(check({ menu: [option], pick: { optionId: "B1", line: "I can do $147.00 for both — socks list $18; list $167 for both." } })).toEqual({ ok: true });
   expect(check({ menu: [option], pick: { optionId: "B1", line: "I can do $147 for both — socks list $19." } })).toEqual({ ok: false, reason: "unknown_amount" });
   expect(check({ menu: [option], pick: { optionId: "B1", line: "Costume Runner is ready at $147." } })).toEqual({ ok: true });
+  const twoSocks: Option = { ...option, id: "S2", kind: "held", total: 3600, listTotal: 3600, items: [{ variantId: "socks", title: "Socks", qty: 2 }], facts: [] };
+  expect(check({ menu: [twoSocks], pick: { optionId: "S2", line: "I can do $36 for both." } })).toEqual({ ok: true });
   const large = { ...option, total: 123400, listTotal: 150000, facts: ["list $1500 for both"] };
   expect(check({ menu: [large], pick: { optionId: "B1", line: "I can do $1,234.00 for both — list $1,500 for both." } })).toEqual({ ok: true });
 });

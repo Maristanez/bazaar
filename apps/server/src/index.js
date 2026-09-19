@@ -2,6 +2,8 @@ import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createBackboardShopkeeper } from "@bazaar/llm";
+import { check as checkShopkeeperPick } from "./core/check.ts";
 
 const DEFAULT_ALLOWED_ORIGINS = [
   "https://b8wzw0-h3.myshopify.com",
@@ -16,7 +18,20 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 loadLocalEnv();
 
 const port = Number(process.env.PORT || 3000);
-const model = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+const backboardProvider = process.env.BACKBOARD_MODEL_PROVIDER || "openai";
+const backboardModel = process.env.BACKBOARD_MODEL_NAME || "gpt-4.1-mini";
+const backboardAssistantId = process.env.BACKBOARD_ASSISTANT_ID || "16072e36-597a-4720-94c3-1d4cf2f520f9";
+const backboardTimeoutMs = Number(process.env.BACKBOARD_TIMEOUT_MS || 6500);
+const backboard = process.env.BACKBOARD_API_KEY
+  ? createBackboardShopkeeper({
+    apiKey: process.env.BACKBOARD_API_KEY,
+    assistantId: backboardAssistantId,
+    provider: backboardProvider,
+    model: backboardModel,
+    memory: process.env.BACKBOARD_MEMORY_MODE || "Readonly",
+    timeoutMs: Number.isFinite(backboardTimeoutMs) && backboardTimeoutMs > 0 ? backboardTimeoutMs : 6500,
+  })
+  : null;
 const FLOOR_PCT = Number(process.env.BAZAAR_FLOOR_PCT || 25);
 const allowedOrigins = getAllowedOrigins();
 const seedProducts = loadSeedProducts();
@@ -44,8 +59,9 @@ const server = createServer(async (request, response) => {
     sendJson(response, request, 200, {
       ok: true,
       service: "bazaar-chat",
-      model,
-      hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
+      model: `${backboardProvider}/${backboardModel}`,
+      hasBackboardKey: Boolean(process.env.BACKBOARD_API_KEY),
+      backboardAssistantConfigured: Boolean(backboardAssistantId),
       shopifyConfigured: hasShopifyCredentials(),
       products: mirror.products.length,
       mirrorSource: mirror.source,
@@ -108,17 +124,24 @@ const server = createServer(async (request, response) => {
         return;
       }
       const mirror = await safeSyncMirror();
+      const shopperId = stringOrNull(payload.shopperId) || "anonymous-shopper";
+      const matched = findProductFromPayload({ ...payload, text: message }, mirror);
+      const negotiationId = stringOrNull(payload.negotiationId)
+        || `${shopperId}:${matched?.item.productId || "catalog"}:${matched?.item.size || "default"}`;
       const context = {
         message,
-        shopperId: stringOrNull(payload.shopperId),
+        shopperId,
+        negotiationId,
         pageUrl: stringOrNull(payload.pageUrl),
         product: enrichPublicProduct(publicObjectOrNull(payload.product), mirror),
         products: publicProducts(mirror).slice(0, 8),
         lastProducts: resolveShopperProducts(payload.shopperId, mirror),
       };
       const deterministic = deterministicReply(context);
-      if (deterministic?.memoryProducts?.length) rememberShopperProducts(payload.shopperId, deterministic.memoryProducts);
-      const reply = deterministic?.reply || await askGemini(context);
+      const sizingQuestion = isSizingQuestion(message);
+      const useLocalReply = Boolean(deterministic?.memoryProducts?.length) && !sizingQuestion;
+      if (useLocalReply) rememberShopperProducts(shopperId, deterministic.memoryProducts);
+      const reply = useLocalReply ? deterministic.reply : await answerWithBackboard(context, deterministic?.reply);
       sendJson(response, request, 200, { reply, products: publicProducts(mirror).slice(0, 8) });
     } catch (error) {
       console.error("[api/chat]", error);
@@ -497,6 +520,9 @@ async function makeOfferFromPayload(payload, message) {
   state.negotiations.set(negotiationId, { round, productId: match.item.productId, quantity });
   rememberShopperContext(payload.shopperId, match.item, quantity, negotiationId, { reasonText, reasonTags: reason.labels });
   const offer = priceOffer(match.item, offered, round, mirror, reason, quantity);
+  const shopperId = String(payload.shopperId || "anonymous-shopper");
+  const phrased = await phraseOfferWithBackboard({ offer, shopperId, negotiationId, message, round, main: match.item });
+  const replyLine = phrased.line;
   const offerId = randomId("offer");
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
   const card = {
@@ -518,7 +544,7 @@ async function makeOfferFromPayload(payload, message) {
       listTotal: offer.listTotal,
       total: offer.total,
     },
-    line: offer.line,
+    line: replyLine,
     mood: offer.kind === "accepted" ? "deal" : offer.kind === "bundle" ? "tempted" : "idle",
     badges: offer.badges,
     trail: [
@@ -529,8 +555,8 @@ async function makeOfferFromPayload(payload, message) {
     expiresAt: expiresAt.toISOString(),
     disclosure: ["Priced from private cost data on the server.", "Only this card is binding; chat text is not."],
   };
-  state.offers.set(offerId, { ...offer, offerId, negotiationId, expiresAt, status: "live" });
-  return { reply: offer.line, card, products: prioritizePublicProducts(mirror, match.item).slice(0, 8) };
+  state.offers.set(offerId, { ...offer, line: replyLine, offerId, negotiationId, expiresAt, status: "live", backboard: phrased.trace });
+  return { reply: replyLine, card, products: prioritizePublicProducts(mirror, match.item).slice(0, 8) };
 }
 
 function priceOffer(main, offered, round, mirror, reason = { score: 0, label: null }, quantity = 1) {
@@ -632,9 +658,11 @@ function reasonAdjustedTarget(list, baseTarget, score) {
 }
 
 function sellerTargetFor(item, floor, baseTarget, reason, round) {
-  const reasonTarget = reasonAdjustedTarget(item.list, baseTarget, reason.score);
   const protectedDiscount = maxSellerDiscount(reason, round);
   const protectedTarget = roundToShopper(item.list * (1 - protectedDiscount));
+  const hasActionableReason = (reason.score || 0) >= 2;
+  const reasonBaseTarget = hasActionableReason && baseTarget >= item.list ? protectedTarget : baseTarget;
+  const reasonTarget = reasonAdjustedTarget(item.list, reasonBaseTarget, reason.score);
   return roundToShopper(Math.max(floor, reasonTarget, protectedTarget));
 }
 
@@ -914,13 +942,8 @@ function normalizeSearchText(value) {
 
 const PRODUCT_STOP_WORDS = new Set(["the", "and", "for", "with", "trail", "open", "offer", "offers", "product"]);
 
-async function understandOffer(message, payload, mirror) {
-  const deterministic = deterministicOfferUnderstanding(message, payload);
-  const ai = await aiOfferUnderstanding(message, payload, mirror).catch((error) => {
-    console.warn("[offer-understanding]", error.message);
-    return null;
-  });
-  return mergeOfferUnderstanding(deterministic, ai);
+async function understandOffer(message, payload) {
+  return deterministicOfferUnderstanding(message, payload);
 }
 
 function deterministicOfferUnderstanding(message, payload = {}) {
@@ -935,98 +958,104 @@ function deterministicOfferUnderstanding(message, payload = {}) {
   };
 }
 
-async function aiOfferUnderstanding(message, payload, mirror) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
-  const catalog = publicProducts(mirror).slice(0, 12).map((product) => ({
-    title: product.title,
-    handle: product.handle,
-    type: product.type,
-    price: product.price,
-  }));
-  const prompt = [
-    "Extract shopper offer intent from messy retail chat.",
-    "Return JSON only with keys: wantsOffer, productHint, quantity, money, moneyIsPerUnit, reasonText, reasonTags, confidence.",
-    "productHint should be the closest catalog product title/handle/type words the shopper means, or null.",
-    "quantity is item count for the main product, or null if not stated.",
-    "money is the shopper's offered CAD amount as a number. If they say '$50 each' for quantity 2, money is 50 and moneyIsPerUnit is true. If they say '$100 for both', money is 100 and moneyIsPerUnit is false.",
-    "reasonTags may include bundle, quantity, ready_to_buy, budget, market_compare, use_case, repeat_customer.",
-    "Do not decide whether to accept. Do not invent prices or discounts.",
-    JSON.stringify({ shopperMessage: message, currentProduct: payload.product || null, catalog }),
-  ].join("\n");
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0, maxOutputTokens: 350, responseMimeType: "application/json" },
-    }),
-  });
-  if (!response.ok) throw new Error(`Gemini offer understanding ${response.status}: ${(await response.text()).slice(0, 300)}`);
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text).filter(Boolean).join("\n").trim();
-  return normalizeOfferUnderstanding(parseJsonObject(text));
-}
-
-function parseJsonObject(text) {
-  if (!text) return null;
-  const cleaned = String(text).trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+async function answerWithBackboard(context, fallbackLine) {
+  const fallback = () => fallbackLine || fallbackReply(context);
+  if (!backboard) return fallback();
   try {
-    return JSON.parse(cleaned);
-  } catch {
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    return match ? JSON.parse(match[0]) : null;
+    const answer = await backboard.answerQuestion({
+      shopperId: context.shopperId,
+      negotiationId: context.negotiationId,
+      shopperMessage: context.message,
+      product: context.product || undefined,
+      products: context.products,
+    });
+    logBackboardRun("question", answer.trace);
+    return answer.reply;
+  } catch (error) {
+    console.error("[backboard/question]", error instanceof Error ? error.message : error);
+    return fallback();
   }
 }
 
-function normalizeOfferUnderstanding(value) {
-  if (!value || typeof value !== "object") return null;
-  const quantity = Number(value.quantity);
-  const money = Number(value.money);
-  return {
-    wantsOffer: value.wantsOffer !== false,
-    productHint: stringOrNull(value.productHint),
-    quantity: Number.isFinite(quantity) && quantity > 0 ? Math.min(MAX_OFFER_QUANTITY, Math.round(quantity)) : null,
-    dollars: Number.isFinite(money) && money > 0 ? money : null,
-    perUnit: typeof value.moneyIsPerUnit === "boolean" ? value.moneyIsPerUnit : null,
-    reasonText: stringOrNull(value.reasonText),
-    reasonTags: Array.isArray(value.reasonTags) ? value.reasonTags.map(String).slice(0, 6) : [],
-    confidence: Math.max(0, Math.min(1, Number(value.confidence) || 0)),
+async function phraseOfferWithBackboard({ offer, shopperId, negotiationId, message, round, main }) {
+  if (!backboard || offer.kind === "closed") return { line: offer.line, trace: null };
+  const option = {
+    id: offer.kind === "accepted" ? "accepted" : "A",
+    kind: offer.kind === "bundle" ? "bundle" : round === MAX_ROUNDS ? "final" : "held",
+    items: offer.items.map((item, index) => ({
+      variantId: item.variantId,
+      title: item.title,
+      ...(item.size ? { size: item.size } : {}),
+      qty: item.qty || 1,
+      ...(index > 0 ? { thrownIn: true } : {}),
+    })),
+    listTotal: offer.listTotal,
+    total: offer.total,
+    ownerRank: 1,
+    facts: [],
   };
+  try {
+    const choice = await backboard.chooseAndSay([option], {
+      shopperId,
+      negotiationId,
+      shopperMessage: message,
+      productId: main.productId,
+      title: main.title,
+      ...(main.size ? { size: main.size } : {}),
+      round,
+    });
+    const checked = checkShopkeeperPick({ menu: [option], pick: choice });
+    if (checked.ok) {
+      logBackboardRun("offer", choice.trace);
+      return { line: choice.line, trace: choice.trace };
+    }
+    const neutralLine = checked.reason === "unsupported_reason" ? neutralBackboardLine(choice.line, option) : null;
+    const neutralChecked = neutralLine
+      ? checkShopkeeperPick({ menu: [option], pick: { optionId: choice.optionId, line: neutralLine } })
+      : null;
+    logBackboardRun(neutralChecked?.ok ? "offer_neutralized" : `offer_blocked_${checked.reason}`, choice.trace);
+    return neutralChecked?.ok ? { line: neutralLine, trace: choice.trace } : { line: offer.line, trace: choice.trace };
+  } catch (error) {
+    console.error("[backboard/offer]", error instanceof Error ? error.message : error);
+    return { line: offer.line, trace: null };
+  }
 }
 
-function mergeOfferUnderstanding(deterministic, ai) {
-  if (!ai || ai.wantsOffer === false || ai.confidence < 0.35) return deterministic;
-  return {
-    productHint: ai.productHint || deterministic.productHint,
-    quantity: ai.quantity || deterministic.quantity,
-    dollars: ai.dollars ?? deterministic.dollars,
-    perUnit: ai.perUnit ?? deterministic.perUnit,
-    reasonText: ai.reasonText || deterministic.reasonText,
-    reasonTags: ai.reasonTags?.length ? ai.reasonTags : deterministic.reasonTags,
-    confidence: Math.max(deterministic.confidence || 0, ai.confidence || 0),
-  };
+function neutralBackboardLine(line, option) {
+  const text = String(line || "").trim();
+  const dollars = String(Math.round((option.total || 0) / 100));
+  const pricePattern = `\\$\\s*${dollars}(?:\\.00)?`;
+  const quantity = (option.items || []).reduce((sum, item) => sum + (item.qty || 1), 0);
+  const bothAllowed = option.items?.length === 2 || quantity === 2;
+  if (bothAllowed && new RegExp(`^I can do\\s+${pricePattern}\\s+for both\\b`, "i").test(text)) return `I can do ${formatMoney(option.total)} for both.`;
+  if (bothAllowed && new RegExp(`^I can offer\\s+${pricePattern}\\s+for both\\b`, "i").test(text)) return `I can offer ${formatMoney(option.total)} for both.`;
+  if (new RegExp(`^I can do\\s+${pricePattern}\\b`, "i").test(text)) return `I can do ${formatMoney(option.total)}.`;
+  if (new RegExp(`^I can offer\\s+${pricePattern}\\b`, "i").test(text)) return `I can offer ${formatMoney(option.total)}.`;
+  if (new RegExp(`^How about\\s+${pricePattern}\\b`, "i").test(text)) return `How about ${formatMoney(option.total)}.`;
+  if (new RegExp(`^I can hold\\s+${pricePattern}\\s+for 15 minutes\\b`, "i").test(text)) return `I can hold ${formatMoney(option.total)} for 15 minutes.`;
+  if (option.kind === "final" && new RegExp(`^My best is\\s+${pricePattern}\\b`, "i").test(text)) return `My best is ${formatMoney(option.total)}.`;
+  for (const item of option.items || []) {
+    const escapedTitle = escapeRegExp(String(item.title || "").trim());
+    if (escapedTitle && new RegExp(`^${escapedTitle}\\s+is ready at\\s+${pricePattern}\\b`, "i").test(text)) return `${item.title} is ready at ${formatMoney(option.total)}.`;
+  }
+  return null;
 }
 
-async function askGemini(context) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return fallbackReply();
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-  const geminiResponse = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemPrompt() }] },
-      contents: [{ role: "user", parts: [{ text: buildUserPrompt(context) }] }],
-      generationConfig: { temperature: 0.6, maxOutputTokens: 900 },
-    }),
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function logBackboardRun(kind, trace) {
+  console.info("[backboard/run]", {
+    kind,
+    provider: trace.provider,
+    model: trace.model,
+    ms: trace.ms,
+    costUsd: trace.costUsd,
+    threadId: trace.threadId,
+    recalledMemory: Boolean(trace.memory),
+    files: trace.files || [],
   });
-  if (!geminiResponse.ok) throw new Error(`Gemini ${geminiResponse.status}: ${(await geminiResponse.text()).slice(0, 500)}`);
-  const data = await geminiResponse.json();
-  const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text).filter(Boolean).join("\n").trim();
-  if (!text || isProbablyTruncated(text)) return fallbackReply(context);
-  return text;
 }
 
 function deterministicReply(context) {
@@ -1045,7 +1074,7 @@ function deterministicReply(context) {
     const listedProducts = products.slice(0, 6);
     return { reply: catalogReply(listedProducts), memoryProducts: listedProducts };
   }
-  if (/\b(size|sizing|tee|shirt|shoe|fit)\b/.test(message)) return { reply: sizingReply(context.product, products) };
+  if (isSizingQuestion(message)) return { reply: sizingReply(context.product, products) };
   if (/\b(shipping|ship|delivery|returns|return)\b/.test(message)) {
     return { reply: "Shipping and returns are handled in Shopify Checkout. For this demo, use the checkout page as the source of truth for shipping, taxes, and the final total." };
   }
@@ -1092,37 +1121,16 @@ function sizingReply(product, products) {
   return `${target.title} is the item I’d size from here.${sizes} Choose your usual size for a standard fit, or size up if you want extra room.`;
 }
 
+function isSizingQuestion(message) {
+  return /\b(size|sizing|tee|shirt|shoe|fit|fits|fitting|small|large|big|tight|loose|roomy|true to size|tts|run small|runs small|run big|runs big)\b/i.test(String(message || ""));
+}
+
 function findPublicProduct(products, pattern) {
   return products.find((product) => pattern.test(`${product.title || ""} ${product.type || ""}`));
 }
 
 function formatPublicProductList(products) {
   return products.map((product) => `${product.title}${product.price ? ` (${product.price})` : ""}`).join(", ");
-}
-
-function isProbablyTruncated(text) {
-  const trimmed = String(text || "").trim();
-  if (!trimmed) return true;
-  if (/[.!?)]$/.test(trimmed)) return false;
-  if (/[\s([][$€£¥]?$/.test(trimmed)) return true;
-  if (/\b(with|and|or|for|to|from|plus|pair|include|including|because|while|at|under|over)$/i.test(trimmed)) return true;
-  return trimmed.length < 140;
-}
-
-function systemPrompt() {
-  return [
-    "You are Trailhead's AI shopkeeper for a Shopify clothing and trail gear store.",
-    "Use only the public product context supplied by the server.",
-    "Help shoppers with outfit ideas, sizing, shipping, returns, and product discovery.",
-    "You may mention visible storefront prices if supplied.",
-    "Do not invent discounts, checkout links, inventory guarantees, policies, private costs, or binding offers.",
-    "If the shopper wants to haggle, tell them to send a specific CAD number; the server will price any binding offer.",
-    "Keep replies concise, warm, and useful: 1 to 4 short sentences.",
-  ].join(" ");
-}
-
-function buildUserPrompt(context) {
-  return JSON.stringify({ shopperMessage: context.message, shopperId: context.shopperId, pageUrl: context.pageUrl, currentProduct: context.product, visibleProducts: context.products }, null, 2);
 }
 
 function fallbackReply(context = {}) {
