@@ -161,6 +161,8 @@ Everything a shopper sees, plus the store's products behind it: the offer card, 
   _Sat 17:35 Codex note:_ tested “I will buy 2 tees if you give it to me for 50$ cad a piece.” The old path treated it as non-binding chat because `50$ cad` was not parsed as money. The server now parses suffix-dollar prices, quantity phrases, and per-piece offers, so two tees at $50 each becomes a $100 total shopper offer with quantity 2 in the binding card/checkout path.
 
   _Sat 17:50 Codex note:_ upgraded the haggling understanding layer from phrase fixes to hybrid NLU. Gemini now extracts product hint, quantity, offered amount, per-unit vs total, and reason tags from messy shopper language; deterministic code remains the fallback and the only layer allowed to price binding cards. Shopper context now remembers the last negotiated product/quantity for follow-ups like “what about 105 then?”.
+
+  _Sat 18:10 Codex note:_ swapped the theme header to the latest Trailhead WebP logo asset and fixed chat follow-up totals. After an outfit recommendation or catalog list, the server now remembers that exact product set for the shopper and answers “what’s the total?” / “total for all of them” by summing those items instead of dumping unrelated storefront prices.
 - [ ] **S4** Deal flow on the storefront: accept → checkout opens; sparkles [§4.1] · _needs S1, R6, R7_ · ~1 h · **Done when:** **gate 1 passes**
 
   _Sat 09:52 Codex note:_ the preview card deliberately disables Deal and says the API is required. S4 remains blocked on R6/R7 so the first real Deal button mints a constrained Shopify discount and opens checkout.

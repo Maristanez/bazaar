@@ -114,8 +114,11 @@ const server = createServer(async (request, response) => {
         pageUrl: stringOrNull(payload.pageUrl),
         product: enrichPublicProduct(publicObjectOrNull(payload.product), mirror),
         products: publicProducts(mirror).slice(0, 8),
+        lastProducts: resolveShopperProducts(payload.shopperId, mirror),
       };
-      const reply = deterministicReply(context) || await askGemini(context);
+      const deterministic = deterministicReply(context);
+      if (deterministic?.memoryProducts?.length) rememberShopperProducts(payload.shopperId, deterministic.memoryProducts);
+      const reply = deterministic?.reply || await askGemini(context);
       sendJson(response, request, 200, { reply, products: publicProducts(mirror).slice(0, 8) });
     } catch (error) {
       console.error("[api/chat]", error);
@@ -745,6 +748,7 @@ function resolveShopperContext(shopperId, mirror) {
   if (!id) return null;
   const context = state.shopperContexts.get(id);
   if (!context || Date.now() - context.updatedAt > 30 * 60_000) return null;
+  if (!context.productId && !context.variantId) return null;
   const item = mirror.items.find((entry) => entry.variantId === context.variantId || entry.productId === context.productId);
   return item ? { ...context, item } : null;
 }
@@ -759,6 +763,25 @@ function rememberShopperContext(shopperId, item, quantity, negotiationId) {
     negotiationId,
     updatedAt: Date.now(),
   });
+}
+
+function resolveShopperProducts(shopperId, mirror) {
+  const id = stringOrNull(shopperId);
+  if (!id) return [];
+  const context = state.shopperContexts.get(id);
+  if (!context || Date.now() - context.updatedAt > 30 * 60_000 || !Array.isArray(context.productHandles)) return [];
+  const products = publicProducts(mirror);
+  return context.productHandles
+    .map((handle) => products.find((product) => product.handle === handle))
+    .filter(Boolean);
+}
+
+function rememberShopperProducts(shopperId, products) {
+  const id = stringOrNull(shopperId);
+  const handles = (Array.isArray(products) ? products : []).map((product) => product.handle).filter(Boolean);
+  if (!id || !handles.length) return;
+  const existing = state.shopperContexts.get(id) || {};
+  state.shopperContexts.set(id, { ...existing, productHandles: handles, updatedAt: Date.now() });
 }
 
 function prioritizePublicProducts(mirror, item) {
@@ -966,27 +989,57 @@ async function askGemini(context) {
 function deterministicReply(context) {
   const message = String(context.message || "").toLowerCase();
   const products = Array.isArray(context.products) ? context.products : [];
-  if (/\b(weekend|outfit|recommend|style|wear|fit)\b/.test(message)) return outfitReply(products);
-  if (/\b(price|prices|catalog|products|shop|how much|cost)\b/.test(message)) return catalogReply(products);
-  if (/\b(size|sizing|tee|shirt|shoe|fit)\b/.test(message)) return sizingReply(context.product, products);
+  const lastProducts = Array.isArray(context.lastProducts) ? context.lastProducts : [];
+  if (isTotalQuestion(message)) {
+    const scopedProducts = lastProducts.length ? lastProducts : products;
+    return { reply: totalReply(scopedProducts), memoryProducts: scopedProducts };
+  }
+  if (/\b(weekend|outfit|recommend|style|wear|fit)\b/.test(message)) {
+    const picks = outfitPicks(products);
+    return { reply: outfitReplyFromPicks(picks), memoryProducts: picks };
+  }
+  if (/\b(price|prices|catalog|products|shop|how much|cost)\b/.test(message)) {
+    const listedProducts = products.slice(0, 6);
+    return { reply: catalogReply(listedProducts), memoryProducts: listedProducts };
+  }
+  if (/\b(size|sizing|tee|shirt|shoe|fit)\b/.test(message)) return { reply: sizingReply(context.product, products) };
   if (/\b(shipping|ship|delivery|returns|return)\b/.test(message)) {
-    return "Shipping and returns are handled in Shopify Checkout. For this demo, use the checkout page as the source of truth for shipping, taxes, and the final total.";
+    return { reply: "Shipping and returns are handled in Shopify Checkout. For this demo, use the checkout page as the source of truth for shipping, taxes, and the final total." };
   }
   return null;
 }
 
 function outfitReply(products) {
+  return outfitReplyFromPicks(outfitPicks(products));
+}
+
+function outfitPicks(products) {
   const tee = findPublicProduct(products, /tee|shirt/i);
   const shoe = findPublicProduct(products, /runner|ridge|shoe/i);
   const accessory = findPublicProduct(products, /sock|cap|gaiter|flask|vest/i);
-  const picks = [tee, shoe, accessory].filter(Boolean);
+  return [tee, shoe, accessory].filter(Boolean);
+}
+
+function outfitReplyFromPicks(picks) {
   if (!picks.length) return "For a weekend outfit, start with one breathable layer, one trail-ready shoe, and one small accessory. Ask me about any product and I can help build around it.";
   return `For a weekend trail outfit, I’d start with ${formatPublicProductList(picks)}. It keeps the fit simple: one everyday layer, one useful trail piece, and one practical add-on.`;
 }
 
 function catalogReply(products) {
   if (!products.length) return "I do not see published products from the server yet. Once products are live, I can list the visible catalog prices.";
-  return `I can see these storefront prices: ${formatPublicProductList(products.slice(0, 6))}.`;
+  return `I can see these storefront prices: ${formatPublicProductList(products)}.`;
+}
+
+function isTotalQuestion(message) {
+  return /\b(total|altogether|all together|sum|combined|add(?:ed)? up|how much for (?:all|those|them|the outfit)|what'?s it come to|come to)\b/i.test(message);
+}
+
+function totalReply(products) {
+  const scopedProducts = (Array.isArray(products) ? products : []).filter((product) => Number(product.listPrice) > 0);
+  if (!scopedProducts.length) return "Tell me which items you mean and I’ll total them up.";
+  const total = scopedProducts.reduce((sum, product) => sum + Number(product.listPrice || 0), 0);
+  const label = scopedProducts.length === 1 ? scopedProducts[0].title : `those ${scopedProducts.length} items`;
+  return `The total for ${label} is ${formatMoney(total)}: ${scopedProducts.map((product) => `${product.title} ${product.price || formatMoney(product.listPrice)}`).join(" + ")}.`;
 }
 
 function sizingReply(product, products) {
