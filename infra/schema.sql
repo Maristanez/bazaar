@@ -137,8 +137,9 @@ $$;
 -- One store, one instance (SPEC §5). The id is fixed so the server can hold
 -- it as a constant instead of looking it up on every write.
 insert into merchants (id, shop_domain)
-values ('00000000-0000-4000-8000-000000000001', 'trailhead-co.myshopify.com')
-on conflict (id) do nothing;
+values ('00000000-0000-4000-8000-000000000001', 'b8wzw0-h3.myshopify.com')
+on conflict (id) do update
+set shop_domain = excluded.shop_domain;
 
 -- Opening policy: floor 25%, ask-owner on, not paused (SPEC Appendix A).
 insert into policies (merchant_id, floor_pct, ask_owner, paused)
