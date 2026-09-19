@@ -4,13 +4,13 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 11:03 EDT by Codex (live Gemini chat verified + main integrated)
+**Last updated:** Sat 19 Sep 11:55 EDT by Bryan (Part B backbone complete through B6; gate 1 reassigned)
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
-| **Gate 1** | Sat 09:00 | Storefront: offer → fixed counter card → **Deal** → real code → **real Shopify Checkout at that price** | ☐ |
-| **Gate 0** | Sat 12:00 | A hello-world tool of ours shows a custom card in ChatGPT — or a clear "no", decided and closed | ☐ |
-| **Devpost** | Sat 14:00 **hard** | Submitted: team, badge IDs, public repo, **Shopify + Backboard + OpenAI + GoDaddy Registry** selected | ☐ |
+| **Gate 1** | Sat 09:00 | Storefront: offer → fixed counter card → **Deal** → real code → **real Shopify Checkout at that price** | ☐ **OVERDUE 2h45m** — reassigned 11:55, see below |
+| **Gate 0** | Sat 12:00 | A hello-world tool of ours shows a custom card in ChatGPT — or a clear "no", decided and closed | ☐ **due now, S3 not started** — write the outcome here and close it |
+| **Devpost** | Sat 14:00 **hard** | Submitted: team, badge IDs, public repo, **Shopify + Backboard + OpenAI + GoDaddy Registry** selected | ☐ **2h05m left, S13 not started** — do not let this ride on gate 1 |
 | **Gate 2** | Sun 00:00 | Full demo 3× untouched on both surfaces, on the hosted URL; backup video; 30-min attack session | ☐ |
 | **Final submit** | Sun 08:00 | Final Devpost edit; code freeze; **deploy freeze** | ☐ |
 
@@ -18,12 +18,18 @@
 
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
-| 🛍️ A. Storefront + Shopify store | Ritvik | Live Shopify theme `Bazaar coded storefront` is connected to Railway `/api/chat`; Gemini answers are verified | R4 product mirror → replace preview card with server-generated OfferCard once R6/R7 exist | R6/R7 settlement code for real Deal |
-| ⚙️ B. Engine, core, Gym + Console | Bryan | B2 + B3 + B11 + B5 + B6 verified; handoff ready | S5 Console; Part D / Platform adapters | — |
-| 🔌 C. Platform | Ricardo | R14 Supabase live read verified; Railway `bazaar-chat` is online with `GEMINI_API_KEY`; `/health` and `/api/chat` verified | R2 token wrapper → R4/R5 product mirror/API → R6/R7 discount + checkout settlement | R6/R7 settlement code for real Deal |
-| 🤖 D. Agents + guardrails | ______ | Gemini answers basic shopper Q&A through the storefront; official OpenAI/Backboard path not started | R9/R10/R11 after the core/menu path exists | B5/R5 route integration |
+| 🛍️ A. Storefront + Shopify store | Ritvik | Live Shopify theme `Bazaar coded storefront` is connected to Railway `/api/chat`; Gemini answers are verified | **S13 Devpost — start it now on the host URL, don't wait for gate 1** · then S3 gate-0 decision (90 min box) · then R4 mirror | R6/R7 for a real Deal (Bryan has taken them) |
+| ⚙️ B. Engine, core, Gym + Console | Bryan | Part B backbone COMPLETE — B1 B2 B3 B4 B5 B6 B11 ticked, merged to `main`. Lane clear, so **taking R2 + R6 + R7** off Platform to unblock gate 1 | R2 token wrapper → R6 mint → R7 permalink (`codex-prompt-settlement.txt`), then back to S5 → S6 → B12 | **Shopify client id + secret — Ricardo must send them; no `.env` on Bryan's machine** |
+| 🔌 C. Platform | Ricardo | R14 Supabase live read verified; Railway `bazaar-chat` is online with `GEMINI_API_KEY`; `/health` and `/api/chat` verified | **① send Bryan the Shopify creds ② R5 Hono shell + `/api/products` + SSE ③ R12 real app on the host ④ R13 domain before 13:00** — R2/R6/R7 are Bryan's now | — |
+| 🤖 D. Agents + guardrails | **still unowned — name someone at the 14:00 Devpost check** | Gemini answers basic shopper Q&A through the storefront; official OpenAI/Backboard path not started. B5/B6 have been waiting for a consumer since 11:00 | R9 *understand* (OpenAI prize needs a direct OpenAI call) → R10/R11 Backboard | an owner |
 
-### Next work decision — Sat 11:03 EDT
+### Next work decision — Sat 11:55 EDT (supersedes the 11:03 note below)
+
+Gate 1 is 2h45m overdue and it is the one thing §7 says is **never cut**. Part B's backbone is finished and merged, so **Bryan takes the settlement chain R2 → R6 → R7** and Ricardo keeps R5 / R12 / R13 / R14. The prompt is `codex-prompt-settlement.txt`; it fits the `mint` port that `apps/server/src/core/ports.ts` already declares, so core does not change.
+
+Two things that are nobody's job right now and have hard clocks: **S13 Devpost (14:00, hard)** — start it on the Railway URL, the tracker's "needs gate 1" is a preference, not a rule; and **gate 0 (12:00)** — 90-minute box, then write card / text-only / what's-next on this board and stop discussing it. **Part D is still unowned** and B5/B6 are sitting idle waiting for it.
+
+### Earlier work decision — Sat 11:03 EDT
 
 The fastest path to a real Shopify demo is **not more chatbot polish**. The live AI chat works; the missing prize-critical path is the money-safe offer/checkout chain:
 
@@ -210,12 +216,14 @@ The maths that writes every price, the three core functions on top of it, the Gy
 
 What the app runs on: the Shopify app and token, the server, the discount-code mint and checkout link, the database, hosting and the domain. **The mint (R6) and checkout link (R7) are the gate-1 critical path.**
 
+> **Reassigned Sat 11:55:** **R2, R6 and R7 are Bryan's (BM)** — Part B's backlog was empty and gate 1 was 2h45m overdue. Ricardo keeps R1, R4, R5, R12, R13, R14, R15. **Ricardo's first action is sending Bryan `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET`** — there is no `.env` on Bryan's machine, so nothing here can be verified against the real store without them.
+
 **Before gate 1 (now → Sat 09:00)**
 
 - [x] **R1** Shopify app via **`shopify app init`**; six scopes incl. `write_products`; install on the dev store [§10] · _needs nothing_ · ~1 h · **Done when:** client id + secret are in `.env` and the app is installed. **20-minute rule:** if the CLI fights back, make a plain Dev Dashboard app and tick this anyway
 
   _Sat 10:10 Codex note:_ `.env` has the Shopify shop, API version, client id, client secret and scopes; `.env` is ignored by git. Client-credentials token fetch succeeded and Admin GraphQL returned products from `b8wzw0-h3`.
-- [ ] **R2** Token: client-credentials fetch on startup, re-fetch on any 401, one wrapper for every call [§10] · _needs R1_ · ~1 h · **Done when:** corrupting the token in memory makes the next call self-heal
+- [ ] **R2 (BM)** Token: client-credentials fetch on startup, re-fetch on any 401, one wrapper for every call [§10] · _needs R1_ · ~1 h · **Done when:** corrupting the token in memory makes the next call self-heal
 
   _Sat 10:10 Codex note:_ manual token fetch is verified, but R2 remains open until the reusable server-side wrapper exists and the forced-401 self-heal test passes.
 - [ ] **R5** Server shell: Hono, routes, `db.ts` (memory `Map`s), SSE with a 15 s heartbeat [§5] · _needs B0_ · ~1.5 h · **Done when:** `/api/products` returns public cards and an SSE stream stays open 5 minutes
@@ -223,8 +231,8 @@ What the app runs on: the Shopify app and token, the server, the discount-code m
   _Sat 10:45 Codex note:_ a minimal Railway-ready Node server now exists at `apps/server/src/index.js` with `GET /health` and `POST /api/chat`. `/api/chat` reads `GEMINI_API_KEY` from server env, calls Gemini (`GEMINI_MODEL` override, default `gemini-3.6-flash`), and returns `{ reply }` to the Shopify theme. This is enough to connect the storefront chat to Gemini, but R5 remains open because `/api/products`, `db.ts`, and SSE heartbeat are not implemented yet.
 
   _Sat 11:03 Codex note:_ Railway is online at `https://bazaar-chat-production.up.railway.app`, public `/health` returns `ok: true`, and the live Shopify theme sends chat requests to this service. R5 is still open: the current server is a minimal Node HTTP server, not the planned Hono shell with `/api/products`, `db.ts`, and SSE.
-- [ ] **R6** Mint: `discountCodeBasicCreate` — amount off, `usageLimit 1`, 15 min, exact variants, **minimum subtotal = list total**, no combining; re-mint once; deactivate on expiry [§10] · _needs R2_ · ~2 h · **Done when:** a code exists in admin with every constraint set
-- [ ] **R7** Checkout permalink + store settings: **tax off, free shipping rate** [§10] · _needs R6_ · ~0.5 h · **Done when:** the checkout page total equals the agreed total to the cent
+- [ ] **R6 (BM)** Mint: `discountCodeBasicCreate` — amount off, `usageLimit 1`, 15 min, exact variants, **minimum subtotal = list total**, no combining; re-mint once; deactivate on expiry [§10] · _needs R2_ · ~2 h · **Done when:** a code exists in admin with every constraint set
+- [ ] **R7 (BM)** Checkout permalink + store settings: **tax off, free shipping rate** [§10] · _needs R6_ · ~0.5 h · **Done when:** the checkout page total equals the agreed total to the cent
 
 **Gate 1 → Devpost (Sat 09:00 → 14:00)** — domain live before 13:00.
 
