@@ -19,7 +19,7 @@
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
 | 🛍️ A. Storefront + Shopify store | Ritvik | Live theme renders server-generated offer cards; live Railway minted real code `BAZAAR-2180U` and returned a checkout permalink | **① S13 Devpost — 14:00 hard, still unstarted ② S3 gate-0 decision, due now ③** browser click-through to confirm the checkout total, screenshots while the path is warm | Manual checkout-total and remove-bundle-item verification |
-| ⚙️ B. Engine, core, Gym + Console | Bryan | Part B backbone COMPLETE — B1 B2 B3 B4 B5 B6 B11 ticked and merged. **R2/R6/R7 were briefly reassigned to Bryan at 11:55 and handed straight back** — Platform had already shipped them; `codex-prompt-settlement.txt` is obsolete, do not run it | S5 Console shell (fixtures exist, no R5 dependency) → S6 policy panel → B12 dot histogram | — |
+| ⚙️ B. Engine, core, Gym + Console | Bryan | S5 fixture Console verified: login, PAUSE, feed, fetch SSE adapter | S6 policy + approval card → B12 Gym | Live S5 acceptance awaits R15/B14 |
 | 🔌 C. Platform | Ricardo | R2 token wrapper, R4 product mirror, `/api/products`, `/api/stream`, offer cards, `discountCodeBasicCreate` and cart permalinks are **live on Railway deploy `6f1032c6`** | Manual checkout-total / free-shipping / tax verification; then R16 remove-bundle-item test; then R12 pin + R13 domain before 13:00 | Store checkout settings / manual checkout verification |
 | 🤖 D. Agents + guardrails | **STILL UNOWNED — name someone at the 14:00 Devpost check** | Gemini answers basic shopper Q&A. The official OpenAI and Backboard paths are not started, and B5/B6 have been finished and unconsumed since 11:00 | R9 *understand* (the OpenAI track is judged on a direct OpenAI call) → R10/R11 Backboard. **Three of the four sponsor tracks live in this part** | an owner |
 
@@ -211,7 +211,10 @@ The maths that writes every price, the three core functions on top of it, the Gy
 
 **Devpost → gate 2 (Sat 14:00 → Sun 00:00)** — **this block is ~15 h of work in a 10 h window, so it is ordered keep-first:** everything down to S9 is never cut; S7, S8, S10 are on the cut order (§7) and come last. Ritvik is the helper for S9 / S10 once B10 is done.
 
-- [ ] **S5** Console shell: login, top bar + PAUSE, live feed with red blocked rows, SSE over `fetch` [§4.4] · _needs R5 (R15 for real data)_ · ~2.5 h · **Done when:** a haggle on the left produces feed rows on the right in < 1 s
+- [x] **S5 (BM)** Console shell: login, top bar + PAUSE, live feed with red blocked rows, SSE over `fetch` [§4.4] · _needs R5 (R15 for real data)_ · ~2.5 h · **Done when:** a haggle on the left produces feed rows on the right in < 1 s
+
+**S5 verified — Sat 19 Sep (Codex):** fixture-era acceptance passed; 112 tests (703 ms), root typecheck and web build green. Feed <100 ms under fake clock, four red layers, PAUSE/Resume, login, empty/full states, reconnect/state reload and malformed-frame regressions; standards/spec review complete. Original live haggle acceptance remains pending R15/B14.
+
 - [ ] **S6** Console policy panel: floor slider, ask-me switch, missing-cost list, **Adopt** [§4.4] · _needs S5_ · ~1.5 h · **Done when:** Adopt changes the floor used by the very next shopper turn
 - [x] **B11 (BM)** Gym run: personas, seeded, per-shopper records, A vs B, deals missed, would-ask-owner, profit vs banner [§9.1] · _needs B2_ · ~2.5 h · **Done when:** 300 shoppers run in < 50 ms in the browser, the same seed gives an identical `GymResult`, and `profitVsBanner` goes negative at some floor
 - [ ] **B12** Functional static dot histogram + metric cards [§9.2] · _needs B11, S6_ · ~2 h · **Done when:** one dot per shopper coloured by persona, grey outline for policy A, reference lines, shaded cost → floor band, and the headline card turns red when haggling loses
