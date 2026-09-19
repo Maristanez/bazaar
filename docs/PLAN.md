@@ -4,7 +4,7 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 17:10 EDT — live haggling policy now protects margin like a store negotiator: round count alone no longer walks to the floor, weak reasons get firm holds, and only stronger intent/bundles/credible comparisons earn sharper counters (Codex/Ritvik)
+**Last updated:** Sat 19 Sep 13:42 EDT — Part B's S5/S6 fixture Console is complete (Bryan) and the live haggling policy now protects margin by buyer intent (Codex/Ritvik). *An earlier line on this row read 17:10 EDT; that time had not happened — clocks on this board are EDT.*
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
@@ -18,8 +18,8 @@
 
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
-| 🛍️ A. Storefront + Shopify store | Ritvik | Trailhead logo/name is wired into the live theme, and chat haggling now asks for stronger buyer reasons before sharper discounts | **① S13 Devpost assets ② S3 gate-0 decision ③** browser click-through to confirm the checkout total, screenshots while the path is warm | Shopify admin store name may still need manual rename for Checkout branding |
-| ⚙️ B. Engine, core, Gym + Console | Bryan | Part B backbone COMPLETE — B1 B2 B3 B4 B5 B6 B11 ticked and merged. **R2/R6/R7 were briefly reassigned to Bryan at 11:55 and handed straight back** — Platform had already shipped them; `codex-prompt-settlement.txt` is obsolete, do not run it | S5 Console shell (fixtures exist, no R5 dependency) → S6 policy panel → B12 dot histogram | — |
+| 🛍️ A. Storefront + Shopify store | Ritvik | Trailhead logo/name wired into the live theme; chat haggling now asks for stronger buyer reasons before sharper discounts; live Railway minted `BAZAAR-2180U` | **① S13 DEVPOST — 14:00 HARD, still unstarted. Select all four tracks even if unbuilt; selection locks and cannot be added later ② S3 gate-0 decision, 100 min overdue ③** browser click-through of the checkout total | Shopify admin store rename for Checkout branding; remove-bundle-item check |
+| ⚙️ B. Engine, core, Gym + Console | Bryan | **S5 + S6 done** — login, PAUSE, feed with red blocked rows, policy slider + Adopt, fixture approvals, and a typed `httpPort` waiting on R15. 125 tests green | B12 Gym in the reserved 480px region — design reference and build spec are committed at `docs/design/gym-b12.{md,html}` | Live shopper feed awaits R15/B14; live approval lifecycle awaits B8/S7 (both Part D, unowned) |
 | 🔌 C. Platform | Ricardo | R2 token wrapper, R4 product mirror, `/api/products`, `/api/stream`, offer cards, `discountCodeBasicCreate` and cart permalinks are **live on Railway deploy `6f1032c6`** | Manual checkout-total / free-shipping / tax verification; then R16 remove-bundle-item test; then R12 pin + R13 domain before 13:00 | Store checkout settings / manual checkout verification |
 | 🤖 D. Agents + guardrails | **STILL UNOWNED — name someone at the 14:00 Devpost check** | Gemini answers basic shopper Q&A. The official OpenAI and Backboard paths are not started, and B5/B6 have been finished and unconsumed since 11:00 | R9 *understand* (the OpenAI track is judged on a direct OpenAI call) → R10/R11 Backboard. **Three of the four sponsor tracks live in this part** | an owner |
 
@@ -221,8 +221,14 @@ The maths that writes every price, the three core functions on top of it, the Gy
 
 **Devpost → gate 2 (Sat 14:00 → Sun 00:00)** — **this block is ~15 h of work in a 10 h window, so it is ordered keep-first:** everything down to S9 is never cut; S7, S8, S10 are on the cut order (§7) and come last. Ritvik is the helper for S9 / S10 once B10 is done.
 
-- [ ] **S5** Console shell: login, top bar + PAUSE, live feed with red blocked rows, SSE over `fetch` [§4.4] · _needs R5 (R15 for real data)_ · ~2.5 h · **Done when:** a haggle on the left produces feed rows on the right in < 1 s
-- [ ] **S6** Console policy panel: floor slider, ask-me switch, missing-cost list, **Adopt** [§4.4] · _needs S5_ · ~1.5 h · **Done when:** Adopt changes the floor used by the very next shopper turn
+- [x] **S5 (BM)** Console shell: login, top bar + PAUSE, live feed with red blocked rows, SSE over `fetch` [§4.4] · _needs R5 (R15 for real data)_ · ~2.5 h · **Done when:** a haggle on the left produces feed rows on the right in < 1 s
+
+**S5 verified — Sat 19 Sep (Codex):** fixture-era acceptance passed; 112 tests (703 ms), root typecheck and web build green. Feed rendered within 100 ms under fake clock, four red layers, PAUSE/Resume, login, empty/full states, reconnect/state reload and malformed-frame regressions; standards/spec review complete. Original live haggle acceptance remains pending R15/B14.
+
+- [x] **S6 (BM)** Console policy panel: floor slider, ask-me switch, missing-cost list, **Adopt** [§4.4] · _needs S5_ · ~1.5 h · **Done when:** Adopt changes the floor used by the very next shopper turn
+
+**S6 verified — Sat 19 Sep (Codex):** fixture-era acceptance passed: preview leaves saved policy unchanged; Adopt calls setPolicy once. Strict red/green tests cover fixture approval decisions/45-second timeout and reconnect races. Full suite 125 passed (888 ms), root typecheck and web build green; standards/spec and Impeccable visual reviews complete, desktop/mobile inspected. Original next-shopper-turn acceptance remains pending R15; live approval lifecycle remains B8/S7. Exact route/auth handoff: `apps/web/README.md`.
+
 - [x] **B11 (BM)** Gym run: personas, seeded, per-shopper records, A vs B, deals missed, would-ask-owner, profit vs banner [§9.1] · _needs B2_ · ~2.5 h · **Done when:** 300 shoppers run in < 50 ms in the browser, the same seed gives an identical `GymResult`, and `profitVsBanner` goes negative at some floor
 - [ ] **B12** Functional static dot histogram + metric cards [§9.2] · _needs B11, S6_ · ~2 h · **Done when:** one dot per shopper coloured by persona, grey outline for policy A, reference lines, shaded cost → floor band, and the headline card turns red when haggling loses
 - [ ] **S9** Click-a-dot mini-transcript + persona legend as a filter [§9.2] · _needs B12_ · ~1.5 h · **Done when:** any dot shows persona, willingness, offers and asks per round, the trade, the outcome
