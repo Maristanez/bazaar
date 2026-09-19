@@ -543,7 +543,7 @@ function priceOffer(main, offered, round, mirror, reason = { score: 0, label: nu
     return { kind: "accepted", items: [mainQty], listTotal, total: safeOffered, line: `${reasonPrefix(reason)}Deal — I can hold ${formatMoney(safeOffered)} for 15 minutes.`, badges: reasonBadges(reason, ["good intent", "held 15:00"]) };
   }
   const addOn = mirror.items.find((item) => item.isAddOn && item.inStock && item.cost !== null);
-  if (addOn && round < MAX_ROUNDS && reason.hasAddOnIntent) {
+  if (addOn && !main.isAddOn && addOn.productId !== main.productId && round < MAX_ROUNDS && reason.hasAddOnIntent) {
     const addonPart = Math.ceil(addOn.cost + (addOn.list - addOn.cost) / 2);
     const bundleFloor = floor + Math.ceil(addOn.cost * (1 + FLOOR_PCT / 100));
     const bundleTotal = roundToShopper(Math.max(ask + addonPart, bundleFloor));
