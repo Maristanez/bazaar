@@ -67,6 +67,8 @@ export type BackboardClientConfig = {
   provider?: string;
   model?: string;
   memory?: "Auto" | "Readonly" | "off";
+  isolateMemoryByShopper?: boolean;
+  seededShopperIds?: readonly string[];
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
   now?: () => number;
@@ -111,10 +113,37 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
   const provider = config.provider ?? "openai";
   const model = config.model ?? "gpt-4.1-mini";
   const memory = config.memory ?? "Readonly";
+  const isolateMemoryByShopper = config.isolateMemoryByShopper ?? false;
+  const seededShopperIds = new Set(config.seededShopperIds ?? []);
   const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const fetchImpl = config.fetchImpl ?? fetch;
   const now = config.now ?? Date.now;
   const threads = new Map<string, string>();
+  const shopperAssistants = new Map<string, Promise<string>>();
+
+  async function assistantFor(shopperId: string, signal: AbortSignal): Promise<{ id: string; memory: "Auto" | "Readonly" | "off" }> {
+    if (!isolateMemoryByShopper || memory !== "Auto") return { id: assistantId, memory };
+    if (!shopperId || shopperId === "anonymous-shopper") return { id: assistantId, memory: "Readonly" };
+    let pending = shopperAssistants.get(shopperId);
+    if (!pending) {
+      pending = resolveOrCloneShopperAssistant({
+        apiKey,
+        baseAssistantId: assistantId,
+        endpoint,
+        fetchImpl,
+        shopperId,
+        copyMemories: seededShopperIds.has(shopperId),
+        signal,
+      });
+      shopperAssistants.set(shopperId, pending);
+    }
+    try {
+      return { id: await pending, memory };
+    } catch (error) {
+      shopperAssistants.delete(shopperId);
+      throw error;
+    }
+  }
 
   async function run(input: {
     shopperId: string;
@@ -128,6 +157,7 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
     const startedAt = now();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
+      const shopperAssistant = await assistantFor(input.shopperId, controller.signal);
       const response = await fetchImpl(endpoint, {
         method: "POST",
         headers: {
@@ -136,14 +166,14 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
           Accept: "text/event-stream",
         },
         body: JSON.stringify({
-          assistant_id: assistantId,
+          assistant_id: shopperAssistant.id,
           ...(previousThreadId === undefined ? {} : { thread_id: previousThreadId }),
           content: input.content,
           system_prompt: input.systemPrompt,
           stream: true,
           llm_provider: provider,
           model_name: model,
-          memory,
+          memory: shopperAssistant.memory,
           memory_response_citation: true,
           web_search: "off",
         }),
@@ -165,7 +195,7 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
         ms: Math.max(0, now() - startedAt),
         costUsd: numberValue(terminal.cost_usd),
         threadId,
-        assistantId: stringValue(terminal.assistant_id) ?? assistantId,
+        assistantId: stringValue(terminal.assistant_id) ?? shopperAssistant.id,
         ...optionalNumber("inputTokens", terminal.input_tokens),
         ...optionalNumber("outputTokens", terminal.output_tokens),
         ...optionalNumber("totalTokens", terminal.total_tokens),
@@ -224,7 +254,10 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
 }
 
 export function validateBackboardAnswer(content: string, input: BackboardQuestion): string {
-  const reply = content.replace(/\s+/g, " ").trim();
+  const reply = content
+    .replace(/\s*\(\s*memor(?:y|ies)\s*:?\s*\[\d+\](?:\s*(?:,|and)\s*\[\d+\])*\s*\)/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!reply) throw new BackboardError("Backboard returned an empty answer");
   if (reply.split(/\s+/).length > 70) throw new BackboardError("Backboard answer exceeded 70 words");
   if (/\b(?:costs?|floor|margin|profit|markup|wholesale|owner rank|hidden ranking|private policy|internal reasoning|discount|coupon|promo|inventory|in stock|out of stock|percent|per cent)\b/i.test(reply)) {
@@ -366,6 +399,60 @@ function publicDollarAmounts(input: BackboardQuestion): Set<number> {
 
 function threadKey(shopperId: string, negotiationId: string): string {
   return JSON.stringify([shopperId, negotiationId]);
+}
+
+async function resolveOrCloneShopperAssistant(input: {
+  apiKey: string;
+  baseAssistantId: string;
+  endpoint: string;
+  fetchImpl: typeof fetch;
+  shopperId: string;
+  copyMemories: boolean;
+  signal: AbortSignal;
+}): Promise<string> {
+  const apiBase = input.endpoint.replace(/\/threads\/messages\/?$/, "");
+  const name = `Trailhead shopper ${stableShopperHash(input.shopperId)}`;
+  const headers = { "X-API-Key": input.apiKey, "Content-Type": "application/json" };
+  const lookup = await input.fetchImpl(`${apiBase}/assistants?skip=0&limit=1&name=${encodeURIComponent(name)}`, {
+    headers,
+    signal: input.signal,
+  });
+  if (!lookup.ok) throw new BackboardError(`Backboard assistant lookup HTTP ${lookup.status}`);
+  const existing = assistantList(await lookup.json())[0];
+  const existingId = existing && stringValue(existing.assistant_id);
+  if (existingId) return existingId;
+
+  const cloned = await input.fetchImpl(`${apiBase}/assistants/${encodeURIComponent(input.baseAssistantId)}/clone`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ name, copy_documents: true, copy_memories: input.copyMemories }),
+    signal: input.signal,
+  });
+  if (!cloned.ok) {
+    const detail = (await cloned.text()).slice(0, 300);
+    throw new BackboardError(`Backboard assistant clone HTTP ${cloned.status}${detail ? `: ${detail}` : ""}`);
+  }
+  const payload = await cloned.json() as JsonRecord;
+  const assistant = isRecord(payload.assistant) ? payload.assistant : payload;
+  const clonedId = stringValue(assistant.assistant_id);
+  if (!clonedId) throw new BackboardError("Backboard assistant clone omitted assistant_id");
+  return clonedId;
+}
+
+function assistantList(value: unknown): JsonRecord[] {
+  if (Array.isArray(value)) return value.filter(isRecord);
+  if (!isRecord(value)) return [];
+  const assistants = value.assistants ?? value.items ?? value.data;
+  return Array.isArray(assistants) ? assistants.filter(isRecord) : [];
+}
+
+function stableShopperHash(value: string): string {
+  let hash = 0x811c9dc5;
+  for (const character of value) {
+    hash ^= character.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
 function optionalNumber<Key extends string>(key: Key, value: unknown): Record<Key, number> | Record<string, never> {

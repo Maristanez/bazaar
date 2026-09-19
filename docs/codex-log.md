@@ -212,3 +212,13 @@
 **Decision:** Switched the Backboard OpenAI default from `gpt-4o` to `gpt-4.1-mini`. In the live comparison it was the best balance of instruction following, speed and cost. It recalled the shopper memory, retrieved `sizing-guide.md`, `store-notes.md` and `policy.md`, answered in 3,906 ms for $0.0009376, then returned a check passing offer in 1,401 ms for $0.0006112.
 
 **Rejected options:** `gpt-4o-mini` cost less but added an unsupported claim to the constrained offer. `gpt-5-mini` exceeded the ten second comparison timeout. The product keeps its four second cap and deterministic fallback.
+
+### #11 — `Sat 18:35` · `Ricardo / Codex` · `Per-shopper Backboard memory`
+
+**Prompt:** Give the local Backboard shopkeeper real MVP memory, keep it simple, avoid ROG, and make the shopper experience smarter.
+
+**What Codex produced:** Added lazy per-shopper Assistant provisioning. Each identified shopper receives a deterministic isolated clone of the indexed store Assistant, with store documents copied and `memory: Auto`; the seeded `demo` shopper also copies the base memory. Anonymous traffic remains read-only so unrelated shoppers cannot share writable memory.
+
+**What the live test found:** A first attempt accidentally entered the offer parser because numeric training details looked like an offer. The proof was corrected to use a non-price preference. Backboard stored “purple” and “snowy conditions”, recalled both from a different negotiation, and recalled them again after the server restarted. The log reported `recalledMemory: true`. Codex also removed structured `Memories [1]` citation markers from shopper-facing prose.
+
+**Outcome:** Full tests pass, 154 of 154, and the workspace typecheck is green. R10 now has real cross-thread, restart-safe, per-shopper memory; only the proactive seeded demo greeting remains before the tracker acceptance line can be checked.

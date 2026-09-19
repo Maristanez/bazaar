@@ -28,7 +28,9 @@ const backboard = process.env.BACKBOARD_API_KEY
     assistantId: backboardAssistantId,
     provider: backboardProvider,
     model: backboardModel,
-    memory: process.env.BACKBOARD_MEMORY_MODE || "Readonly",
+    memory: process.env.BACKBOARD_MEMORY_MODE || "Auto",
+    isolateMemoryByShopper: true,
+    seededShopperIds: ["demo"],
     timeoutMs: Number.isFinite(backboardTimeoutMs) && backboardTimeoutMs > 0 ? backboardTimeoutMs : 6500,
   })
   : null;

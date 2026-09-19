@@ -175,6 +175,102 @@ describe("Backboard choose and say", () => {
 });
 
 describe("Backboard document and memory answers", () => {
+  it("clones one document backed assistant per shopper before enabling writable memory", async () => {
+    const calls: { url: string; body?: Record<string, unknown> }[] = [];
+    let clone = 0;
+    let message = 0;
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : undefined;
+      calls.push({ url, body });
+      if (url.includes("/assistants?") && url.includes("name=")) return Response.json({ assistants: [] });
+      if (url.endsWith("/clone")) {
+        clone += 1;
+        return Response.json({ assistant: { assistant_id: `shopper-assistant-${clone}` }, documents_cloned: 3, memories_cloned: 0 });
+      }
+      message += 1;
+      return sseResponse([{
+        type: "run_ended",
+        status: "completed",
+        final_content: "Trail Runner 3 fits true to size.",
+        thread_id: `thread-${message}`,
+        assistant_id: body?.assistant_id,
+      }]);
+    }) as unknown as typeof fetch;
+    const client = createBackboardShopkeeper({
+      apiKey: "key",
+      assistantId: "base-assistant",
+      memory: "Auto",
+      isolateMemoryByShopper: true,
+      fetchImpl,
+    });
+
+    await client.answerQuestion({ shopperId: "shopper-1", negotiationId: "one", shopperMessage: "Do these run small?" });
+    await client.answerQuestion({ shopperId: "shopper-1", negotiationId: "two", shopperMessage: "Remember my size?" });
+    await client.answerQuestion({ shopperId: "shopper-2", negotiationId: "one", shopperMessage: "Do these run small?" });
+
+    const clones = calls.filter(call => call.url.endsWith("/clone"));
+    const messages = calls.filter(call => call.url.endsWith("/threads/messages"));
+    expect(clones).toHaveLength(2);
+    expect(clones[0]?.body).toMatchObject({ copy_documents: true, copy_memories: false });
+    expect(messages.map(call => call.body?.assistant_id)).toEqual(["shopper-assistant-1", "shopper-assistant-1", "shopper-assistant-2"]);
+    expect(messages.every(call => call.body?.memory === "Auto")).toBe(true);
+  });
+
+  it("reuses a previously cloned shopper assistant after restart style lookup", async () => {
+    const calls: string[] = [];
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.includes("/assistants?")) return Response.json({ assistants: [{ assistant_id: "existing-shopper-assistant" }] });
+      return sseResponse([{
+        type: "run_ended",
+        status: "completed",
+        final_content: "Trail Runner 3 fits true to size.",
+        thread_id: "thread-existing",
+        assistant_id: "existing-shopper-assistant",
+      }]);
+    }) as unknown as typeof fetch;
+    const client = createBackboardShopkeeper({
+      apiKey: "key",
+      assistantId: "base-assistant",
+      memory: "Auto",
+      isolateMemoryByShopper: true,
+      fetchImpl,
+    });
+
+    const answer = await client.answerQuestion({ shopperId: "shopper-1", negotiationId: "one", shopperMessage: "Do these run small?" });
+
+    expect(answer.trace.assistantId).toBe("existing-shopper-assistant");
+    expect(calls.some(url => url.endsWith("/clone"))).toBe(false);
+  });
+
+  it("never writes memory for an anonymous shopper", async () => {
+    let body: Record<string, unknown> | undefined;
+    const fetchImpl = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return sseResponse([{
+        type: "run_ended",
+        status: "completed",
+        final_content: "Trail Runner 3 fits true to size.",
+        thread_id: "thread-anonymous",
+        assistant_id: "base-assistant",
+      }]);
+    }) as unknown as typeof fetch;
+    const client = createBackboardShopkeeper({
+      apiKey: "key",
+      assistantId: "base-assistant",
+      memory: "Auto",
+      isolateMemoryByShopper: true,
+      fetchImpl,
+    });
+
+    await client.answerQuestion({ shopperId: "anonymous-shopper", negotiationId: "one", shopperMessage: "Do these run small?" });
+
+    expect(body?.assistant_id).toBe("base-assistant");
+    expect(body?.memory).toBe("Readonly");
+  });
+
   it("answers through the same negotiation thread and keeps citations in owner telemetry", async () => {
     let body: Record<string, unknown> | undefined;
     const fetchImpl = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
@@ -219,6 +315,18 @@ describe("Backboard document and memory answers", () => {
     };
     expect(validateBackboardAnswer("Trail Runner 2 is $169.", input)).toBe("Trail Runner 2 is $169.");
     expect(() => validateBackboardAnswer("I can invent a $120 deal.", input)).toThrow("unknown dollar amount");
+  });
+
+  it("removes Backboard memory citations from the shopper answer", () => {
+    const input = {
+      shopperId: "shopper-1",
+      negotiationId: "negotiation-1",
+      shopperMessage: "What do you remember?",
+    };
+    expect(validateBackboardAnswer(
+      "Your favorite color is purple. (Memories [1] and [2]) Want a recommendation?",
+      input,
+    )).toBe("Your favorite color is purple. Want a recommendation?");
   });
 
   it.each([
