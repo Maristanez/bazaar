@@ -465,7 +465,13 @@ async function makeOfferFromPayload(payload, message) {
   const mirror = await syncMirror();
   const match = findProductFromPayload({ ...payload, text: message }, mirror);
   if (!match) return { reply: "Pick a published product first, then send me a number like “Could you do $120?”", products: publicProducts(mirror).slice(0, 8) };
-  const dollars = parseMoney(message) ?? parseMoney(payload.amount) ?? Math.round(match.item.list * 0.82 / 100);
+  const dollars = parseMoney(message) ?? parseMoney(payload.amount);
+  if (dollars === null) {
+    return {
+      reply: `I can talk bundle, but I need your number first. Try “Could you do ${formatMoney(roundToShopper(match.item.list * 0.85))} if I add socks?” and give me a reason.`,
+      products: publicProducts(mirror).slice(0, 8),
+    };
+  }
   const offered = dollarsToCents(dollars);
   const negotiationId = String(payload.negotiationId || `${payload.shopperId || "shopper"}:${match.item.productId}:${match.item.size || "default"}`);
   const previousRound = state.negotiations.get(negotiationId)?.round || 0;
@@ -522,11 +528,22 @@ function priceOffer(main, offered, round, mirror, reason = { score: 0, label: nu
   const ask = roundToShopper(askFor(main.list, target, main.stockedAt, round));
   const safeOffered = roundToShopper(offered);
   const hasConvincingReason = reason.score >= 2;
-  if (safeOffered >= floor && safeOffered >= target && safeOffered <= main.list && (hasConvincingReason || round >= 3)) {
+  if (safeOffered >= floor && safeOffered >= target && safeOffered <= main.list && round >= 2 && (hasConvincingReason || round >= 3)) {
     return { kind: "accepted", items: [main], listTotal: roundToShopper(main.list), total: safeOffered, line: `${reasonPrefix(reason)}Deal — I can hold ${formatMoney(safeOffered)} for 15 minutes.`, badges: reasonBadges(reason, ["safe margin", "held 15:00"]) };
   }
   const addOn = mirror.items.find((item) => item.isAddOn && item.inStock && item.cost !== null);
-  if (addOn && round < MAX_ROUNDS && (reason.score > 0 || round > 1)) {
+  if (round === 1 && reason.score > 0) {
+    const openingAsk = roundToShopper(askFor(main.list, target, main.stockedAt, 2));
+    return {
+      kind: "counter",
+      items: [main],
+      listTotal: roundToShopper(main.list),
+      total: openingAsk,
+      line: `${reasonPrefix(reason)}I will not jump to my best on the first pass. I can start at ${formatMoney(openingAsk)} — come back once and I can sharpen it.`,
+      badges: reasonBadges(reason, ["opening counter", "one more move"]),
+    };
+  }
+  if (addOn && round < MAX_ROUNDS && (reason.score > 0 || round >= 3)) {
     const addonPart = Math.ceil(addOn.cost + (addOn.list - addOn.cost) / 2);
     const bundleTotal = roundToShopper(Math.max(ask + addonPart, floor + addonPart));
     return { kind: "bundle", items: [main, addOn], listTotal: roundToShopper(main.list + addOn.list), total: bundleTotal, line: `${reasonPrefix(reason)}I cannot do ${formatMoney(safeOffered)} on that alone, but I can do ${formatMoney(bundleTotal)} with ${addOn.title} included.`, badges: reasonBadges(reason, [`＋ ${addOn.title}`, "safe bundle"]) };

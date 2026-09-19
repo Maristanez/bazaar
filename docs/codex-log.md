@@ -86,6 +86,14 @@
 - **What we changed or threw away, and why:** Weak “give me $50” asks now get firmer counters and a prompt to give a real reason. Stronger reasons such as bundle intent, repeat shopper, real budget, market comparison, or race/trip/gift context earn better counters.
 - **Outcome:** The demo can show that the AI is not a coupon machine: it reacts to buyer context while code still controls the money.
 
+### #9 — `Sat 17:00` · `Ritvik` · `Transcript-driven haggle pacing`
+
+- **Prompt:**
+  > read my current chat transcript with browser control. There should be a little back and forth before the really final price.
+- **What Codex found:** The transcript showed “give me a bundle deal” being treated as if the shopper had offered $48, and the existing negotiation was already on round 3. That made the bot look like it invented a price and jumped ahead.
+- **What Codex changed:** Bundle/deal requests without a number now ask for a concrete offer first. Strong first-turn reasons get an opening counter with a “one more move” badge instead of immediately jumping to the sharper bundle/final-style offer.
+- **Outcome:** The chat now has a more natural negotiation rhythm: ask → reason/number → opening counter → sharper counter/final later.
+
 <!-- Copy the block above for each new entry. Never edit an old entry to make it sound better — add a follow-up entry instead. -->
 
 ### R14 follow-up — 2026-09-19 · Ricardo / Codex · merchant domain correction
