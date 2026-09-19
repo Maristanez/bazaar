@@ -8,7 +8,9 @@
 
 ## Start here
 
-**[`PLAN.md`](PLAN.md) is the source of truth.** Plan v3, human-to-agent. Where anything in this folder disagrees with it, PLAN.md wins.
+**[`SIMPLE.md`](SIMPLE.md) is the scope** — the one-action version ("Make an offer"): what we build and nothing more. Read it first; it's short.
+
+**[`PLAN.md`](PLAN.md) is the reference** — Plan v3, the detail behind each piece (engine maths, guardrails, Shopify calls, Backboard gotchas). If the two disagree about *what to build*, SIMPLE.md wins.
 
 If you have five minutes: PLAN.md §0 (TL;DR), §2 (the product), §15 (demo script).
 If you're about to build: §11 (repo & contracts), §12 (three lanes), §13 (schedule).
