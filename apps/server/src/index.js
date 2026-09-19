@@ -779,6 +779,10 @@ function bestExplicitProductMention(text, items) {
     .map((item) => ({ item, score: productMentionScore(normalizedText, item) }))
     .filter((candidate) => candidate.score > 0)
     .sort((a, b) => b.score - a.score);
+  const nonAddOn = candidates.find((candidate) => !candidate.item.isAddOn);
+  if (nonAddOn && candidates[0]?.item.isAddOn && /\b(bundle|with|plus|and|add|throw in|include)\b/i.test(normalizedText)) {
+    return nonAddOn.item;
+  }
   return candidates[0]?.item || null;
 }
 
