@@ -3,13 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "node --experimental-strip-types src/index.js",
     "typecheck": "tsc --noEmit",
     "smoke:supabase": "node --experimental-strip-types --env-file-if-exists=../../.env src/infra/smoke.mjs"
   },
   "dependencies": {
     "@bazaar/contracts": "workspace:*",
     "@bazaar/engine": "workspace:*",
+    "@bazaar/llm": "workspace:*",
     "@supabase/supabase-js": "2.116.0"
   }
 }

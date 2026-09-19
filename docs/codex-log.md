@@ -177,7 +177,6 @@
 - **What we changed or rejected:** We used Supabase's current publishable and secret keys instead of relying only on deprecated anon and service-role names. We did not mark R14 complete because Hono route wiring, live Adopt, public-denial and restart-reload acceptance checks remain.
 - **Outcome:** The remote project is healthy and contains the seeded merchant and 25% policy. A real server-key smoke read succeeded. Focused tests report 9 passing; the full suite reports 103 passing; typecheck is green. Files: `infra/schema.sql`, `apps/server/src/infra/db.ts`, `apps/server/src/infra/smoke.mjs`.
 
-
 ### S5 — 2026-09-19 · Bryan (BM) · Owner Console shell
 
 - **Prompt (trimmed):** codex-prompt-console.txt: apps/web only, fixture-era S5 acceptance, swappable ConsolePort, strict TDD, one commit per task; no theme/server/contracts edits.
@@ -193,3 +192,23 @@
 - **Red → green:** Failing preview/Adopt assertions drove the policy panel; button/timeout tests drove approvals. Reviewer regressions fixed historical replay overriding owner decisions, canned resolution preventing the real 45-second timeout, late approval clicks, an approval arriving during an initial snapshot load, and stale reconnect snapshots overwriting completed Adopt/PAUSE writes. Reconnect preserves local drafts. A delayed-event regression preserves newest-first timestamp order.
 - **Ambiguities:** Default interactive fixtures rebase historical deadlines and omit recorded automatic resolution so owner actions or the deadline govern; an explicitly supplied stream retains the complete recorded lifecycle. No server approval implementation or shared contracts changed. Missing cost uses the blocked coral flag; slow stock uses dull amber. The 480px Gym remains blank for B12.
 - **Verification/review:** Full suite **125/125** (22 web tests), **888 ms**; root typecheck green; production web build green (463 ms). Desktop and 390px mobile inspected; slider/Adopt and PAUSE exercised in browser, no mobile overflow, Gym 480px. Standards/spec reviewers verified race and timeout fixes. Impeccable visual review found the checkbox needed a recognizable switch; fixed and re-reviewed with no remaining finding. Impeccable detector returned no findings. Original live next-shopper and approval lifecycle acceptance remains R15/B14/B8/S7 work. S5 commit: `d9f344e`. Forbidden paths and unrelated Gym design files untouched.
+
+### R10 and R11 partial implementation, 2026-09-19, Ricardo and Codex
+
+**Prompt:** Replace the existing Gemini shopper answer path with Backboard and use an OpenAI model selected inside Backboard. Connect the manually created `Dealify-shop` Assistant, its three indexed documents, and the seeded shopper memory. Test the real path directly.
+
+**Produced:** Added the `@bazaar/llm` REST streaming adapter, safe menu projection, per shopper plus negotiation thread reuse, separate question and choose prompts, full response buffering, `run_ended`, `run_failed`, `error`, timeout, model, latency, `cost_usd`, memory, document metadata, and strict `OPTION: X` parsing. The live server now sends ordinary shopper questions and checked offer wording through Backboard to OpenAI `gpt-4o`; code fallback remains active.
+
+**Safety:** The model receives only the public menu fields. Cost, floor, target and profit stay outside the request. Offer text reaches the shopper only after the existing deterministic check accepts it. Question answers reject private terms, unchecked links, percentage claims and dollar amounts outside the public product prices. Failure, timeout, malformed output, unknown options and unsupported wording all fall back to code text.
+
+**Verification:** The full suite reports 117 passing tests and typecheck is green. A live local server run answered the Trail Runner sizing question using recalled size 10 and muddy 50k context, then reused the same Backboard thread for an offer. The checked offer run took 1,789 ms and reported `cost_usd` 0.006935 through OpenAI `gpt-4o`.
+
+**Remaining scope:** R10 and R11 stay open. The demo currently uses the one configured Backboard Assistant instead of provisioning one Assistant per shopper. The JavaScript server route currently presents one code approved offer option; the typed B5 chooser port is prepared to send the complete B2 menu when that core becomes the live route.
+
+### R11 model selection follow up, 2026-09-19, Ricardo and Codex
+
+**Prompt:** Prefer a model that is intelligent, inexpensive and fast, with permission to cost somewhat more than the cheapest small model.
+
+**Decision:** Switched the Backboard OpenAI default from `gpt-4o` to `gpt-4.1-mini`. In the live comparison it was the best balance of instruction following, speed and cost. It recalled the shopper memory, retrieved `sizing-guide.md`, `store-notes.md` and `policy.md`, answered in 3,906 ms for $0.0009376, then returned a check passing offer in 1,401 ms for $0.0006112.
+
+**Rejected options:** `gpt-4o-mini` cost less but added an unsupported claim to the constrained offer. `gpt-5-mini` exceeded the ten second comparison timeout. The product keeps its four second cap and deterministic fallback.

@@ -93,7 +93,7 @@
         "type": "text",
         "id": "ai_chat_endpoint",
         "label": "Backend chat endpoint",
-        "info": "Optional. Set this to your server or proxy endpoint. Do not put a Gemini API key in theme code."
+        "info": "Optional. Set this to your server or proxy endpoint. Keep Backboard and model API keys on the server."
       }
     ]
   }

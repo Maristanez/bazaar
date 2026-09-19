@@ -197,7 +197,11 @@ it("routes public events without private pricing fields or raw shopper text", as
   ports.chooseAndSay = async (options, context) => {
     chooseInput = options;
     chooseContext = context;
-    return { optionId: "C1", line: "Trail Runner 2 is ready at $120." };
+    return {
+      optionId: "C1",
+      line: "Trail Runner 2 is ready at $120.",
+      trace: { provider: "openai", model: "gpt-4o", ms: 2252, costUsd: 0.0035, threadId: "thread-1", memory: "size 10" },
+    };
   };
   ports.understand = async (input) => {
     understandInput = input;
@@ -213,9 +217,17 @@ it("routes public events without private pricing fields or raw shopper text", as
   await acceptOffer(ports, card.card.offerId);
   for (const event of [...events, ...chats]) expect(JSON.stringify(event)).not.toMatch(forbidden);
   expect(JSON.stringify([chooseInput, chooseContext])).not.toMatch(/"(?:cost|floor|profit|target)"/);
+  expect(chooseContext).toMatchObject({
+    shopperId: "shopper-1",
+    negotiationId: "id-1",
+    shopperMessage: "my private words $120",
+    productId: "tr3",
+    size: "10",
+  });
   expect(JSON.stringify(understandInput)).not.toMatch(/"(?:cost|floor|profit|target)"/);
   expect((consoles as { event: unknown }[]).find(({ event }) => (event as { kind?: string }).kind === "decision")?.event).toMatchObject({
     kind: "decision", menu: expect.any(Array), picked: expect.any(String), floor: expect.any(Number), cost: expect.any(Number), profit: expect.any(Number),
+    memory: "size 10", threadId: "thread-1", llm: { provider: "openai", model: "gpt-4o", ms: 2252, costUsd: 0.0035 },
   });
   expect(JSON.stringify(events)).not.toContain("my private words");
 });
