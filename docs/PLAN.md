@@ -4,7 +4,7 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 18:32 EDT — merged owner integration, shared live pricing menu, multi-product fixes, Gym and isolated red-team evidence with the upstream revival documents. 267 tests across 37 files, workspace type checks and production build pass. Hosted deployment acceptance remains open.
+**Last updated:** Sat 19 Sep 18:36 EDT — merged owner integration, shared live pricing menu, multi-product fixes, Gym and isolated red-team evidence with the upstream revival documents. 272 tests across 37 files, workspace type checks and production build pass. Hosted deployment acceptance remains open.
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
@@ -19,13 +19,13 @@
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
 | 🛍️ A. Storefront + Shopify store | Ritvik | Trailhead logo/name wired into the live theme; chat haggling now asks for stronger buyer reasons before sharper discounts; live Railway minted `BAZAAR-2180U` | **① S13 DEVPOST — 14:00 HARD, still unstarted. Select all four tracks even if unbuilt; selection locks and cannot be added later ② S3 gate-0 decision, 100 min overdue ③** browser click-through of the checkout total | Shopify admin store rename for Checkout branding; remove-bundle-item check |
-| ⚙️ B. Engine, core, Gym + Console | Bryan | Owner routes, policy-to-Backboard updates, approvals, emergency PAUSE, 300-shopper Gym and isolated red-team artifact implemented and locally verified; 267 tests pass | Apply nullable-code migration, publish theme, verify Railway deployment, then rerun hosted flows | Shopify / Railway / Supabase dashboard access; live checkout and theme acceptance remain open |
+| ⚙️ B. Engine, core, Gym + Console | Bryan | Owner routes, policy-to-Backboard updates, approvals, emergency PAUSE, 300-shopper Gym and isolated red-team artifact implemented and locally verified; 272 tests pass | Apply nullable-code migration, publish theme, verify Railway deployment, then rerun hosted flows | Shopify / Railway / Supabase dashboard access; live checkout and theme acceptance remain open |
 | 🔌 C. Platform | Ricardo | R2 token wrapper, R4 product mirror, `/api/products`, `/api/stream`, offer cards, `discountCodeBasicCreate` and cart permalinks are **live on Railway deploy `6f1032c6`** | Manual checkout-total / free-shipping / tax verification; then R16 remove-bundle-item test; then R12 pin + R13 domain before 13:00 | Store checkout settings / manual checkout verification |
 | 🤖 D. Agents + guardrails | **Ricardo / Codex for Backboard; remaining guardrails need an owner** | Shopper Q&A and checked offer wording now route through Backboard to OpenAI `gpt-4.1-mini`; indexed documents, seeded memory, thread reuse, telemetry and fallback were verified live. Per shopper Assistant creation and the complete B2 menu handoff remain | R9 *understand* direct OpenAI call, then finish R10 per shopper Assistants and connect the live route to the complete B2 menu | Ricardo / Codex for R10/R11 |
 
 > **▶ The plan from here is [`REVIVAL-PLAN.md`](REVIVAL-PLAN.md)** (Sat 18:15 EDT): six phases that plug the verified engine, the guardrails and the Gym into the live demo without breaking it, the cuts, and the nine human-only steps. It supersedes the remaining schedule in §5 below; this file stays the tracker — tick boxes here.
 
-### Integration merge verification — Sat 19 Sep 18:32 EDT
+### Integration merge verification — Sat 19 Sep 18:36 EDT
 
 See `console-integration.md` for evidence and deployment steps. The current storefront server uses the pure engine negotiation menu with deterministic option-A fallback, authenticated owner routes and settlement audits. The Gym shares that menu; its 300 synthetic shoppers are rule-based and its figures are not promised demo outcomes. The isolated HTTP red-team run reports 20/20 passing cases with zero breaches, but does not prove live Shopify code reuse or bundle-removal enforcement. Shared persistent Backboard memory remains off pending per-shopper isolation.
 

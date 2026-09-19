@@ -1,10 +1,10 @@
 # Console → Backboard → Shopify verification
 
-Current verification status (2026-09-19): the local server/widget path was exercised against the real Shopify catalog, Backboard assistant, and Supabase merchant. The live storefront is https://b8wzw0-h3.myshopify.com/; Railway is still serving the older unpublished server/theme state, and `/console` currently returns 404. Shopify, Railway, and Supabase dashboard logins are still pending. Local widget → real-service evidence is not proof of the published storefront.
+Last pre-merge deployment check (2026-09-19): the local server/widget path was exercised against the real Shopify catalog, Backboard assistant, and Supabase merchant. The live storefront is https://b8wzw0-h3.myshopify.com/; Railway was serving the older server, and its `/console` returned 404. The GitHub main merge can trigger a new Railway deployment; verify its result separately. The updated Shopify theme also requires separate publication. Shopify, Railway, and Supabase dashboard logins are still pending. Local widget → real-service evidence is not proof of the published storefront.
 
 ## Connected path
 
-The owner signs in through Supabase Auth. Every owner route verifies that the bearer token belongs to the configured merchant. Adopt appends a policy row before updating the server's active policy. Each shopper turn uses that policy to generate a safe price in `packages/engine`; Backboard receives the public option and supplies checked wording. The owner feed receives the private decision over authenticated SSE. Shopify checkout acceptance refreshes costs and inventory and checks current policy again. Successful settlements are recorded in Supabase.
+The owner signs in through Supabase Auth. Every owner route verifies that the bearer token belongs to the configured merchant. Adopt appends a policy row before updating the server's active policy. Each shopper turn uses that policy to generate a safe price in `packages/engine`; Backboard receives the private code-priced candidate menu and returns a selected option and checked wording. Shoppers receive only the selected public card. The owner feed receives the private decision over authenticated SSE. Shopify checkout acceptance refreshes costs and inventory and checks current policy again. Successful settlements are recorded in Supabase.
 
 PAUSE invalidates existing offers and cancels pending approvals. Resume permits new offers without reviving cancelled cards. Owner decisions update the same shopper card through status polling. Approval is once per negotiation, above cost, and expires after 45 seconds; decline/timeout restores the final safe offer. Repeated acceptance returns the same settlement and cannot mint twice.
 
@@ -37,7 +37,7 @@ The local production build is served by the server at `/console`; the Railway de
 
 ## Automated coverage
 
-Final validation is recorded in the [validation report](../outputs/console-integration-report.md). This document avoids treating a historical test count as current deployment proof. The report includes type checks, web build, diff checks, integration/security/runtime/Backboard/widget coverage, and the bundle secret scan.
+Merge-time validation is recorded in `codex-log.md`: workspace tests and type checks, production web build, diff checks, integration/security/runtime/Backboard/widget coverage, and a secret scan of committed files and browser assets. These checks do not establish hosted deployment success.
 
 HTTP integration tests exercise Adopt, PAUSE, fresh costs, quantity inventory, live Backboard-menu projection using an external API double, authenticated SSE, approval, duplicate acceptance and public/private payload boundaries. Separate security tests cover every owner route, invalid mutations, policy restart recovery and SSE cursors across server restarts. Runtime tests cover 45-second timeout, decline, pause cancellation and races. Backboard tests cover per-session thread reuse, concurrent calls, memory settings, parsing and failure fallback. Real widget DOM tests cover selected variants, negotiation IDs, pending decisions, price/countdown changes and settlement handoff. Engine tests include generated price/cost/floor invariants.
 

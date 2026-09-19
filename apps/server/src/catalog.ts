@@ -39,9 +39,14 @@ export function selectCatalogItem(
   // Match named products against the whole catalog first. If the named
   // product is unavailable, the later usable-item checks return null instead
   // of silently falling through to the page product or a fallback model.
-  const pageContext = hasAuthoritativeProduct(product, payload) ? items.find(item => productMatches(item, product)) : undefined;
+  const pageVariant = stringId(product.selectedVariantId || product.variantId);
+  const pageContext = hasAuthoritativeProduct(product, payload)
+    ? items.find(item => productMatches(item, product) && (item.variantId === pageVariant || item.variantNumericId === pageVariant))
+      || items.find(item => productMatches(item, product))
+    : undefined;
   const accessoryContext = !payload.negotiationId && pageContext ? pageContext : contextItem ?? pageContext;
   const explicit = explicitProduct(message, items, accessoryContext);
+  if (!explicit && hasUnknownNamedProduct(rawMessage)) return null;
   const sameProduct = (a: NegotiationItem | undefined, b: NegotiationItem | undefined): boolean => Boolean(a && b && (a.productId === b.productId || (!!a.handle && a.handle === b.handle)));
 
   let productItems: NegotiationItem[] = [];
@@ -73,6 +78,16 @@ export function selectCatalogItem(
     return sized.inStock && sized.cost !== null ? sized : null;
   }
 
+  const priorItem = contextItem ?? pageContext;
+  const explicitFootwearSwitch = explicit && priorItem && !sameProduct(explicit, priorItem)
+    && (!pageContext || !sameProduct(explicit, pageContext))
+    && /\b(?:shoe|shoes|footwear)\b/.test(normalize(explicit.productType || ""));
+  if (explicitFootwearSwitch) {
+    if (!priorItem.size) return productItems.length === 1 ? usableItem(productItems[0]) : null;
+    const sameSize = productItems.find(item => normalize(item.size || "") === normalize(priorItem.size || ""));
+    return sameSize ? usableItem(sameSize) : null;
+  }
+
   const wantedVariant = stringId(product.selectedVariantId || product.variantId);
   const payloadSelectsThisProduct = productItems.some((item) => productMatches(item, product));
   const preserveContextVariant = contextItem && productItems.some(item => item.variantId === contextItem.variantId) && (isContextPreservingFollowup(message) || isAccessoryContextMessage(message)) && !payload.variantSelectionChanged;
@@ -87,6 +102,24 @@ export function selectCatalogItem(
 
   const first = productItems.find((item) => item.inStock && item.cost !== null);
   return first || null;
+}
+
+function usableItem(item: NegotiationItem | undefined): NegotiationItem | null {
+  return item?.inStock && item.cost !== null ? item : null;
+}
+
+function hasUnknownNamedProduct(message: string): boolean {
+  const match = /\$\s*\d+(?:\.\d+)?\s+for\s+(?:the\s+)?([^?.,!]+)/i.exec(message);
+  if (!match) return false;
+  const rawTarget = match[1]!.split(/\s+for\s+(?:a|an|my|our|the)\b/i)[0]!.trim();
+  const target = normalize(rawTarget);
+  if (!target || /^(?:same |these |those |this |that )?(?:shoes?|pair|item|one|them|it)$/.test(target)) return false;
+  if (/^(?:size|sz)\b|^\d+\s+(?:pairs?|items?)\b/.test(target)) return false;
+  const clearProductNoun = /\b(?:boots?|sneakers?|shoes?|runners?|socks?|gaiters?|flasks?|caps?|vests?|shirts?|tees?)\b/.test(target);
+  if (/^(?:a|an|my|our)\b/.test(target) && !clearProductNoun) return false;
+  return /\d/.test(target)
+    || clearProductNoun
+    || /^[A-Z][A-Za-z'-]+(?:\s+[A-Z0-9][A-Za-z0-9'-]*)*$/.test(rawTarget);
 }
 
 function hasAuthoritativeProduct(product: Record<string, unknown>, payload: CatalogPayload): boolean {
