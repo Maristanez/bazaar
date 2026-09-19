@@ -41,13 +41,13 @@
 - **What we changed or threw away, and why:** We did not enable a fake Deal button. It stays disabled until R6/R7 can mint a real Shopify discount code and checkout permalink.
 - **Outcome:** Plan A can now be demoed as a product-aware storefront preview while the tracker clearly shows the API credentials and server settlement blockers.
 
-### #4 — `<Sat HH:MM>` · `<name>` · `<task id>`
+### #4 — `Sat 10:30` · `Ritvik` · `S2 chat endpoint`
 
 - **Prompt:**
-  > …
-- **What Codex produced:** …
-- **What we kept:** …
-- **What we changed or threw away, and why:** …
-- **Outcome:** …
+  > lets work on the chat icon alright? I will connect it to gemini api
+- **What Codex produced:** A polished Bazaar chat/spark launcher icon, theme settings for the launcher label and backend chat endpoint, and a browser-side endpoint handoff that posts public storefront context to a future server.
+- **What we kept:** The no-secret boundary: Gemini is intentionally not called from theme code. The demo still works without an endpoint because the scripted fallback remains active.
+- **What we changed or threw away, and why:** We did not add a Gemini API key or direct Gemini request in Liquid/JavaScript because browser bundles are public.
+- **Outcome:** The widget is ready for a real `/api/chat` or hosted proxy while preserving the existing demo behavior.
 
 <!-- Copy the block above for each new entry. Never edit an old entry to make it sound better — add a follow-up entry instead. -->

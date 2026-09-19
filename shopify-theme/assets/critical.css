@@ -334,6 +334,12 @@ select:focus-visible {
   font-weight: 800;
 }
 
+.ai-chat__form.is-loading input,
+.ai-chat__form.is-loading button {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 .ai-chat__source {
   padding: 0 1rem 1rem;
   color: #4b5563;
@@ -362,6 +368,13 @@ select:focus-visible {
   transition: background-color 180ms ease, transform 180ms ease;
 }
 
+.ai-chat__launcher-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
 .ai-chat__launcher:hover,
 .ai-chat__launcher[aria-expanded="true"] {
   background: #0f766e;
@@ -369,8 +382,14 @@ select:focus-visible {
 }
 
 .ai-chat__launcher svg {
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 @media (prefers-reduced-motion: reduce) {

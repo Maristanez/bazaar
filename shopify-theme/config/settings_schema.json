@@ -79,5 +79,22 @@
         "default": 4
       }
     ]
+  },
+  {
+    "name": "Bazaar AI chat",
+    "settings": [
+      {
+        "type": "text",
+        "id": "ai_chat_label",
+        "label": "Launcher label",
+        "default": "AI chat"
+      },
+      {
+        "type": "text",
+        "id": "ai_chat_endpoint",
+        "label": "Backend chat endpoint",
+        "info": "Optional. Set this to your server or proxy endpoint. Do not put a Gemini API key in theme code."
+      }
+    ]
   }
 ]

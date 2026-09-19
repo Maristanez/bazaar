@@ -10,6 +10,7 @@
   var panel = widget.querySelector('#ai-chat-panel');
   var messages = widget.querySelector('[data-ai-chat-messages]');
   var welcome = widget.querySelector('[data-ai-chat-welcome]');
+  var mode = widget.querySelector('[data-ai-chat-mode]');
   var form = widget.querySelector('[data-ai-chat-form]');
   var input = widget.querySelector('[data-ai-chat-input]');
   var promptButtons = widget.querySelectorAll('[data-ai-chat-prompt]');
@@ -18,6 +19,8 @@
   var products = readProducts(productSource);
   var currentProduct = readCurrentProduct(currentProductSource);
   var shopperId = getShopperId();
+  var endpoint = normalizeEndpoint(widget.getAttribute('data-ai-chat-endpoint'));
+  var sending = false;
 
   var responses = function () {
     var outfit = findOutfitProducts(products);
@@ -55,6 +58,14 @@
 
   if (welcome) {
     welcome.textContent = getWelcomeMessage();
+  }
+
+  if (mode && endpoint) {
+    mode.textContent = 'AI endpoint ready';
+  }
+
+  function normalizeEndpoint(value) {
+    return String(value || '').trim();
   }
 
   function readProducts(source) {
@@ -246,6 +257,49 @@
       .replace(/'/g, '&#039;');
   }
 
+  function getContextPayload(text) {
+    return {
+      message: text,
+      shopperId: shopperId,
+      pageUrl: window.location.href,
+      product: currentProduct,
+      products: products.slice(0, 8)
+    };
+  }
+
+  function setLoading(isLoading) {
+    sending = isLoading;
+    form.classList.toggle('is-loading', isLoading);
+    input.disabled = isLoading;
+    form.querySelector('button[type="submit"]').disabled = isLoading;
+  }
+
+  function askEndpoint(text) {
+    return window.fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(getContextPayload(text))
+    })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error('Chat endpoint returned ' + response.status);
+        }
+
+        return response.json();
+      })
+      .then(function (data) {
+        var reply = data && (data.reply || data.text || data.message);
+
+        if (!reply) {
+          throw new Error('Chat endpoint did not return reply text');
+        }
+
+        return String(reply);
+      });
+  }
+
   function openChat() {
     panel.hidden = false;
     toggle.setAttribute('aria-expanded', 'true');
@@ -265,6 +319,12 @@
     message.className = 'ai-chat__message ai-chat__message--' + type;
     message.textContent = text;
     messages.appendChild(message);
+    messages.scrollTop = messages.scrollHeight;
+    return message;
+  }
+
+  function replaceMessage(message, text) {
+    message.textContent = text;
     messages.scrollTop = messages.scrollHeight;
   }
 
@@ -309,6 +369,10 @@
   form.addEventListener('submit', function (event) {
     event.preventDefault();
 
+    if (sending) {
+      return;
+    }
+
     var text = input.value.trim();
 
     if (!text) {
@@ -317,6 +381,29 @@
 
     addMessage(text, 'user');
     input.value = '';
+
+    if (endpoint) {
+      setLoading(true);
+      var thinking = addMessage('Thinking...', 'bot');
+
+      askEndpoint(text)
+        .then(function (reply) {
+          replaceMessage(thinking, reply);
+        })
+        .catch(function () {
+          replaceMessage(thinking, getResponse(text) + ' I could not reach the AI endpoint, so I used the scripted fallback.');
+
+          if (/offer|deal|discount|checkout|haggle/i.test(text)) {
+            addOfferCard(getPrimaryProduct());
+          }
+        })
+        .finally(function () {
+          setLoading(false);
+          input.focus();
+        });
+
+      return;
+    }
 
     window.setTimeout(function () {
       addMessage(getResponse(text), 'bot');
