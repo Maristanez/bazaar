@@ -315,7 +315,19 @@
     else closeChat();
   });
 
-  close.addEventListener('click', closeChat);
+  if (close) {
+    close.addEventListener('click', function (event) {
+      event.preventDefault();
+      closeChat();
+    });
+  }
+
+  document.addEventListener('click', function (event) {
+    if (event.target && event.target.closest && event.target.closest('[data-ai-chat-close]')) {
+      event.preventDefault();
+      closeChat();
+    }
+  });
 
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape' && !panel.hidden) closeChat();

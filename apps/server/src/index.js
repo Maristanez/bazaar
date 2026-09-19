@@ -617,7 +617,7 @@ async function askGemini(context) {
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: systemPrompt() }] },
       contents: [{ role: "user", parts: [{ text: buildUserPrompt(context) }] }],
-      generationConfig: { temperature: 0.6, maxOutputTokens: 350 },
+      generationConfig: { temperature: 0.6, maxOutputTokens: 900 },
     }),
   });
   if (!geminiResponse.ok) throw new Error(`Gemini ${geminiResponse.status}: ${(await geminiResponse.text()).slice(0, 500)}`);
