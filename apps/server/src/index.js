@@ -21,6 +21,7 @@ const port = Number(process.env.PORT || 3000);
 const backboardProvider = process.env.BACKBOARD_MODEL_PROVIDER || "openai";
 const backboardModel = process.env.BACKBOARD_MODEL_NAME || "gpt-4.1-mini";
 const backboardAssistantId = process.env.BACKBOARD_ASSISTANT_ID || "16072e36-597a-4720-94c3-1d4cf2f520f9";
+const backboardTimeoutMs = Number(process.env.BACKBOARD_TIMEOUT_MS || 6500);
 const backboard = process.env.BACKBOARD_API_KEY
   ? createBackboardShopkeeper({
     apiKey: process.env.BACKBOARD_API_KEY,
@@ -28,6 +29,7 @@ const backboard = process.env.BACKBOARD_API_KEY
     provider: backboardProvider,
     model: backboardModel,
     memory: process.env.BACKBOARD_MEMORY_MODE || "Readonly",
+    timeoutMs: Number.isFinite(backboardTimeoutMs) && backboardTimeoutMs > 0 ? backboardTimeoutMs : 6500,
   })
   : null;
 const FLOOR_PCT = Number(process.env.BAZAAR_FLOOR_PCT || 25);
@@ -136,7 +138,7 @@ const server = createServer(async (request, response) => {
         lastProducts: resolveShopperProducts(payload.shopperId, mirror),
       };
       const deterministic = deterministicReply(context);
-      const sizingQuestion = /\b(?:size|sizing|shoe|fit)\b/i.test(message);
+      const sizingQuestion = isSizingQuestion(message);
       const useLocalReply = Boolean(deterministic?.memoryProducts?.length) && !sizingQuestion;
       if (useLocalReply) rememberShopperProducts(shopperId, deterministic.memoryProducts);
       const reply = useLocalReply ? deterministic.reply : await answerWithBackboard(context, deterministic?.reply);
@@ -1001,12 +1003,44 @@ async function phraseOfferWithBackboard({ offer, shopperId, negotiationId, messa
       round,
     });
     const checked = checkShopkeeperPick({ menu: [option], pick: choice });
-    logBackboardRun(checked.ok ? "offer" : `offer_blocked_${checked.reason}`, choice.trace);
-    return checked.ok ? { line: choice.line, trace: choice.trace } : { line: offer.line, trace: choice.trace };
+    if (checked.ok) {
+      logBackboardRun("offer", choice.trace);
+      return { line: choice.line, trace: choice.trace };
+    }
+    const neutralLine = checked.reason === "unsupported_reason" ? neutralBackboardLine(choice.line, option) : null;
+    const neutralChecked = neutralLine
+      ? checkShopkeeperPick({ menu: [option], pick: { optionId: choice.optionId, line: neutralLine } })
+      : null;
+    logBackboardRun(neutralChecked?.ok ? "offer_neutralized" : `offer_blocked_${checked.reason}`, choice.trace);
+    return neutralChecked?.ok ? { line: neutralLine, trace: choice.trace } : { line: offer.line, trace: choice.trace };
   } catch (error) {
     console.error("[backboard/offer]", error instanceof Error ? error.message : error);
     return { line: offer.line, trace: null };
   }
+}
+
+function neutralBackboardLine(line, option) {
+  const text = String(line || "").trim();
+  const dollars = String(Math.round((option.total || 0) / 100));
+  const pricePattern = `\\$\\s*${dollars}(?:\\.00)?`;
+  const quantity = (option.items || []).reduce((sum, item) => sum + (item.qty || 1), 0);
+  const bothAllowed = option.items?.length === 2 || quantity === 2;
+  if (bothAllowed && new RegExp(`^I can do\\s+${pricePattern}\\s+for both\\b`, "i").test(text)) return `I can do ${formatMoney(option.total)} for both.`;
+  if (bothAllowed && new RegExp(`^I can offer\\s+${pricePattern}\\s+for both\\b`, "i").test(text)) return `I can offer ${formatMoney(option.total)} for both.`;
+  if (new RegExp(`^I can do\\s+${pricePattern}\\b`, "i").test(text)) return `I can do ${formatMoney(option.total)}.`;
+  if (new RegExp(`^I can offer\\s+${pricePattern}\\b`, "i").test(text)) return `I can offer ${formatMoney(option.total)}.`;
+  if (new RegExp(`^How about\\s+${pricePattern}\\b`, "i").test(text)) return `How about ${formatMoney(option.total)}.`;
+  if (new RegExp(`^I can hold\\s+${pricePattern}\\s+for 15 minutes\\b`, "i").test(text)) return `I can hold ${formatMoney(option.total)} for 15 minutes.`;
+  if (option.kind === "final" && new RegExp(`^My best is\\s+${pricePattern}\\b`, "i").test(text)) return `My best is ${formatMoney(option.total)}.`;
+  for (const item of option.items || []) {
+    const escapedTitle = escapeRegExp(String(item.title || "").trim());
+    if (escapedTitle && new RegExp(`^${escapedTitle}\\s+is ready at\\s+${pricePattern}\\b`, "i").test(text)) return `${item.title} is ready at ${formatMoney(option.total)}.`;
+  }
+  return null;
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function logBackboardRun(kind, trace) {
@@ -1038,7 +1072,7 @@ function deterministicReply(context) {
     const listedProducts = products.slice(0, 6);
     return { reply: catalogReply(listedProducts), memoryProducts: listedProducts };
   }
-  if (/\b(size|sizing|tee|shirt|shoe|fit)\b/.test(message)) return { reply: sizingReply(context.product, products) };
+  if (isSizingQuestion(message)) return { reply: sizingReply(context.product, products) };
   if (/\b(shipping|ship|delivery|returns|return)\b/.test(message)) {
     return { reply: "Shipping and returns are handled in Shopify Checkout. For this demo, use the checkout page as the source of truth for shipping, taxes, and the final total." };
   }
@@ -1083,6 +1117,10 @@ function sizingReply(product, products) {
   if (!target) return "For sizing, choose your usual size. If you want a roomier trail fit, size up when that option is available.";
   const sizes = Array.isArray(target.sizes) && target.sizes.length ? ` Available sizes: ${target.sizes.join(", ")}.` : "";
   return `${target.title} is the item I’d size from here.${sizes} Choose your usual size for a standard fit, or size up if you want extra room.`;
+}
+
+function isSizingQuestion(message) {
+  return /\b(size|sizing|tee|shirt|shoe|fit|fits|fitting|small|large|big|tight|loose|roomy|true to size|tts|run small|runs small|run big|runs big)\b/i.test(String(message || ""));
 }
 
 function findPublicProduct(products, pattern) {

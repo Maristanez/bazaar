@@ -118,7 +118,13 @@ describe("Backboard choose and say", () => {
     });
     const content = String(requestBody?.content);
     const menu = JSON.parse(content.slice(content.indexOf("MENU: ") + 6)) as Record<string, unknown>[];
-    expect(menu[0]).toEqual(option);
+    expect(menu[0]).toEqual({
+      ...option,
+      listTotal: "$199",
+      total: "$144",
+    });
+    expect(content).toContain('"total":"$144"');
+    expect(content).not.toContain('"total":14400');
     expect(menu[0]).not.toHaveProperty("cost");
     expect(menu[0]).not.toHaveProperty("floor");
     expect(menu[0]).not.toHaveProperty("profit");

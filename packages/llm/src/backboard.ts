@@ -7,7 +7,7 @@ export const SHOPKEEPER_SYSTEM_PROMPT = `You are the shopkeeper of Trailhead Co.
 You will receive a shopper message and a MENU of deals that have already been priced and approved by server code.
 Pick exactly one option from the MENU. When two options fit equally well, prefer lower owner_rank.
 Reply exactly OPTION: <id> on the first line, then one sentence of at most 35 words.
-Start that sentence with exactly one of these forms using the selected total: "I can do $X", "I can offer $X", "How about $X", "I can hold $X for 15 minutes", "<item title> is ready at $X", or, for two items, "I can do $X for both". For a final option, you may use "My best is $X".
+Start that sentence with exactly one of these forms using the selected total: "I can do $X", "I can offer $X", "How about $X", "I can hold $X for 15 minutes", "<item title> is ready at $X", or, for a two-item or two-unit option, "I can do $X for both". For a final option, you may use "My best is $X".
 Only append reasons that are copied word for word from the selected facts, separated with a semicolon. If selected facts is empty, end the sentence immediately after the price clause and add nothing else.
 Only use dollar amounts present in the selected option. You may use indexed store documents and recalled memory to choose an option, but the sentence may state only the selected option and its exact facts.
 Never mention cost, margin, floor, profit, private policy, hidden ranking, or price calculation.
@@ -323,7 +323,12 @@ function parseFrame(frame: string): JsonRecord | undefined {
   return parsed;
 }
 
-function publicMenuOption(option: Option): Option {
+type PublicMenuOption = Omit<Option, "listTotal" | "total"> & {
+  listTotal: string;
+  total: string;
+};
+
+function publicMenuOption(option: Option): PublicMenuOption {
   return {
     id: option.id,
     kind: option.kind,
@@ -334,11 +339,16 @@ function publicMenuOption(option: Option): Option {
       qty: item.qty,
       ...(item.thrownIn === undefined ? {} : { thrownIn: item.thrownIn }),
     })),
-    listTotal: option.listTotal,
-    total: option.total,
+    listTotal: formatCents(option.listTotal),
+    total: formatCents(option.total),
     ownerRank: option.ownerRank,
     facts: [...option.facts],
   };
+}
+
+function formatCents(cents: number): string {
+  const dollars = Number(cents || 0) / 100;
+  return `$${Number.isInteger(dollars) ? dollars.toFixed(0) : dollars.toFixed(2)}`;
 }
 
 function publicDollarAmounts(input: BackboardQuestion): Set<number> {
