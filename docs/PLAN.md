@@ -76,7 +76,7 @@ bazaar/
 │                web (Vite: "/" storefront, "/console")
 │                widget (card → single HTML file for ChatGPT)
 ├── infra/       seed (products.json, store-notes.md, sizing-guide.md, policy.md) · schema.sql · redteam-result.json
-└── research/ · reference/ · mockups/ · archive/
+└── mockups/
 ```
 
 **Dev loop:** run the server locally against the same Shopify dev store and Supabase project; push to `main` deploys to the host. Secrets live in the host's settings and in a git-ignored `.env` — never in the repo, never in a browser bundle (the web build gets only `SUPABASE_URL` and the anon key). **Deploys freeze at Sun 08:00** — a deploy is a restart and a restart drops in-flight haggles.

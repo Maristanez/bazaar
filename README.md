@@ -4,7 +4,7 @@
 
 > **Make an offer.** A shopkeeper AI for a Shopify store: a shopper names a price — on the store's own page, or inside ChatGPT — and it haggles back with trades, not free discounts, then opens a **real Shopify Checkout at the agreed price**. It can't lose the owner money, because the AI only picks from a menu of deals that plain code has already priced from the store's real costs. Before she switches it on, the owner rehearses it in **the Gym**: 300 synthetic shoppers and 20 scripted attacks against her own pricing rules.
 
-**Status: final plan, 19 Sep.** The documents in `docs/` are live. Nothing in `archive/` is.
+**Status: final plan, 19 Sep.** The documents in `docs/` are live.
 
 **Tracks:** Shopify "Hack Shopping with AI" (primary) · Backboard · OpenAI · HTN finalist · GoDaddy Registry (MLH). Selection locks on Devpost **Sat 14:00**.
 
@@ -25,10 +25,7 @@ bazaar/
 │   ├── PLAN.md               the plan AND the tracker — status board, checkbox tasks per lane, schedule, gates, cut order, stretch, risks, checklists
 │   ├── DEMO.md               demo scripts, stage layout, fallbacks, judge Q&A, "don't say these", Devpost checklist
 │   └── codex-log.md          the Codex log OpenAI judges ask for — fill it from hour 0
-├── research/                 research notes with primary sources
-├── reference/                hackathon rules, HTN design reference
-├── mockups/                  index.html — visual reference only (see note below)
-└── archive/                  superseded: v3-plan.md, v3-simple.md, v2-spec.md, v2-team-plan.md
+└── mockups/                  index.html — visual reference only (see note below)
 ```
 
 | File | One line |
@@ -41,12 +38,8 @@ bazaar/
 | [`docs/DEMO.md`](docs/DEMO.md) | What we say and show to judges |
 | [`docs/codex-log.md`](docs/codex-log.md) | Evidence for the OpenAI prize |
 | [`AGENTS.md`](AGENTS.md) / [`CLAUDE.md`](CLAUDE.md) | The same skill routing as below, for coding agents |
-| [`research/shopify-prize-strategy.md`](research/shopify-prize-strategy.md) | SimGym, Shopify's 2026 narrative, the pitch framing |
-| [`research/shopify-merchant-floor-price-input.md`](research/shopify-merchant-floor-price-input.md) | Why the owner's settings live on our Console |
-| [`research/frontend-tech.md`](research/frontend-tech.md) | Front-end library choices |
-| [`reference/hackathon-rules.md`](reference/hackathon-rules.md) | Clock, deadlines, judging format, tracks |
 
-**Where files disagree:** about behaviour, `SPEC.md` wins. About who / when / order, `PLAN.md` wins. About what we say on stage, `DEMO.md` wins. Anything in `archive/` loses to everything.
+**Where files disagree:** about behaviour, `SPEC.md` wins. About who / when / order, `PLAN.md` wins. About what we say on stage, `DEMO.md` wins.
 
 > **`mockups/index.html` is a visual reference only.** It was built against the earlier engine formulas, its update was stopped part-way, and its numbers are not authoritative. Take look and layout from it; take every formula and figure from `docs/SPEC.md` §6. Updating it is an optional, deferred task (`S-opt` in the plan).
 
@@ -113,4 +106,4 @@ The team runs its engineering process through Claude Code skills.
 
 ## History
 
-v2 (archived) was agent-to-agent negotiation over UCP; Anthropic's Project Deal made that read as a copy, so v3 pivoted to **a human talking to the shop's agent**. v3's plan and scope docs are in `archive/` (`v3-plan.md`, `v3-simple.md`); the final plan replaced them on 19 Sep with the documents in `docs/`.
+v2 (archived) was agent-to-agent negotiation over UCP; Anthropic's Project Deal made that read as a copy, so v3 pivoted to **a human talking to the shop's agent**. v3's plan and scope docs were replaced on 19 Sep by the documents in `docs/`.

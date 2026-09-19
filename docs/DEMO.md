@@ -14,7 +14,7 @@ Scripts, stage setup, fallbacks, judge Q&A, what not to say, and the Devpost pag
 
 **Our answer.** An AI that is clever about *which* deal to offer and incapable of offering a bad one — and an owner who saw the outcome distribution before it met a single customer.
 
-**Stats** — cite the source out loud once, then move on. Prefer **Shopify's own numbers**; sources in [`../research/shopify-prize-strategy.md`](../research/shopify-prize-strategy.md); re-open each page before quoting it.
+**Stats** — cite the source out loud once, then move on. Prefer **Shopify's own numbers**; the source URL is beside each stat — re-open each page before quoting it.
 - Cart abandonment is ~70%; unexpected costs are the top cause (~47%); Shopify puts recoverable sales at ~$260B a year (shopify.com/blog/shopping-cart-abandonment).
 - Shopify's own example: a $30 item with a $10 margin, sold at 30% off, leaves **$1** of profit (shopify.com/blog/no-discounting-strategy).
 - Bundles work: HiSmile sells bundles in over 80% of orders, at ~4x cart size (shopify.com/blog/bundling-for-retail).

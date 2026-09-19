@@ -3,7 +3,7 @@
 **Hack the North 2026 · team of 3 · code window Sat 19 Sep 00:00 → Sun 20 Sep 08:00 EDT**
 **Target: the Shopify prize ("Hack Shopping with AI", one winner).** Also entered: Backboard, OpenAI, HTN finalist, GoDaddy Registry (MLH).
 
-This is the **technical** source of truth: rules, surfaces, pipeline, data, API, engine, guardrails, integrations, the Gym, shared types. It supersedes everything in `../archive/`. What and why is in [`PRODUCT.md`](PRODUCT.md); use cases in [`USE-CASES.md`](USE-CASES.md); every diagram in [`ARCHITECTURE.md`](ARCHITECTURE.md); who builds what and when in [`PLAN.md`](PLAN.md), which is also the live task tracker (the *old* v3 plan is `../archive/v3-plan.md`); the demo, Q&A and Devpost page in [`DEMO.md`](DEMO.md). Where another file disagrees with this one about how the system behaves, this one wins.
+This is the **technical** source of truth: rules, surfaces, pipeline, data, API, engine, guardrails, integrations, the Gym, shared types. What and why is in [`PRODUCT.md`](PRODUCT.md); use cases in [`USE-CASES.md`](USE-CASES.md); every diagram in [`ARCHITECTURE.md`](ARCHITECTURE.md); who builds what and when in [`PLAN.md`](PLAN.md), which is also the live task tracker; the demo, Q&A and Devpost page in [`DEMO.md`](DEMO.md). Where another file disagrees with this one about how the system behaves, this one wins.
 
 ---
 
@@ -37,7 +37,7 @@ This is the **technical** source of truth: rules, surfaces, pipeline, data, API,
 
 **Our answer.** An AI that is clever about *which* deal to offer and incapable of offering a bad one — and an owner who saw the outcome distribution before it met a single customer.
 
-Pitch stats and the per-prize one-liners are in [`DEMO.md`](DEMO.md) §1; sources in [`../research/shopify-prize-strategy.md`](../research/shopify-prize-strategy.md).
+Pitch stats and the per-prize one-liners are in [`DEMO.md`](DEMO.md) §1.
 
 ---
 
@@ -473,7 +473,7 @@ Prize text: judged on *"what you built with the OpenAI API"* and *"how Codex hel
 
 ## 12. Look and feel — echoing the Hack the North 2026 site
 
-Reference [`../reference/htn-design/home-hero.png`](../reference/htn-design/home-hero.png): a hand-drawn **trail map** — teal mountains, wooden table, cream paper map, a dashed trail between die-cut stickers, a flag, sparkles. Trailhead sells trail shoes; the motif is ours for free. Echo the feel; never copy their art.
+Reference — Hack the North's 2026 home page: a hand-drawn **trail map** — teal mountains, wooden table, cream paper map, a dashed trail between die-cut stickers, a flag, sparkles. Trailhead sells trail shoes; the motif is ours for free. Echo the feel; never copy their art.
 
 - **The haggle is a trail** (§4.1). **The shopkeeper is a die-cut sticker** — thick white outline, slight tilt; five faces as five SVG swaps (same face, different eyes/brows/mouth). **Sparkles only on Deal.** **Cream paper** card and chat panel.
 - Palette: teal `#004c4c` · sky `#ccffff` · coral `#f3675a` · sun `#f6d809` · pink `#ff598b` · bark `#2f1604` · cream `#fdf3e3`.
@@ -570,4 +570,4 @@ type GymResult  = { seed: number; n: number; floorPct: number; bought: number; a
 
 ## Appendix D — Sources
 
-Devpost: hackthenorth2026.devpost.com (criteria, prizes, rules) · Shopify: dev.shopify.com/dashboard, client-credentials grant, `discountCodeBasicCreate`, cart permalinks, dev-store password · OpenAI: developers.openai.com/apps-sdk, github.com/openai/openai-apps-sdk-examples · MCP Apps: modelcontextprotocol.io/seps/1865 · Backboard: docs.backboard.io · incidents: AI Incident Database #622 (Tahoe), *Moffatt v. Air Canada* 2024 BCCRT 149 · Shopify-prize strategy and SimGym notes: [`../research/shopify-prize-strategy.md`](../research/shopify-prize-strategy.md) · where the owner's floor setting lives: [`../research/shopify-merchant-floor-price-input.md`](../research/shopify-merchant-floor-price-input.md) · other research notes in `../research/` · hackathon rules in `../reference/`.
+Devpost: hackthenorth2026.devpost.com (criteria, prizes, rules) · Shopify: dev.shopify.com/dashboard, client-credentials grant, `discountCodeBasicCreate`, cart permalinks, dev-store password · OpenAI: developers.openai.com/apps-sdk, github.com/openai/openai-apps-sdk-examples · MCP Apps: modelcontextprotocol.io/seps/1865 · Backboard: docs.backboard.io · incidents: AI Incident Database #622 (Tahoe), *Moffatt v. Air Canada* 2024 BCCRT 149
