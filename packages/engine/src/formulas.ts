@@ -31,5 +31,6 @@ export function targetOf(items: readonly Item[], mainUrgency: number, floorPct: 
 }
 
 export function ask(list: number, target: number, urgency: number, r: 1 | 2 | 3 | 4): number {
-  return Math.ceil(list - ((r - 1) / 3) ** (1 / (1 + urgency)) * (list - target));
+  // Keep fractional cents until the shopper boundary; rounding here distorts concession steps.
+  return list - ((r - 1) / 3) ** (1 / (1 + urgency)) * (list - target);
 }

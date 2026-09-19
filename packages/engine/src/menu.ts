@@ -47,7 +47,7 @@ export function buildMenu(input: MenuInput): MenuResult {
   const mainTarget = targetOf([product], mainUrgency, floorPct);
   const mainAsk = ask(product.list, mainTarget, mainUrgency, round);
   const mainFloor = floorOf([product], floorPct);
-  if (offer >= mainAsk && offer > product.cost && offer >= mainFloor) {
+  if (mainFloor <= product.list && offer >= mainAsk && offer > product.cost && offer >= mainFloor) {
     return { decision: "accept", total: toShopper(offer) };
   }
   const maxBudget = Math.max(offer, budget ?? offer);
@@ -62,7 +62,9 @@ export function buildMenu(input: MenuInput): MenuResult {
     const floor = floorOf(cart, floorPct);
     const shown = toShopper(total);
     if (shown <= cost || shown < floor) return;
+    if (kind !== "else" && shown < toShopper(offer)) return;
     const listTotal = cart.reduce((sum, item) => sum + item.list, 0);
+    if (floor > listTotal) return;
     choices.push({
       option: {
         id,
@@ -94,6 +96,7 @@ export function buildMenu(input: MenuInput): MenuResult {
     const heldProfit = mainAsk - product.cost;
     const nextRoundProfit = nextAsk + addOnPart - (product.cost + addOn.cost!);
     const shoePart = nextRoundProfit >= heldProfit ? nextAsk : mainAsk;
+    if (shoePart < mainTarget) continue;
     append(
       `B${nextBundleId++}`,
       "bundle",
