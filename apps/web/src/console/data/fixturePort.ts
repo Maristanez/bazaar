@@ -45,7 +45,8 @@ export function createFixturePort({ initialState = state, stream, intervalMs = 6
     },
     async setPaused(paused) {
       current.policy = { ...current.policy, paused, updatedAt: new Date().toISOString() };
-      return structuredClone(current.policy);
+      current.pausePersistence = "saved";
+      return { policy: structuredClone(current.policy), persistence: "saved" };
     },
     async resolveApproval(id, decision) {
       const approval = current.pendingApprovals.find(approval => approval.id === id);

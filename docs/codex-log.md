@@ -212,3 +212,27 @@
 **Decision:** Switched the Backboard OpenAI default from `gpt-4o` to `gpt-4.1-mini`. In the live comparison it was the best balance of instruction following, speed and cost. It recalled the shopper memory, retrieved `sizing-guide.md`, `store-notes.md` and `policy.md`, answered in 3,906 ms for $0.0009376, then returned a check passing offer in 1,401 ms for $0.0006112.
 
 **Rejected options:** `gpt-4o-mini` cost less but added an unsupported claim to the constrained offer. `gpt-5-mini` exceeded the ten second comparison timeout. The product keeps its four second cap and deterministic fallback.
+
+
+### Owner Console integration and live verification — 2026-09-19
+
+**Prompt:** Thoroughly test the console against the Backboard and Shopify setup; owner changes must affect shopper chats. The owner did not know the password and authorized code changes.
+
+**Produced:** Authenticated owner routes, Supabase-backed policy runtime, replayable private SSE, approval lifecycle, permanent PAUSE invalidation, checkout auditing and idempotency, bounded persistence retries, pure live-pricing module, per-session Backboard serialization, shared-memory isolation, exact variant selection, status/price polling in the actual theme widget, local storefront preview, production Console serving/build wiring, and nullable-code migration for full-price deals. Updated shared `Settlement`/`Deal` code types to `string | null` to match real checkout behavior.
+
+**Evidence:** In the real browser, previewing cost +60% left the saved floor unchanged; Adopt moved the same Backboard chat from a $133 final offer to $142. Owner approval of $90 updated the card, opened Shopify Checkout with Trail Runner 2 size 10 and $90 subtotal, and wrote a Supabase deal with $12 profit. PAUSE blocked the next message and invalidated old cards across Resume. Owner policy restored to 25% / ask owner / live. No order placed; no password changed.
+
+**Review and limits:** Scoped standards/spec reviews found and fixed approval/pause resurrection, variant context errors, mutable runtime boundaries, duplicate acceptance, stale cost/inventory validation, missing-cost seed fallback, list-price rounding, shared demo memory and stale polling totals. Secrets were absent from the production browser bundle. Full verification and open deployment/Gym/red-team/ChatGPT/memory-isolation work are documented in `docs/console-integration.md`. Changes are uncommitted and unpublished.
+
+**Final automated checks:** 202/202 tests in 28 files, all workspace type checks, production web build and diff whitespace checks passed. The live decline follow-up restored the $133 final card, enabled Deal and reset its countdown.
+
+
+### Merge-ready integration, Gym and storefront fixes — 2026-09-19
+
+**Prompt:** Complete separate multi-item negotiations and visual checks, then merge all work into main without conflicts.
+
+**Produced:** Product/variant/quantity isolation across negotiations; exact add-on inclusion/removal; same-size cheaper alternatives; a shared deterministic candidate menu for Backboard and the 300-shopper Gym; full catalog rendering; mobile header fixes; immediate PAUSE with persistence retries; runtime public auth configuration; and an isolated 20-case red-team artifact with evidence-based blocking labels.
+
+**Verification:** 267 tests across 37 files, workspace type checks, production web build and whitespace checks pass. Eight local API calls against real Shopify and Backboard preserved Socks L/XL quantity two, Trail Runner 2 size 10, separate resumed negotiations, bundles and removal, and a same-size RidgeLite alternative. Desktop and mobile visual inspection reproduced the published home catalog's eight-versus-nine mismatch and the mobile cart hit-area defect. Published storefront fixes, database migration and live checkout regression still require deployment verification. No paid order was submitted.
+
+**Merge:** Preserve upstream planning and revival documents. User explicitly authorized merging all work to main; a push can trigger Railway auto-deployment. Shopify theme publication and the nullable deal-code migration are separate outstanding deployment steps.

@@ -3,11 +3,37 @@ import { createFixturePort } from "./fixturePort";
 import { createHttpPort } from "./httpPort";
 import type { ConsoleAuth, ConsolePort } from "./port";
 type Environment = { DEV?: boolean; VITE_CONSOLE_PORT?: string; VITE_SUPABASE_URL?: string; VITE_SUPABASE_ANON_KEY?: string };
-export async function createRuntime(env: Environment): Promise<{ port: ConsolePort; auth: ConsoleAuth; fixture: boolean }> {
-  if (env.VITE_CONSOLE_PORT !== "http") return { port: createFixturePort(), auth: createFixtureAuth(env.DEV === true), fixture: true };
-  if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) throw new Error("Configure the Supabase URL and public anon key for owner sign in.");
+type PublicConfigResponse = { supabaseUrl: string; supabaseAnonKey: string };
+function validPublicConfig(input: unknown): input is PublicConfigResponse {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return false;
+  const value = input as Partial<PublicConfigResponse>;
+  if (typeof value.supabaseUrl !== "string") return false;
+  try {
+    const url = new URL(value.supabaseUrl);
+    if (url.protocol !== "https:" || !url.hostname || url.username || url.password) return false;
+  } catch { return false; }
+  if (typeof value.supabaseAnonKey !== "string" || /secret|service[_-]?role/i.test(value.supabaseAnonKey)) return false;
+  if (value.supabaseAnonKey.startsWith("sb_publishable_")) return true;
+  try { return JSON.parse(atob(value.supabaseAnonKey.split(".")[1] || "")).role === "anon"; } catch { return false; }
+}
+export async function createRuntime(env: Environment, fetchImpl: typeof fetch = globalThis.fetch): Promise<{ port: ConsolePort; auth: ConsoleAuth; fixture: boolean }> {
+  if (env.VITE_CONSOLE_PORT === "fixture" || (env.DEV === true && env.VITE_CONSOLE_PORT !== "http")) return { port: createFixturePort(), auth: createFixtureAuth(env.DEV === true), fixture: true };
+  let supabaseUrl = env.VITE_SUPABASE_URL;
+  let supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    let response: Response;
+    try { response = await fetchImpl("/api/public-config"); } catch { throw new Error("Owner sign in is unavailable: configure public Supabase auth or serve /api/public-config."); }
+    if (!response.ok) throw new Error("Owner sign in is unavailable: configure public Supabase auth or serve /api/public-config.");
+    let body: unknown;
+    try { body = await response.json(); } catch { throw new Error("Owner sign in is unavailable: /api/public-config returned invalid JSON."); }
+    const candidate = body as Partial<PublicConfigResponse>;
+    if (!validPublicConfig(candidate)) throw new Error("Owner sign in is unavailable: /api/public-config returned invalid public auth settings.");
+    supabaseUrl = candidate.supabaseUrl;
+    supabaseAnonKey = candidate.supabaseAnonKey;
+  }
+  if (!validPublicConfig({ supabaseUrl, supabaseAnonKey })) throw new Error("Owner sign in is unavailable: invalid public auth settings.");
   const { createClient } = await import("@supabase/supabase-js");
-  const client = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
+  const client = createClient(supabaseUrl, supabaseAnonKey);
   const auth: ConsoleAuth = {
     async session() { const { data, error } = await client.auth.getSession(); if (error) throw error; return !!data.session; },
     async signIn(email, password) { const { error } = await client.auth.signInWithPassword({ email, password }); if (error) throw error; },

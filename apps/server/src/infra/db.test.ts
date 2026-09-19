@@ -185,10 +185,44 @@ describe("Supabase queries", () => {
     expect((client as any).builder.insert).toHaveBeenCalledWith(expect.not.objectContaining({ profit: expect.anything() }));
   });
 
+  it("round-trips a list-price deal with no discount code", async () => {
+    const client = clientFor({
+      data: {
+        id: "deal-list",
+        merchant_id: SEEDED_MERCHANT_ID,
+        offer_id: "offer-list",
+        surface: "storefront",
+        items_json: [{ variantId: "tr3-10", title: "Trail Runner 3", qty: 1 }],
+        list_total: 16900,
+        agreed_total: 16900,
+        cost: 9500,
+        floor: 11875,
+        profit: 7400,
+        owner_approved: false,
+        code: null,
+        created_at: "2026-09-19T13:00:00Z",
+      },
+      error: null,
+    });
+    const result = await insertDeal(client, {
+      merchantId: SEEDED_MERCHANT_ID,
+      offerId: "offer-list",
+      surface: "storefront",
+      items: [{ variantId: "tr3-10", title: "Trail Runner 3", qty: 1 }],
+      listTotal: 16900,
+      agreedTotal: 16900,
+      cost: 9500,
+      floor: 11875,
+      ownerApproved: false,
+      code: null,
+    });
+    expect(result.code).toBeNull();
+    expect((client as any).builder.insert).toHaveBeenCalledWith(expect.objectContaining({ code: null }));
+  });
+
   it("exposes the same query layer through the configured db facade", async () => {
     const client = clientFor({ data: merchantRow, error: null });
     const db = createSupabaseDb({ client, merchantId: SEEDED_MERCHANT_ID });
     await expect(db.healthCheck()).resolves.toMatchObject({ id: SEEDED_MERCHANT_ID });
   });
 });
-

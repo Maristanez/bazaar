@@ -19,9 +19,13 @@
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
 | 🛍️ A. Storefront + Shopify store | Ritvik | Trailhead logo/name wired into the live theme; chat haggling now asks for stronger buyer reasons before sharper discounts; live Railway minted `BAZAAR-2180U` | **① S13 DEVPOST — 14:00 HARD, still unstarted. Select all four tracks even if unbuilt; selection locks and cannot be added later ② S3 gate-0 decision, 100 min overdue ③** browser click-through of the checkout total | Shopify admin store rename for Checkout branding; remove-bundle-item check |
-| ⚙️ B. Engine, core, Gym + Console | Bryan | **S5 + S6 done** — login, PAUSE, feed with red blocked rows, policy slider + Adopt, fixture approvals, and a typed `httpPort` waiting on R15. 125 tests green | B12 Gym in the reserved 480px region — design reference and build spec are committed at `docs/design/gym-b12.{md,html}` | Live shopper feed awaits R15/B14; live approval lifecycle awaits B8/S7 (both Part D, unowned) |
+| ⚙️ B. Engine, core, Gym + Console | Bryan | Storefront integration locally verified: real owner login, Adopt → Backboard prices, SSE feed, approvals, PAUSE and Shopify checkout. See `docs/console-integration.md` | Apply list-price migration and deploy server/theme; then B12 Gym | Gym, red-team and ChatGPT integration remain open; changes are local |
 | 🔌 C. Platform | Ricardo | R2 token wrapper, R4 product mirror, `/api/products`, `/api/stream`, offer cards, `discountCodeBasicCreate` and cart permalinks are **live on Railway deploy `6f1032c6`** | Manual checkout-total / free-shipping / tax verification; then R16 remove-bundle-item test; then R12 pin + R13 domain before 13:00 | Store checkout settings / manual checkout verification |
 | 🤖 D. Agents + guardrails | **Ricardo / Codex for Backboard; remaining guardrails need an owner** | Shopper Q&A and checked offer wording now route through Backboard to OpenAI `gpt-4.1-mini`; indexed documents, seeded memory, thread reuse, telemetry and fallback were verified live. Per shopper Assistant creation and the complete B2 menu handoff remain | R9 *understand* direct OpenAI call, then finish R10 per shopper Assistants and connect the live route to the complete B2 menu | Ricardo / Codex for R10/R11 |
+
+### Local console integration verification — Sat 19 Sep
+
+See `docs/console-integration.md` for live evidence and deployment steps. R15/B14/B8/B7/B9 are implemented for the existing storefront server path and covered by integration tests; the wider cross-surface tracker stays open where ChatGPT, full menu, red-team, or deployment acceptance is still missing. Shared Backboard memory is now off until R10 isolates assistants. Original owner policy was restored after testing. No live theme/server deployment or paid order was performed.
 
 ### Next work decision — Sat 11:55 EDT (supersedes the 11:03 note below)
 

@@ -67,6 +67,8 @@ export type BackboardClientConfig = {
   provider?: string;
   model?: string;
   memory?: "Auto" | "Readonly" | "off";
+  /** Resolve memory policy per shopper; returning `off` isolates ordinary shoppers. */
+  memoryForShopper?: (shopperId: string) => "Auto" | "Readonly" | "off";
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
   now?: () => number;
@@ -110,13 +112,15 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
   const endpoint = config.endpoint ?? DEFAULT_ENDPOINT;
   const provider = config.provider ?? "openai";
   const model = config.model ?? "gpt-4.1-mini";
-  const memory = config.memory ?? "Readonly";
+  const defaultMemory = config.memory ?? "off";
+  const memoryForShopper = config.memoryForShopper ?? (() => defaultMemory);
   const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const fetchImpl = config.fetchImpl ?? fetch;
   const now = config.now ?? Date.now;
   const threads = new Map<string, string>();
+  const queuedRuns = new Map<string, Promise<{ content: string; trace: BackboardRunTrace }>>();
 
-  async function run(input: {
+  async function performRun(input: {
     shopperId: string;
     negotiationId: string;
     content: string;
@@ -143,7 +147,7 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
           stream: true,
           llm_provider: provider,
           model_name: model,
-          memory,
+          memory: memoryForShopper(input.shopperId),
           memory_response_citation: true,
           web_search: "off",
         }),
@@ -179,6 +183,25 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
       throw new BackboardError(error instanceof Error ? error.message : String(error));
     } finally {
       clearTimeout(timeout);
+    }
+  }
+
+  // A thread id is assigned only when a run ends. Serialize same-thread runs so
+  // concurrent requests cannot both create a fresh thread before either stores it.
+  async function run(input: {
+    shopperId: string;
+    negotiationId: string;
+    content: string;
+    systemPrompt: string;
+  }): Promise<{ content: string; trace: BackboardRunTrace }> {
+    const key = threadKey(input.shopperId, input.negotiationId);
+    const previous = queuedRuns.get(key) ?? Promise.resolve(undefined);
+    const current = previous.catch(() => undefined).then(() => performRun(input));
+    queuedRuns.set(key, current);
+    try {
+      return await current;
+    } finally {
+      if (queuedRuns.get(key) === current) queuedRuns.delete(key);
     }
   }
 
