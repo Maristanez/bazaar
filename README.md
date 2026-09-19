@@ -10,6 +10,25 @@
 
 ---
 
+## How it works, in one minute
+
+Full explainer: **[`docs/HOW-IT-WORKS.md`](docs/HOW-IT-WORKS.md)**.
+
+| Piece | What it is |
+|---|---|
+| **The shopkeeper** | What the shopper talks to: an AI that does the *talking* wrapped around an engine that does the *pricing*. |
+| **The engine** | Pure maths, no AI. Turns cost, stock age and the owner's floor into a **menu** of deals — held price, bundles, "something else" — every one above the floor. |
+| **The Console** | The owner's control room: a live feed of every haggle, the floor slider, the Approve / Decline card for thin-margin deals, and PAUSE. |
+| **The Gym** | A simulator inside the Console: the owner tests a pricing policy on 300 synthetic hagglers, and watches a red-team fail to rob her, before a real customer arrives. |
+
+**The LLM picks from the menu; code writes the menu.** One shopper turn is *understand* (OpenAI) → *build the menu* (the engine, code) → *choose + say* (Backboard LLM picks one option and words it) → *check* (code verifies the pick and every dollar figure) → the public card. On **Deal**, the Auditor re-checks cost and floor from fresh data, mints a one-use code, and the deal settles into Shopify Checkout. The AI never decides a price, so a jailbreak can at worst pick a different deal from a list where every deal is already profitable.
+
+**It trades, it doesn't discount.** New stock never moves in price; old stock bends toward the floor as it ages. A shopper who can't afford the new shoe is offered last season's at their budget, or a bundle — they leave with something, and the owner clears stock at a profit. Below the floor only the owner can say yes; at or below cost, never.
+
+**The Gym tests the owner's policy, not our code.** 300 rule-based, seeded shoppers (not LLM agents — that is what makes A vs B reproducible) haggle against the real engine. The headline card answers *"does haggling beat a 20%-off banner?"* and is allowed to go red. The engine's own safety is proven separately, by fast-check property tests: 11 properties × 1,000 cases, under a second.
+
+---
+
 ## Doc map
 
 ```
@@ -18,6 +37,7 @@ bazaar/
 ├── AGENTS.md                 routing for coding agents (Claude Code and Codex): which skill, when
 ├── CLAUDE.md                 imports AGENTS.md
 ├── docs/
+│   ├── HOW-IT-WORKS.md       the plain-language explainer — shopkeeper, engine, Console, Gym; read first
 │   ├── PRODUCT.md            what and why — problem, users, value, principles, scope, prize fit
 │   ├── USE-CASES.md          actors, 27 use cases with main/alternate flows, acceptance criteria
 │   ├── SPEC.md               the technical spec — rules, surfaces, pipeline, data, API, engine, guardrails, integrations, the Gym, types
@@ -30,6 +50,7 @@ bazaar/
 
 | File | One line |
 |---|---|
+| [`docs/HOW-IT-WORKS.md`](docs/HOW-IT-WORKS.md) | The plain-language explainer — **start here** |
 | [`docs/PRODUCT.md`](docs/PRODUCT.md) | What we're building and why it wins |
 | [`docs/USE-CASES.md`](docs/USE-CASES.md) | What each actor can do, step by step, with acceptance criteria |
 | [`docs/SPEC.md`](docs/SPEC.md) | How the system behaves — **the technical source of truth** |
@@ -53,9 +74,9 @@ bazaar/
 | ⚙️ **B. Engine, core, Gym + Console** (Bryan) | `SPEC.md` §6 engine, §5.1 pipeline, §9 the Gym, §4.4 Console, Appendix C + `ARCHITECTURE.md` §4–§7 |
 | 🔌 **C. Platform** · 🤖 **D. Agents + guardrails** | `SPEC.md` §10 Shopify, §5 hosting, §5.2 data, §5.3 HTTP · §8 Backboard, §11 OpenAI, §7 guardrails + `ARCHITECTURE.md` §8–§11 |
 | 🛍️ **A. Storefront + Shopify store** (Ritvik) | `SPEC.md` §4.1–4.3 surfaces, §10 seed + sync, §12 look and feel + `DEMO.md` + `ARCHITECTURE.md` §13 |
-| **Pitch prep** | `DEMO.md` + `PRODUCT.md` |
+| **Pitch prep** | `HOW-IT-WORKS.md` §6–§7 (say it right) + `DEMO.md` + `PRODUCT.md` |
 
-Five minutes: `PRODUCT.md`, then `DEMO.md` §3. About to build: `PLAN.md` status board → your part's next unticked box.
+Two minutes: `HOW-IT-WORKS.md`. Five minutes: `PRODUCT.md`, then `DEMO.md` §3. About to build: `PLAN.md` status board → your part's next unticked box.
 
 ---
 
