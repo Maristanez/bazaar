@@ -10,7 +10,7 @@ afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 test("S5: fixture events reach the feed in under a second, newest first, with red named blocks", async () => {
   vi.useFakeTimers();
-  render(<Console port={createFixturePort({ intervalMs: 100 })} />);
+  render(<Console port={createFixturePort({ stream: events, intervalMs: 100 })} />);
   await act(async () => {});
   expect(screen.getByText("Waiting for the first offer.")).toBeTruthy();
   await act(async () => { await vi.advanceTimersByTimeAsync(100); });
@@ -64,4 +64,12 @@ test("reconnecting reloads owner state and reports disconnected or unauthorized 
   expect(screen.getByText("Paused")).toBeTruthy();
   await act(async () => connection?.("unauthorized"));
   expect(screen.getByText("Feed authorization expired. Sign in again or wait for session refresh.")).toBeTruthy();
+});
+
+test("a delayed older event cannot displace the newest event at the top", async () => {
+  vi.useFakeTimers();
+  const port = createFixturePort({ stream: [events[10]!, events[0]!], intervalMs: 100 });
+  render(<Console port={port} />); await act(async () => {});
+  await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+  expect(screen.getAllByRole("article")[0]!.textContent).toContain(events[10]!.reasoning);
 });

@@ -29,3 +29,11 @@ All HTTP requests use same-origin paths and a fresh `Authorization: Bearer <acce
 The adapter maps port `approved`/`declined` to wire `approve`/`decline`. Money remains cents. SSE tolerates heartbeat comments and partial UTF-8 chunks, reads optional `id` / `retry`, sends `Last-Event-ID`, reacquires the token on reconnect, validates event payloads, and aborts on unmount/sign-out. An optional second `subscribe` callback reports `connected | reconnecting | unauthorized`; the original one-argument call remains valid. The Console reloads state after reconnect and shows connection/auth failures. R15 should retain event IDs for replay and return 401/403 without valid owner authorization.
 
 S5's acceptance here is fixture emission → matching newest-first row within 100 ms under the test clock, with all four red blocked layers, PAUSE/Resume and empty/full/paused states. The original live shopper → feed <1s gate returns when R15/B14 are available. The Gym remains an empty 480px region for B12.
+
+## Policy and approvals
+
+The floor slider and ask-me switch are a local preview until Adopt succeeds. Adopt calls `setPolicy` once and updates the saved baseline; a failed request retains the draft. PAUSE saves independently. Reconnect snapshots preserve unsaved drafts and policy writes completed while a reload was in flight.
+
+The default interactive fixture rebases historical pending approvals to a fresh 45-second deadline and suppresses the recorded automatic resolution. Approve, Decline or the deadline now resolves the card; local decisions cannot be overwritten by later replay. Tests can explicitly supply the full recorded stream to exercise its original lifecycle. These changes affect only in-memory fixtures; server approval ownership and persistence remain B8/S7 work.
+
+S6's fixture-era acceptance verifies that previewing changes nothing in port state and Adopt calls `setPolicy` exactly once with the chosen values. The original next-shopper-turn acceptance returns with R15. Tests also cover approval buttons/timeouts and state races during reconnect. The HTTP adapter is typed and tested with stubbed responses; it has not been exercised against live owner routes.
