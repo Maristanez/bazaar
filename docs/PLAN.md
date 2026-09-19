@@ -4,7 +4,7 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 03:25 EDT by Codex (B1 / B4)
+**Last updated:** Sat 19 Sep 11:00 EDT by Ricardo / Codex (R14)
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
@@ -20,7 +20,7 @@
 |---|---|---|---|---|
 | 🛍️ A. Storefront + Shopify store | Ritvik | — | B0 → S1 | — |
 | ⚙️ B. Engine, core, Gym + Console | Bryan | B2 + B3 + B11 + B5 + B6 verified; handoff ready | S5 Console; Part D / Platform adapters | — |
-| 🔌 C. Platform | ______ | — | B0 → R1 | — |
+| 🔌 C. Platform | Ricardo | R14 Supabase project, schema, owner binding, server adapter and live read verified | Wire R14 into Hono routes and run all acceptance checks | R5 routes for full integration |
 | 🤖 D. Agents + guardrails | ______ | — | R9 (after gate 1) | — |
 
 ### How to use this tracker
@@ -58,7 +58,7 @@ There are no tickets. **This file is the tracker.**
 |---|---|---|
 | 🛍️ **A. Storefront + Shopify store** | **Ritvik** | The offer card, storefront + chat, Deal flow, deal trail, faces, sparkles; product seed + sync; the ChatGPT widget (gate 0) and `/mcp`; demo script, offline replay, Devpost page, video |
 | ⚙️ **B. Engine, core, Gym + Owner Console** | **Bryan** | `contracts`, engine + property tests, offers, core functions, the check; Gym run, dot histogram, swarm animation, click-a-dot, red-dot wall; Console UI (`/console`): feed, policy panel, Approve card |
-| 🔌 **C. Platform** | ______________ | Shopify app, token + refresh, server shell, `db.ts`, SSE, mint, checkout link, store settings, Supabase + auth middleware, owner routes, hosting, the domain |
+| 🔌 **C. Platform** | **Ricardo** | Shopify app, token + refresh, server shell, `db.ts`, SSE, mint, checkout link, store settings, Supabase + auth middleware, owner routes, hosting, the domain |
 | 🤖 **D. Agents + guardrails** | ______________ | OpenAI client (*understand*), Backboard client (memory, documents, *choose + say*), the Auditor, PAUSE, approvals, event bus, red-team + verifier |
 
 The storefront and the Console are one web app (`apps/web`: `/` and `/console`) — two owners, two routes, one shared card component. **Gate 1 is a two-person chain:** Ritvik's Deal button (S4) on top of Platform's mint + checkout link (R6, R7).
@@ -185,7 +185,7 @@ The maths that writes every price, the three core functions on top of it, the Gy
 
 **Handoffs:** needs **R5** (server + `db.ts`) and **R4** (mirror) before B5 · needs **B14** (event bus) and **R15** (owner routes) from the Agents / Platform owner for a live Console feed · needs **B8** before S7 and **B13** before S10 · gives **B2** to R11 and **B5 / B6** to everything in part D.
 
-### 🔌 C. Platform — **______________**
+### 🔌 C. Platform — **Ricardo**
 
 What the app runs on: the Shopify app and token, the server, the discount-code mint and checkout link, the database, hosting and the domain. **The mint (R6) and checkout link (R7) are the gate-1 critical path.**
 
@@ -205,6 +205,8 @@ What the app runs on: the Shopify app and token, the server, the discount-code m
 **Devpost → gate 2 (Sat 14:00 → Sun 00:00)**
 
 - [ ] **R14** Thin Supabase: `schema.sql` (3 tables, RLS on, no public policies), owner user, auth middleware, policy cache, one `deals` write per settlement [§5.2] · _needs R5, gate 1 · **start by 16:00**_ · ~1.5 h · **Done when:** a shopper route can't read owner data, Adopt inserts a row, and a restart reloads the policy
+
+  **Progress Sat 11:00:** the remote project is healthy; `schema.sql` is applied; the owner is bound; RLS is enabled; the pinned Supabase client, query adapter and smoke command are implemented; a live server-key read returned the seeded merchant and current 25% policy. Still required before checking R14: wire auth, policy and deal writes into the Hono routes; prove public denial; perform one live Adopt insert; prove restart reload.
 - [ ] **R15** `GET /api/console/state` + owner routes (`policy`, `approvals/:id`, `pause`, `stream`) [§5.3] · _needs R5, B8_ · ~1 h · **Done when:** the Console loads policy + products with costs + pending approvals + red-team result in one call, and every owner route returns 401 without a token
 
 **After gate 2 (Sun 00:00 → 08:00) — stretch is optional, see §8**
@@ -448,7 +450,8 @@ The path to gate 1 is **Platform (token → mint → checkout link) joined with 
 - [ ] `shopify app init` (20-minute rule)
 - [ ] Six scopes, installed, the token curl works
 - [ ] Backboard + OpenAI keys in `.env`; **store documents uploaded now** so they're `indexed` by morning
-- [ ] Supabase project and host account created (not wired yet)
+- [x] Supabase project created; schema, owner binding and live server-key read verified
+- [ ] Host account created
 - [ ] MLH GoDaddy offer claimed
 
 **🛍️ Ritvik — storefront**

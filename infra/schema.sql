@@ -119,6 +119,17 @@ revoke all on table merchants, policies, deals from anon, authenticated;
 grant all on table merchants, policies, deals to service_role;
 grant usage, select on all sequences in schema public to service_role;
 
+-- Supabase's automatic-RLS dashboard option may create this privileged helper
+-- in the exposed public schema. Event triggers do not need browser roles to
+-- execute it, so remove direct Data API access when the helper exists.
+do $$
+begin
+  if to_regprocedure('public.rls_auto_enable()') is not null then
+    execute 'revoke execute on function public.rls_auto_enable() from public, anon, authenticated';
+  end if;
+end
+$$;
+
 -- ---------------------------------------------------------------------------
 -- Seed
 -- ---------------------------------------------------------------------------
