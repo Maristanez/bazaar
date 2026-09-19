@@ -4,7 +4,7 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 11:03 EDT by Codex (live Gemini chat verified)
+**Last updated:** Sat 19 Sep 11:03 EDT by Codex (live Gemini chat verified + main integrated)
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
@@ -19,9 +19,9 @@
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
 | 🛍️ A. Storefront + Shopify store | Ritvik | Live Shopify theme `Bazaar coded storefront` is connected to Railway `/api/chat`; Gemini answers are verified | R4 product mirror → replace preview card with server-generated OfferCard once R6/R7 exist | R6/R7 settlement code for real Deal |
-| ⚙️ B. Engine, core, Gym + Console | Bryan | B1 + B4 done; checks green | B2 → B3 | — |
-| 🔌 C. Platform | ______ | Railway `bazaar-chat` is online at `https://bazaar-chat-production.up.railway.app`; `GEMINI_API_KEY` is set; `/health` and `/api/chat` verified | R2 token wrapper → R4/R5 product mirror/API → R6/R7 discount + checkout settlement | R6/R7 settlement code for real Deal |
-| 🤖 D. Agents + guardrails | ______ | Gemini answers basic shopper Q&A through the storefront; official OpenAI/Backboard path not started | R9/R10/R11 after the core/menu path exists | B2/B5/R5 |
+| ⚙️ B. Engine, core, Gym + Console | Bryan | B2 + B3 + B11 + B5 + B6 verified; handoff ready | S5 Console; Part D / Platform adapters | — |
+| 🔌 C. Platform | Ricardo | R14 Supabase live read verified; Railway `bazaar-chat` is online with `GEMINI_API_KEY`; `/health` and `/api/chat` verified | R2 token wrapper → R4/R5 product mirror/API → R6/R7 discount + checkout settlement | R6/R7 settlement code for real Deal |
+| 🤖 D. Agents + guardrails | ______ | Gemini answers basic shopper Q&A through the storefront; official OpenAI/Backboard path not started | R9/R10/R11 after the core/menu path exists | B5/R5 route integration |
 
 ### Next work decision — Sat 11:03 EDT
 
@@ -29,7 +29,7 @@ The fastest path to a real Shopify demo is **not more chatbot polish**. The live
 
 1. **R2** — implement the Shopify Admin API token wrapper in code, including re-fetch on 401.
 2. **R4/R5** — build the in-memory product mirror/API from real Shopify products, including price, cost, inventory, image, type, and `bazaar.stocked_at`.
-3. **B2 → B5** — finish menu builder/core so offer choices come from code, not the model.
+3. **B5 + B6 integration** — connect the verified core/check to real shopper routes.
 4. **R6/R7 + S4** — mint a constrained Shopify discount and open checkout at the agreed price.
 
 Until those land, the storefront chat can answer product questions with Gemini, but it must not claim a binding discount or checkout price.
@@ -69,7 +69,7 @@ There are no tickets. **This file is the tracker.**
 |---|---|---|
 | 🛍️ **A. Storefront + Shopify store** | **Ritvik** | The offer card, storefront + chat, Deal flow, deal trail, faces, sparkles; product seed + sync; the ChatGPT widget (gate 0) and `/mcp`; demo script, offline replay, Devpost page, video |
 | ⚙️ **B. Engine, core, Gym + Owner Console** | **Bryan** | `contracts`, engine + property tests, offers, core functions, the check; Gym run, dot histogram, swarm animation, click-a-dot, red-dot wall; Console UI (`/console`): feed, policy panel, Approve card |
-| 🔌 **C. Platform** | ______________ | Shopify app, token + refresh, server shell, `db.ts`, SSE, mint, checkout link, store settings, Supabase + auth middleware, owner routes, hosting, the domain |
+| 🔌 **C. Platform** | **Ricardo** | Shopify app, token + refresh, server shell, `db.ts`, SSE, mint, checkout link, store settings, Supabase + auth middleware, owner routes, hosting, the domain |
 | 🤖 **D. Agents + guardrails** | ______________ | OpenAI client (*understand*), Backboard client (memory, documents, *choose + say*), the Auditor, PAUSE, approvals, event bus, red-team + verifier |
 
 The storefront and the Console are one web app (`apps/web`: `/` and `/console`) — two owners, two routes, one shared card component. **Gate 1 is a two-person chain:** Ritvik's Deal button (S4) on top of Platform's mint + checkout link (R6, R7).
@@ -166,22 +166,32 @@ The maths that writes every price, the three core functions on top of it, the Gy
 **Before gate 1 (now → Sat 09:00)** — not on the gate-1 path; build in parallel.
 
 - [x] **B1 (BM)** Engine formulas: cost, floor, urgency, target, ask [§6] · _needs B0_ · ~1.5 h · **Done when:** `target = list − urgency × (list − floor)`, `ask(4) = target`, and unit tests reproduce the worked example in ARCHITECTURE §6 (TR3 target = $169; TR2 asks $149 → $135 → $127 → $120); maths in cents, shopper-facing totals rounded **up** to whole dollars; no `stocked_at` ⇒ urgency 0
-- [ ] **B2** Menu builder — held, bundles (add-on at cost + ½ margin; shoe at `ask(r+1)` if profit holds), something else (`x < target(p)` or `r ≥ 3`; priced `max(target, min(ask, budget))`), ranking, final label [§6] · _needs B1_ · ~3 h · **Done when:** "$120 on the TR3, round 1" returns a TR2 option at $120 and a TR2 + gaiters option, and every option ≥ `floor(cart)`
-- [ ] **B3** Property tests (fast-check) [§6.2] · _needs B2_ · ~1.5 h · **Done when:** every property in SPEC §6.2 passes on 1,000 runs and the suite runs live for a judge in under 10 s
+- [x] **B2 (BM)** Menu builder — held, bundles (add-on at cost + ½ margin; shoe at `ask(r+1)` if profit holds), something else (`x < target(p)` or `r ≥ 3`; priced `max(target, min(ask, budget))`), ranking, final label [§6] · _needs B1_ · ~3 h · **Done when:** "$120 on the TR3, round 1" returns a TR2 option at $120 and a TR2 + gaiters option, and every option ≥ `floor(cart)`
+- [x] **B3 (BM)** Property tests (fast-check) [§6.2] · _needs B2_ · ~1.5 h · **Done when:** every property in SPEC §6.2 passes on 1,000 runs and the suite runs live for a judge in under 10 s
 - [x] **B4 (BM)** Offers: ids, 15-min expiry, supersede, single use [rule 7] · _needs B0_ · ~1 h · **Done when:** accept rejects unknown / expired / used / superseded ids (four tests)
 
 **B1 / B4 verified — Sat 19 Sep 03:25 EDT (Codex):** `pnpm install`, `pnpm test` (29 tests, including 1,000 seeded pricing cases), and `pnpm typecheck` all pass. The protected worked example is unchanged; unknown, expired, used and superseded offers each drove a red/green step. Standards and spec reviews found no actionable defects. B2 is next; B3 remains open for the full menu invariants.
 
+**B2 verified — Sat 19 Sep (Codex):** `pnpm test` 43 passed (200 ms), `pnpm typecheck` green; worked menu, bundle, filtering, rounding and facts regressions pass; standards/spec review completed.
+
+**B3 verified — Sat 19 Sep (Codex):** 11 properties × 1,000 seeded runs pass in `pnpm test:props` (0.51 s wall); 54 tests (299 ms) and typecheck green; owner clarified raw concession steps and bundle shoe targets; property counterexamples drove two code fixes.
+
+**B11 verified — Sat 19 Sep (Codex):** 67 tests (349 ms) and typecheck green; 300 shoppers in 2.43 ms, deterministic seed 42, crossover 42%; regenerated fixture passes gymResultProblems; layout properties and reviews pass.
+
+**B5 verified — Sat 19 Sep (Codex):** 17 core tests; `pnpm test` 84 passed (351 ms), typecheck green; two-turn settlement, fallback/time budget, privacy, size validation, round cap and single-use concurrency verified; standards/spec reviews completed.
+
+**B6 verified — Sat 19 Sep (Codex):** 10 checker tests; `pnpm test` 94 passed (376 ms), typecheck green; all four attacks fall back to A with one blocked check row, clean facts pass untouched; properties 11 × 1,000 in 0.51 s, Gym 300 in 2.23 ms; standards/spec reviews clear.
+
 **Gate 1 → Devpost (Sat 09:00 → 14:00)**
 
-- [ ] **B5** Core: `findProducts · makeOffer · acceptOffer` over `db.ts` [§5] · _needs B2, B4, R5_ · ~3 h · **Done when:** both adapters call only these three, and a full turn works end to end with the LLM stubbed
-- [ ] **B6** The check [§5.1 step 5] · _needs B5_ · ~1.5 h · **Done when:** an invented option id, an invented `$`, a reason with no fact, and a cost/floor word each produce option A + template + a `blocked: check` row
+- [x] **B5 (BM)** Core: `findProducts · makeOffer · acceptOffer` over `db.ts` [§5] · _needs B2, B4, R5_ · ~3 h · **Done when:** both adapters call only these three, and a full turn works end to end with the LLM stubbed
+- [x] **B6 (BM)** The check [§5.1 step 5] · _needs B5_ · ~1.5 h · **Done when:** an invented option id, an invented `$`, a reason with no fact, and a cost/floor word each produce option A + template + a `blocked: check` row
 
 **Devpost → gate 2 (Sat 14:00 → Sun 00:00)** — **this block is ~15 h of work in a 10 h window, so it is ordered keep-first:** everything down to S9 is never cut; S7, S8, S10 are on the cut order (§7) and come last. Ritvik is the helper for S9 / S10 once B10 is done.
 
 - [ ] **S5** Console shell: login, top bar + PAUSE, live feed with red blocked rows, SSE over `fetch` [§4.4] · _needs R5 (R15 for real data)_ · ~2.5 h · **Done when:** a haggle on the left produces feed rows on the right in < 1 s
 - [ ] **S6** Console policy panel: floor slider, ask-me switch, missing-cost list, **Adopt** [§4.4] · _needs S5_ · ~1.5 h · **Done when:** Adopt changes the floor used by the very next shopper turn
-- [ ] **B11** Gym run: personas, seeded, per-shopper records, A vs B, deals missed, would-ask-owner, profit vs banner [§9.1] · _needs B2_ · ~2.5 h · **Done when:** 300 shoppers run in < 50 ms in the browser, the same seed gives an identical `GymResult`, and `profitVsBanner` goes negative at some floor
+- [x] **B11 (BM)** Gym run: personas, seeded, per-shopper records, A vs B, deals missed, would-ask-owner, profit vs banner [§9.1] · _needs B2_ · ~2.5 h · **Done when:** 300 shoppers run in < 50 ms in the browser, the same seed gives an identical `GymResult`, and `profitVsBanner` goes negative at some floor
 - [ ] **B12** Functional static dot histogram + metric cards [§9.2] · _needs B11, S6_ · ~2 h · **Done when:** one dot per shopper coloured by persona, grey outline for policy A, reference lines, shaded cost → floor band, and the headline card turns red when haggling loses
 - [ ] **S9** Click-a-dot mini-transcript + persona legend as a filter [§9.2] · _needs B12_ · ~1.5 h · **Done when:** any dot shows persona, willingness, offers and asks per round, the trade, the outcome
 - [ ] **S7** Approve / Decline card with profit $ and %, 45 s bar [§4.4] · _needs S5, B8_ · ~1 h · **Done when:** both buttons and the timeout each resolve the shopper's pending card
@@ -196,7 +206,7 @@ The maths that writes every price, the three core functions on top of it, the Gy
 
 **Handoffs:** needs **R5** (server + `db.ts`) and **R4** (mirror) before B5 · needs **B14** (event bus) and **R15** (owner routes) from the Agents / Platform owner for a live Console feed · needs **B8** before S7 and **B13** before S10 · gives **B2** to R11 and **B5 / B6** to everything in part D.
 
-### 🔌 C. Platform — **______________**
+### 🔌 C. Platform — **Ricardo**
 
 What the app runs on: the Shopify app and token, the server, the discount-code mint and checkout link, the database, hosting and the domain. **The mint (R6) and checkout link (R7) are the gate-1 critical path.**
 
@@ -220,14 +230,14 @@ What the app runs on: the Shopify app and token, the server, the discount-code m
 
 - [ ] **R12** **Hosting: one long-lived instance** — secrets in the host, push-to-deploy, health check, instance count pinned to 1, no sleep [§5] · _needs R5, gate 1_ · ~1.5 h · **Done when:** the storefront loads from the host, SSE survives 5 minutes, and two browsers see the same PAUSE state
 
-  _Sat 10:45 Codex note:_ `railway.json` is configured with Nixpacks, `pnpm --dir apps/server start`, and `/health` as the health check. Next manual step is creating/linking the Railway service, adding `GEMINI_API_KEY`, deploying, and generating the public Railway domain.
-
   _Sat 11:03 Codex note:_ `bazaar-chat` is deployed on Railway in `sfo`, has a public service domain, and has `GEMINI_API_KEY` set. R12 remains open because it is larger than the chat endpoint: the hosted app still does not serve the full storefront/Console, SSE has not been proven for 5 minutes, and PAUSE/shared state are not implemented.
 - [ ] **R13** **GoDaddy Registry domain** via the MLH offer → pointed at the host; storefront at the root [§10] · _needs R12_ · ~0.5 h · **Done when:** `https://<domain>/` serves the storefront with a valid certificate — before 13:00, so it's on the Devpost page
 
 **Devpost → gate 2 (Sat 14:00 → Sun 00:00)**
 
 - [ ] **R14** Thin Supabase: `schema.sql` (3 tables, RLS on, no public policies), owner user, auth middleware, policy cache, one `deals` write per settlement [§5.2] · _needs R5, gate 1 · **start by 16:00**_ · ~1.5 h · **Done when:** a shopper route can't read owner data, Adopt inserts a row, and a restart reloads the policy
+
+  **Progress Sat 11:00:** the remote project is healthy; `schema.sql` is applied; the owner is bound; RLS is enabled; the pinned Supabase client, query adapter and smoke command are implemented; a live server-key read returned the seeded merchant and current 25% policy. Still required before checking R14: wire auth, policy and deal writes into the Hono routes; prove public denial; perform one live Adopt insert; prove restart reload.
 - [ ] **R15** `GET /api/console/state` + owner routes (`policy`, `approvals/:id`, `pause`, `stream`) [§5.3] · _needs R5, B8_ · ~1 h · **Done when:** the Console loads policy + products with costs + pending approvals + red-team result in one call, and every owner route returns 401 without a token
 
 **After gate 2 (Sun 00:00 → 08:00) — stretch is optional, see §8**
@@ -471,7 +481,8 @@ The path to gate 1 is **Platform (token → mint → checkout link) joined with 
 - [x] `shopify app init` (20-minute rule)
 - [x] Six scopes, installed, the token curl works
 - [ ] Backboard + OpenAI keys in `.env`; **store documents uploaded now** so they're `indexed` by morning
-- [ ] Supabase project and host account created (not wired yet)
+- [x] Supabase project created; schema, owner binding and live server-key read verified
+- [ ] Host account created
 - [ ] MLH GoDaddy offer claimed
 
 **🛍️ Ritvik — storefront**

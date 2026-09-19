@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { GymResult } from "@bazaar/contracts";
 import { seed42 } from "../fixtures/index";
 import { gymResultProblems } from "./invariants";
+import { runGym } from "./run";
+import { input } from "./test-data";
 
 // SPEC §6 worked example, as literals — never recomputed here the way a generator would.
 const TR2 = { cost: 7800, floor: 9750 };
@@ -10,6 +12,10 @@ const ASKS = [14900, 13500, 12700, 12000];
 // The Console UI is built against this file and B11 later regenerates it from a real run.
 // Everything below must hold for both, or the UI notices the swap.
 describe("seed42 fixture", () => {
+  it("is pinned to the real seed-42 run", () => {
+    expect(seed42).toEqual(runGym(input));
+  });
+
   it("breaks no invariant of a real GymResult", () => {
     expect(gymResultProblems(seed42, TR2)).toEqual([]);
   });
