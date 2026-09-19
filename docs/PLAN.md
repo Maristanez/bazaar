@@ -317,6 +317,8 @@ What the app runs on: the Shopify app and token, the server, the discount-code m
 
 The LLM steps and the layers that stop them losing money: OpenAI *understand*, Backboard memory and *choose + say*, the Auditor, PAUSE, ask-the-owner, the event bus and the red-team.
 
+> **Build specs for the five guardrail tickets — B14, B9, B8, B7, B13 — are in [`PART-D-BUILD.md`](PART-D-BUILD.md)** (written Sat 14:45 EDT, ~7.5 h in dependency order). The four `CoreHooks` seams they plug into already exist in `apps/server/src/core/hooks.ts`; B5 left them permissive on purpose. R9/R10/R11 are not in that file — they are the sponsor-track LLM work, not the guardrails.
+
 **Gate 1 → Devpost (Sat 09:00 → 14:00)**
 
 - [ ] **R9** OpenAI *understand*: Responses API + Structured Outputs, 2.5 s timeout, regex fallback [§11] · _needs R5_ · ~1.5 h · **Done when:** "uhh i could maybe do like 115 if socks are in?" → `{ kind, amount: 115, wants: socks }` in < 1 s, and the fallback fires on a forced timeout
