@@ -68,6 +68,15 @@
 - **What we changed or threw away, and why:** We kept the Railway server as plain Node instead of switching to Hono during the hack window; the acceptance path matters more than a framework migration.
 - **Outcome:** Local smoke test read 9 real Shopify products with no missing-cost warnings, created a card for “Could you do $120?” on Trail Runner 3, minted real code `BAZAAR-K3N63`, and returned a Shopify cart permalink with the discount applied.
 
+### #7 — `Sat 15:05` · `Ritvik` · `Live chat card hardening`
+
+- **Prompt:**
+  > always show the product card and i keep getting this “I could not reach the live endpoint…”
+- **What Codex produced:** A storefront chat patch that renders a compact product card on every assistant turn, accepts either a base Railway URL or a full `/api/chat` URL, removes the shopper-facing endpoint failure copy, and links offer cards to the product named in the offer.
+- **What we kept:** The graceful offline/scripted fallback still exists, but it now looks like normal shopkeeper behavior instead of exposing internal infrastructure.
+- **What we changed or threw away, and why:** We stopped telling shoppers that the live endpoint failed; that belongs in developer logs, not the demo/customer surface.
+- **Outcome:** Product and price questions always have a visual product card, and a Trail Runner 3 offer links to Trail Runner 3 even from the all-products page.
+
 <!-- Copy the block above for each new entry. Never edit an old entry to make it sound better — add a follow-up entry instead. -->
 
 ### R14 follow-up — 2026-09-19 · Ricardo / Codex · merchant domain correction
