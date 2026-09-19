@@ -14,7 +14,16 @@
 
 ## Entries
 
-### #1 — `<Sat HH:MM>` · `<name>` · `<task id, e.g. B3>`
+### #1 — `Sat 09:10` · `Ritvik` · `S1 setup`
+
+- **Prompt:**
+  > I want to make a Shopify store. Scaffold the theme and prepare live preview against the development store.
+- **What Codex produced:** A Shopify CLI-ready Skeleton theme, verified it with Theme Check, and added the theme to the Bazaar repository as `shopify-theme/`.
+- **What we kept:** The isolated theme starter and its documented `shopify theme dev` command.
+- **What we changed or threw away, and why:** We did not merge generated Liquid files into `apps/web`; the app's storefront task still depends on the shared contracts and should stay within the pnpm architecture.
+- **Outcome:** `shopify-theme/` contains a clean Shopify Skeleton baseline; Theme Check inspected 39 files with no offenses.
+
+### #2 — `<Sat HH:MM>` · `<name>` · `<task id, e.g. B3>`
 
 - **Prompt** (paste it, trimmed):
   > …
@@ -23,7 +32,7 @@
 - **What we changed or threw away, and why:** …
 - **Outcome** (time saved, bug caught, test that now exists — with a commit hash or file path): …
 
-### #2 — `<Sat HH:MM>` · `<name>` · `<task id>`
+### #3 — `<Sat HH:MM>` · `<name>` · `<task id>`
 
 - **Prompt:**
   > …
@@ -32,7 +41,7 @@
 - **What we changed or threw away, and why:** …
 - **Outcome:** …
 
-### #3 — `<Sat HH:MM>` · `<name>` · `<task id>`
+### #4 — `<Sat HH:MM>` · `<name>` · `<task id>`
 
 - **Prompt:**
   > …
