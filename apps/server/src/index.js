@@ -710,11 +710,8 @@ function findProductFromPayload(payload, mirror) {
   const wantedProduct = String(product.productId || product.id || "").replace(/^gid:\/\/shopify\/Product\//, "");
   const wantedHandle = stringOrNull(product.handle);
   const wantedTitle = stringOrNull(product.title);
-  let item = mirror.items.find((entry) => {
-    const title = entry.title.toLowerCase();
-    const handle = entry.handle.toLowerCase();
-    return (title.length > 3 && text.includes(title)) || (handle.length > 3 && text.includes(handle));
-  });
+  const explicitItem = bestExplicitProductMention(text, mirror.items);
+  let item = explicitItem;
   if (!item) item = mirror.items.find((entry) => entry.variantNumericId === wantedVariant || entry.variantId === product.selectedVariantId);
   if (!item && wantedProduct) item = mirror.items.find((entry) => entry.productNumericId === wantedProduct || entry.productId === product.productId);
   if (!item && wantedHandle) item = mirror.items.find((entry) => entry.handle === wantedHandle);
@@ -724,6 +721,50 @@ function findProductFromPayload(payload, mirror) {
   const publicProduct = publicProducts(mirror).find((entry) => entry.productId === item.productId || entry.handle === item.handle);
   return { item, publicProduct };
 }
+
+function bestExplicitProductMention(text, items) {
+  const normalizedText = normalizeSearchText(text);
+  if (!normalizedText) return null;
+  const candidates = items
+    .filter((item) => item.inStock && item.cost !== null)
+    .map((item) => ({ item, score: productMentionScore(normalizedText, item) }))
+    .filter((candidate) => candidate.score > 0)
+    .sort((a, b) => b.score - a.score);
+  return candidates[0]?.item || null;
+}
+
+function productMentionScore(text, item) {
+  const haystack = ` ${text} `;
+  const title = normalizeSearchText(item.title);
+  const handle = normalizeSearchText(item.handle);
+  const type = normalizeSearchText(item.productType);
+  let score = 0;
+  if (title.length > 3 && haystack.includes(` ${title} `)) score += 100;
+  if (handle.length > 3 && haystack.includes(` ${handle} `)) score += 90;
+  for (const token of productSearchTokens(item, type)) {
+    if (haystack.includes(` ${token} `)) score += token.length > 4 ? 18 : 12;
+  }
+  return score;
+}
+
+function productSearchTokens(item, type) {
+  const source = normalizeSearchText(`${item.title || ""} ${item.handle || ""} ${type || ""}`);
+  const tokens = new Set(source.split(" ").filter((token) => token.length >= 3 && !PRODUCT_STOP_WORDS.has(token)));
+  for (const token of [...tokens]) {
+    if (token.endsWith("s") && token.length > 3) tokens.add(token.slice(0, -1));
+  }
+  return tokens;
+}
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const PRODUCT_STOP_WORDS = new Set(["the", "and", "for", "with", "trail", "open", "offer", "offers", "product"]);
 
 async function askGemini(context) {
   const apiKey = process.env.GEMINI_API_KEY;
