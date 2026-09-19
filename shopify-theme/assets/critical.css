@@ -86,6 +86,47 @@ select:focus-visible {
   outline-offset: 3px;
 }
 
+.account-widget {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 3rem;
+  min-height: 3rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 999px;
+  background: #064e3b;
+  box-shadow: 0 10px 25px rgb(6 78 59 / 28%);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition: background-color 180ms ease, transform 180ms ease;
+}
+
+.account-widget:hover {
+  background: #0f766e;
+  transform: translateY(-2px);
+}
+
+.account-widget svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account-widget { transition: none; }
+  .account-widget:hover { transform: none; }
+}
+
+@media (max-width: 480px) {
+  .account-widget span { display: none; }
+}
+
 /** Section layout utilities */
 
 /**

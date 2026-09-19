@@ -31,6 +31,11 @@
 
     {{ content_for_layout }}
 
+    <a class="account-widget" href="{{ routes.account_login_url }}" aria-label="Log in to your account">
+      <span aria-hidden="true">{{ 'icon-account.svg' | inline_asset_content }}</span>
+      <span>Login</span>
+    </a>
+
     {% sections 'footer-group' %}
   </body>
 </html>
