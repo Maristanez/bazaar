@@ -5,26 +5,16 @@
   https://shopify.dev/docs/storefronts/themes/architecture/templates/collection
 {% endcomment %}
 
-<h1>{{ collection.title }}</h1>
+<div class="collection-heading">
+  <p class="collection-heading__eyebrow">Browse the collection</p>
+  <h1>{{ collection.title }}</h1>
+</div>
 
 <div class="collection-products">
   {% paginate collection.products by 20 %}
     {% for product in collection.products %}
       <div class="collection-product">
-        {% if product.featured_image %}
-          {% render 'image',
-            class: 'collection-product__image',
-            image: product.featured_image,
-            url: product.url,
-            width: 400,
-            height: 400,
-            crop: 'center'
-          %}
-        {% endif %}
-        <div class="collection-product__content">
-          <p>{{ product.title | escape | link_to: product.url }}</p>
-          <p>{{ product.price | money }}</p>
-        </div>
+        {% render 'product-card', product: product %}
       </div>
     {% endfor %}
 
@@ -35,8 +25,14 @@
 {% stylesheet %}
   .collection-products {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: clamp(1rem, 2vw, 2rem);
+    padding: 0 var(--page-margin) 5rem;
   }
+  .collection-heading { padding: 4rem var(--page-margin) 2rem; }
+  .collection-heading__eyebrow { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+  .collection-heading h1 { font-size: clamp(2.5rem, 7vw, 5rem); letter-spacing: -0.05em; }
+  @media (max-width: 750px) { .collection-products { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 {% endstylesheet %}
 
 {% schema %}

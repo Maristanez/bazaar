@@ -78,6 +78,14 @@ body {
   color: var(--color-foreground);
 }
 
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid #ea580c;
+  outline-offset: 3px;
+}
+
 /** Section layout utilities */
 
 /**

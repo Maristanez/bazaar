@@ -4,6 +4,7 @@
   </h2>
 
   <div class="header__menu">
+    <a href="{{ routes.all_products_collection_url }}">Shop</a>
     {% for link in section.settings.menu.links %}
       {{ link.title | link_to: link.url }}
     {% endfor %}
