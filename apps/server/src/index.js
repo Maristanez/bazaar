@@ -1057,8 +1057,10 @@ function parseOfferTerms(message, payload = {}, understanding = {}, options = {}
 function parseMoney(value) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   const text = String(value || "");
-  const match = text.match(/(?:c\$|\$)\s*(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s*(?:\$|cad|dollars?|bucks?|each|ea|apiece|a piece|a pop|per\b|\/\s*ea|all in|total|altogether|otd|out the door)/i);
+  const match = text.match(/(?:c\$|\$)\s*(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s*(?:\$|cad|dollars?|bucks?|each|ea|apiece|a piece|a pop|per\b|\/\s*ea|all in|all-in|total|altogether|otd|out the door)/i);
   if (match) return Number(match[1] || match[2]);
+  const prefixedNumber = text.match(/\b(?:for|at|around|about|under|to|do|take|offer|pay|price|give|make|call it|down to|knock(?: them| it)? down to|meet me at|what about)\s+(\d+(?:\.\d{1,2})?)\b/i);
+  if (prefixedNumber) return Number(prefixedNumber[1]);
   const wordMoney = parseMoneyWords(text);
   if (wordMoney !== null) return wordMoney;
   if (/^\s*\d+(?:\.\d{1,2})?\s*$/.test(text)) return Number(text);
@@ -1069,9 +1071,10 @@ function parseQuantity(value, fallback = 1) {
   const text = normalizeSearchText(value);
   const match = text.match(/\b(?:buy|get|take|grab|want|order|add|need)\s+(\d{1,2})\b|\b(\d{1,2})\s*(?:x|pcs?|pieces?|items?|tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?)\b/i);
   const wordMatch = text.match(/\b(?:buy|get|take|grab|want|order|add|need)\s+([a-z -]+?)\s+(?:tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?|items?)\b/i);
+  const directWordMatch = text.match(/\b([a-z -]+?)\s+(?:tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?|items?)\b/i);
   const pairMatch = /\b(pair|couple|both)\b/i.test(text);
   const halfDozen = /\bhalf dozen\b/i.test(text);
-  const wordQuantity = wordMatch ? parseNumberWords(wordMatch[1]) : null;
+  const wordQuantity = wordMatch ? parseNumberWords(wordMatch[1]) : directWordMatch ? parseNumberWords(directWordMatch[1]) : null;
   const quantity = match ? Number(match[1] || match[2]) : halfDozen ? 6 : pairMatch ? 2 : wordQuantity ?? fallback;
   if (quantity === null || quantity === undefined) return null;
   return Math.max(1, Math.min(MAX_OFFER_QUANTITY, Number.isFinite(quantity) ? quantity : fallback));
@@ -1087,7 +1090,13 @@ function withQuantity(item, qty) {
 
 function parseMoneyWords(value) {
   const text = normalizeSearchText(value);
-  const moneyContext = text.match(/\b(?:for|at|around|about|under|to|do|take|offer|pay|price|give|make|call it)\s+([a-z -]+?)(?:\s+(?:cad|dollars?|bucks?|each|ea|apiece|a piece|a pop|piece|pop|per|total|altogether|all in|out the door))\b/i)
+  const wordPattern = NUMBER_WORD_PATTERN;
+  const directContext = text.match(new RegExp(`\\b(?:for|at|around|about|under|to|do|take|offer|pay|price|give|make|call it|down to|knock(?: them| it)? down to|meet me at|what about)\\s+(${wordPattern}(?:\\s+${wordPattern})*)\\b`, "i"));
+  if (directContext) {
+    const directParsed = parseNumberWords(directContext[1]);
+    if (directParsed !== null) return directParsed;
+  }
+  const moneyContext = text.match(/\b(?:for|at|around|about|under|to|do|take|offer|pay|price|give|make|call it)\s+([a-z -]+?)(?:\s+(?:cad|dollars?|bucks?|each|ea|apiece|a piece|a pop|piece|pop|per|total|altogether|all in|out the door|on|with|if|and|for))\b/i)
     || text.match(/\b([a-z -]+?)\s+(?:cad|dollars?|bucks?|each|ea|apiece|a piece|a pop|total|altogether|all in|out the door)\b/i);
   if (!moneyContext) {
     if (/\b(benjamin)\b/i.test(text)) return 100;
@@ -1154,6 +1163,8 @@ const TENS_NUMBER_WORDS = {
   eighty: 80,
   ninety: 90,
 };
+
+const NUMBER_WORD_PATTERN = "(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fourty|fifty|sixty|seventy|eighty|ninety|hundred|benjamin)";
 
 function targetOf(item, floor) {
   const itemUrgency = urgencyFor(item.stockedAt);
