@@ -129,10 +129,16 @@
     return endpoint + '/api/chat';
   }
 
+  function acceptUrl() {
+    if (/\/api\/chat$/i.test(endpoint)) return endpoint.replace(/\/api\/chat$/i, '/api/accept');
+    if (/\/api\/accept$/i.test(endpoint)) return endpoint;
+    return endpoint + '/api/accept';
+  }
+
   function acceptOffer(card, button) {
     button.disabled = true;
     button.textContent = 'Minting...';
-    return window.fetch(endpoint + '/api/accept', {
+    return window.fetch(acceptUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

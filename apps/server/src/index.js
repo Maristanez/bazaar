@@ -137,7 +137,10 @@ const server = createServer(async (request, response) => {
     try {
       const payload = await readJson(request);
       const settlement = await acceptOffer(String(payload.offerId || "").trim());
-      sendJson(response, request, 200, { settlement, reply: `Deal. Use ${settlement.code} at checkout — I opened it with the code already applied.` });
+      const reply = settlement.code
+        ? `Deal. Use ${settlement.code} at checkout — I opened it with the code already applied.`
+        : "Deal. I opened Shopify Checkout with the accepted items.";
+      sendJson(response, request, 200, { settlement, reply });
     } catch (error) {
       console.error("[api/accept]", error);
       sendJson(response, request, 400, { error: "accept_failed", reply: error.message || "That offer cannot be accepted anymore." });
@@ -566,7 +569,9 @@ async function mintDiscount(offer) {
   if (offer.items.some((item) => String(item.variantId).startsWith("seed://"))) throw new Error("This offer came from the seed fallback, so I will not create a fake Shopify checkout.");
   const code = `BAZAAR-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
   const discountAmount = Math.max(0, offer.listTotal - offer.total);
-  if (discountAmount <= 0) throw new Error("No discount is needed for that offer.");
+  if (discountAmount <= 0) {
+    return { offerId: offer.offerId, code: null, agreedTotal: offer.total, checkoutUrl: checkoutUrl(offer.items), expiresAt: offer.expiresAt.toISOString() };
+  }
   const variables = {
     basicCodeDiscount: {
       title: `Bazaar offer ${code}`,
@@ -592,7 +597,8 @@ async function mintDiscount(offer) {
 
 function checkoutUrl(items, code) {
   const cart = items.map((item) => `${item.variantNumericId}:1`).join(",");
-  return `${shopBaseUrl()}/cart/${cart}?discount=${encodeURIComponent(code)}`;
+  const discount = code ? `?discount=${encodeURIComponent(code)}` : "";
+  return `${shopBaseUrl()}/cart/${cart}${discount}`;
 }
 
 function findProductFromPayload(payload, mirror) {
