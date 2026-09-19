@@ -279,7 +279,11 @@ What the app runs on: the Shopify app and token, the server, the discount-code m
 
 - [ ] **R14** Thin Supabase: `schema.sql` (3 tables, RLS on, no public policies), owner user, auth middleware, policy cache, one `deals` write per settlement [§5.2] · _needs R5, gate 1 · **start by 16:00**_ · ~1.5 h · **Done when:** a shopper route can't read owner data, Adopt inserts a row, and a restart reloads the policy
 
-  **Progress Sat 11:00:** the remote project is healthy; `schema.sql` is applied; the owner is bound; RLS is enabled; the pinned Supabase client, query adapter and smoke command are implemented; a live server-key read returned the seeded merchant and current 25% policy. Still required before checking R14: wire auth, policy and deal writes into the Hono routes; prove public denial; perform one live Adopt insert; prove restart reload.
+  **Supabase status: partially complete. R14 remains unchecked.**
+
+  **Completed:** the Supabase project is healthy; `schema.sql` is applied; the three tables exist; RLS is enabled with no public policies; the merchant is seeded and bound to the owner; the live shop domain is `b8wzw0-h3.myshopify.com`; the pinned Supabase client, query adapter and smoke command are implemented; and a live service role read returned the seeded merchant and current 25% policy.
+
+  **Not completed:** Supabase Auth middleware is not wired into the owner routes; anonymous and shopper access denial has not been proven through the application routes; policy updates and deal settlement writes are not connected; no live Adopt insert has been demonstrated; and restart recovery of the saved policy has not been proven. Do not check R14 until all of these pass.
 - [ ] **R15** `GET /api/console/state` + owner routes (`policy`, `approvals/:id`, `pause`, `stream`) [§5.3] · _needs R5, B8_ · ~1 h · **Done when:** the Console loads policy + products with costs + pending approvals + red-team result in one call, and every owner route returns 401 without a token
 
 **After gate 2 (Sun 00:00 → 08:00) — stretch is optional, see §8**
