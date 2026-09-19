@@ -202,6 +202,87 @@ select:focus-visible {
   color: #fff;
 }
 
+.ai-chat__offer-card {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.9rem;
+  border: 1px dashed #f59e0b;
+  border-radius: 0.9rem;
+  background: #fff7ed;
+  color: #2f1604;
+}
+
+.ai-chat__offer-topline,
+.ai-chat__offer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ai-chat__offer-topline {
+  color: #9a3412;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ai-chat__offer-card h3 {
+  margin: 0;
+  color: #064e3b;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.ai-chat__offer-card p {
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.ai-chat__offer-price {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.ai-chat__offer-price span {
+  color: #6b7280;
+  text-decoration: line-through;
+}
+
+.ai-chat__offer-price strong {
+  color: #111827;
+  font-size: 1.15rem;
+}
+
+.ai-chat__offer-actions a,
+.ai-chat__offer-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.ai-chat__offer-actions a {
+  background: #064e3b;
+  color: #fff;
+}
+
+.ai-chat__offer-actions button {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.ai-chat__offer-footer {
+  color: #6b7280;
+}
+
 .ai-chat__prompts {
   display: flex;
   gap: 0.5rem;

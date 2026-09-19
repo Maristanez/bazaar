@@ -1,0 +1,107 @@
+[
+  {
+    "handle": "trail-runner-3",
+    "title": "Trail Runner 3",
+    "productType": "Trail Shoes",
+    "listPrice": 16900,
+    "unitCost": 9500,
+    "stockedAt": "2026-09-07",
+    "role": "new stock; price does not bend, bundles only",
+    "variants": [
+      { "size": "9", "sku": "TR3-9", "inventory": 8 },
+      { "size": "10", "sku": "TR3-10", "inventory": 10 },
+      { "size": "11", "sku": "TR3-11", "inventory": 7 }
+    ]
+  },
+  {
+    "handle": "trail-runner-2",
+    "title": "Trail Runner 2",
+    "productType": "Trail Shoes",
+    "listPrice": 14900,
+    "unitCost": 7800,
+    "stockedAt": "2026-06-17",
+    "role": "older stock; primary something-else recommendation",
+    "variants": [
+      { "size": "9", "sku": "TR2-9", "inventory": 5 },
+      { "size": "10", "sku": "TR2-10", "inventory": 4 },
+      { "size": "11", "sku": "TR2-11", "inventory": 3 }
+    ]
+  },
+  {
+    "handle": "ridge-lite",
+    "title": "Ridge Lite",
+    "productType": "Trail Shoes",
+    "listPrice": 9900,
+    "unitCost": 5200,
+    "stockedAt": "2026-08-10",
+    "role": "budget option",
+    "variants": [
+      { "size": "9", "sku": "RL-9", "inventory": 6 },
+      { "size": "10", "sku": "RL-10", "inventory": 6 },
+      { "size": "11", "sku": "RL-11", "inventory": 6 }
+    ]
+  },
+  {
+    "handle": "merino-socks",
+    "title": "Merino Socks",
+    "productType": "Accessories",
+    "listPrice": 1800,
+    "unitCost": 600,
+    "stockedAt": null,
+    "role": "add-on for distance runs",
+    "variants": [
+      { "size": "S/M", "sku": "SOCK-SM", "inventory": 30 },
+      { "size": "L/XL", "sku": "SOCK-LXL", "inventory": 28 }
+    ]
+  },
+  {
+    "handle": "trail-gaiters",
+    "title": "Trail Gaiters",
+    "productType": "Accessories",
+    "listPrice": 3500,
+    "unitCost": 1200,
+    "stockedAt": null,
+    "role": "add-on for mud and scree",
+    "variants": [
+      { "size": "One size", "sku": "GAITER-OS", "inventory": 18 }
+    ]
+  },
+  {
+    "handle": "soft-flask",
+    "title": "Soft Flask",
+    "productType": "Accessories",
+    "listPrice": 2500,
+    "unitCost": 900,
+    "stockedAt": null,
+    "role": "add-on for self-supported runs",
+    "variants": [
+      { "size": "500 ml", "sku": "FLASK-500", "inventory": 22 }
+    ]
+  },
+  {
+    "handle": "race-vest",
+    "title": "Race Vest",
+    "productType": "Hydration",
+    "listPrice": 8900,
+    "unitCost": 4100,
+    "stockedAt": "2026-07-11",
+    "role": "makes the shop feel real",
+    "variants": [
+      { "size": "S", "sku": "VEST-S", "inventory": 4 },
+      { "size": "M", "sku": "VEST-M", "inventory": 5 },
+      { "size": "L", "sku": "VEST-L", "inventory": 3 }
+    ]
+  },
+  {
+    "handle": "trail-cap",
+    "title": "Trail Cap",
+    "productType": "Accessories",
+    "listPrice": 2800,
+    "unitCost": 900,
+    "stockedAt": "2026-08-30",
+    "role": "small cart add-on",
+    "variants": [
+      { "size": "One size", "sku": "CAP-OS", "inventory": 24 }
+    ]
+  }
+]

@@ -35,11 +35,11 @@
 ### #3 — `<Sat HH:MM>` · `<name>` · `<task id>`
 
 - **Prompt:**
-  > …
-- **What Codex produced:** …
-- **What we kept:** …
-- **What we changed or threw away, and why:** …
-- **Outcome:** …
+  > lets build all of plan a
+- **What Codex produced:** The first A-lane foundation slice: Trailhead seed fixtures, store notes, sizing guide, policy copy, current-product Liquid context, `localStorage` shopper identity with `?shopper=demo`, and a non-binding preview offer card in the Shopify chat.
+- **What we kept:** The demo chat behaves closer to the planned storefront while still preserving the rule that only a server-generated card can be binding.
+- **What we changed or threw away, and why:** We did not enable a fake Deal button. It stays disabled until R6/R7 can mint a real Shopify discount code and checkout permalink.
+- **Outcome:** Plan A can now be demoed as a product-aware storefront preview while the tracker clearly shows the API credentials and server settlement blockers.
 
 ### #4 — `<Sat HH:MM>` · `<name>` · `<task id>`
 

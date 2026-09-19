@@ -14,7 +14,10 @@
   var input = widget.querySelector('[data-ai-chat-input]');
   var promptButtons = widget.querySelectorAll('[data-ai-chat-prompt]');
   var productSource = document.querySelector('[data-ai-chat-products]');
+  var currentProductSource = document.querySelector('[data-ai-chat-current-product]');
   var products = readProducts(productSource);
+  var currentProduct = readCurrentProduct(currentProductSource);
+  var shopperId = getShopperId();
 
   var responses = function () {
     var outfit = findOutfitProducts(products);
@@ -50,8 +53,8 @@
   ];
   }();
 
-  if (welcome && products.length) {
-    welcome.textContent = 'Hi, I can see ' + products.length + ' published storefront ' + pluralize(products.length, 'product') + ' right now. Ask for prices, outfit ideas, sizing, or checkout.';
+  if (welcome) {
+    welcome.textContent = getWelcomeMessage();
   }
 
   function readProducts(source) {
@@ -72,6 +75,58 @@
     } catch (error) {
       return [];
     }
+  }
+
+  function readCurrentProduct(source) {
+    if (!source) {
+      return null;
+    }
+
+    try {
+      var parsed = JSON.parse(source.textContent);
+      return parsed && parsed.title ? parsed : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function getShopperId() {
+    var params = new URLSearchParams(window.location.search);
+    var shopper = params.get('shopper');
+
+    if (shopper) {
+      return shopper;
+    }
+
+    try {
+      var existing = window.localStorage.getItem('bazaar:shopper-id');
+
+      if (existing) {
+        return existing;
+      }
+
+      var created = 'shopper-' + Math.random().toString(36).slice(2, 10);
+      window.localStorage.setItem('bazaar:shopper-id', created);
+      return created;
+    } catch (error) {
+      return 'shopper-session';
+    }
+  }
+
+  function getWelcomeMessage() {
+    if (currentProduct) {
+      if (shopperId === 'demo') {
+        return 'Eyeing ' + currentProduct.title + '? Welcome back — still a size 10? Ask me about fit, price, or making an offer.';
+      }
+
+      return 'Eyeing ' + currentProduct.title + '? I can help with fit, visible price, and a preview of how offers will work.';
+    }
+
+    if (products.length) {
+      return 'Hi, I can see ' + products.length + ' published storefront ' + pluralize(products.length, 'product') + ' right now. Ask for prices, outfit ideas, sizing, or checkout.';
+    }
+
+    return 'Hi, I can help you find outfits, sizes, and shipping info. Try one of the prompts below.';
   }
 
   function pluralize(count, singular) {
@@ -128,6 +183,14 @@
     return 'I can see these public storefront prices: ' + formatProductList(items.slice(0, 4)) + '.';
   }
 
+  function getPrimaryProduct() {
+    if (currentProduct) {
+      return currentProduct;
+    }
+
+    return products[0] || null;
+  }
+
   function sizingAnswer(items) {
     var tee = findProductByWords(items, ['tee', 'shirt']);
 
@@ -146,6 +209,41 @@
     }
 
     return 'I do not see a published outerwear item yet. A hoodie, fleece, or light jacket would make the next catalog feel much more complete.';
+  }
+
+  function addOfferCard(product) {
+    var card = document.createElement('article');
+    var title = product ? product.title : 'A published product';
+    var price = product ? product.price : 'list price';
+    var url = product && product.url ? product.url : '/collections/all';
+
+    card.className = 'ai-chat__offer-card';
+    card.innerHTML = [
+      '<div class="ai-chat__offer-topline">',
+      '<span>Preview card</span>',
+      '<span>Round 1 of 4</span>',
+      '</div>',
+      '<h3>' + escapeHtml(title) + '</h3>',
+      '<p class="ai-chat__offer-price"><span>' + escapeHtml(price) + '</span><strong>Real offer pending server app</strong></p>',
+      '<p>This is the shape of the binding card. The real version will use private cost data, an engine-priced menu, a 15-minute expiry, and a Shopify discount code.</p>',
+      '<div class="ai-chat__offer-actions">',
+      '<a href="' + escapeHtml(url) + '">View product</a>',
+      '<button type="button" disabled>Deal needs API</button>',
+      '</div>',
+      '<p class="ai-chat__offer-footer">Only the future server-generated card is binding. Totals are before tax and shipping.</p>'
+    ].join('');
+
+    messages.appendChild(card);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   function openChat() {
@@ -222,6 +320,10 @@
 
     window.setTimeout(function () {
       addMessage(getResponse(text), 'bot');
+
+      if (/offer|deal|discount|checkout|haggle/i.test(text)) {
+        addOfferCard(getPrimaryProduct());
+      }
     }, 420);
   });
 })();

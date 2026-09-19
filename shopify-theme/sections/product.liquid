@@ -41,6 +41,27 @@
   {% endform %}
 </div>
 
+<script type="application/json" data-ai-chat-current-product>
+  {
+    "productId": {{ product.id | json }},
+    "title": {{ product.title | json }},
+    "url": {{ product.url | json }},
+    "type": {{ product.type | json }},
+    "price": {{ product.price | money_without_trailing_zeros | json }},
+    "selectedVariantId": {{ product.selected_or_first_available_variant.id | json }},
+    "variants": [
+      {%- for variant in product.variants -%}
+        {
+          "id": {{ variant.id | json }},
+          "title": {{ variant.title | json }},
+          "price": {{ variant.price | money_without_trailing_zeros | json }},
+          "available": {{ variant.available | json }}
+        }{%- unless forloop.last -%},{%- endunless -%}
+      {%- endfor -%}
+    ]
+  }
+</script>
+
 {% schema %}
 {
   "name": "t:general.product",

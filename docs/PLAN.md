@@ -4,7 +4,7 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 09:32 EDT by Codex (S2 theme preview / public catalog chat)
+**Last updated:** Sat 19 Sep 09:52 EDT by Codex (A lane foundation)
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
@@ -18,7 +18,7 @@
 
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
-| 🛍️ A. Storefront + Shopify store | Ritvik | Shopify theme preview has product grid + scripted chat reading public storefront product names/prices | R1/R2 app credentials → R3 seed costs/metafields → real S1/S2 app card | Shopify Admin API app install for private cost data and discount minting |
+| 🛍️ A. Storefront + Shopify store | Ritvik | Theme preview has product-aware chat, shopper id, `?shopper=demo`, preview offer card, and seed files under `infra/seed` | R1/R2 app credentials → seed real Shopify products/costs → replace preview card with server-generated OfferCard | Shopify Admin API app install for private cost data and discount minting |
 | ⚙️ B. Engine, core, Gym + Console | Bryan | B1 + B4 done; checks green | B2 → B3 | — |
 | 🔌 C. Platform | ______ | — | B0 → R1 | — |
 | 🤖 D. Agents + guardrails | ______ | — | R9 (after gate 1) | — |
@@ -111,10 +111,14 @@ Everything a shopper sees, plus the store's products behind it: the offer card, 
 
 - [ ] **S1** The offer card — a pure component from `OfferCard`; all seven states; countdown; honesty footer [§4.1] · _needs B0_ · ~3 h · **Done when:** one page shows every state side by side and it reads in light and dark
 - [ ] **R3** Seed ~8 products with **cost per item**, size variants, `bazaar.stocked_at` metafield [§10, App. A] · _needs R2_ · ~1.5 h · **Done when:** products show in admin with costs; TR3 stocked 12 d ago, TR2 94 d ago
+
+  _Sat 09:52 Codex note:_ seed fixtures now exist in `infra/seed/products.json`, plus Backboard-ready `store-notes.md`, `sizing-guide.md`, and `policy.md`. R3 is still not complete until those products are created in Shopify Admin with costs and `bazaar.stocked_at`.
 - [ ] **S2** Storefront: grid, product page, sticker, chat panel, `localStorage` shopper id, `?shopper=demo`, typing effect from checked text [§4.2] · _needs S1, R5_ · ~3 h · **Done when:** opening the TR3 page greets by product and a card appears in the chat
 
-  _Sat 09:32 Codex note:_ the standalone `shopify-theme/` preview now has a storefront product grid and a bottom-right scripted shopkeeper chat that reads public Online Store product titles/prices from Liquid. This is useful for demo feel, but it does **not** complete S2: the real offer card, shopper id, checked text, private costs, and checkout flow still require the planned app/server path.
+  _Sat 09:52 Codex note:_ the standalone `shopify-theme/` preview now has a storefront product grid and a bottom-right scripted shopkeeper chat that reads public Online Store product titles/prices from Liquid. Product pages pass the current product into the chat, `localStorage` stores a shopper id, and `?shopper=demo` triggers the seeded greeting. It can render a **non-binding preview** offer card. This is useful for demo feel, but it does **not** complete S2: the real server-generated offer card, checked text, private costs, and checkout flow still require the planned app/server path.
 - [ ] **S4** Deal flow on the storefront: accept → checkout opens; sparkles [§4.1] · _needs S1, R6, R7_ · ~1 h · **Done when:** **gate 1 passes**
+
+  _Sat 09:52 Codex note:_ the preview card deliberately disables Deal and says the API is required. S4 remains blocked on R6/R7 so the first real Deal button mints a constrained Shopify discount and opens checkout.
 
 **Gate 1 → Devpost (Sat 09:00 → 14:00)**
 
