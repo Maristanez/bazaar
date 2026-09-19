@@ -75,7 +75,7 @@
           <button type="submit">Send</button>
         </form>
 
-        <p class="ai-chat__source">Backboard routes OpenAI with store documents and shopper memory. Private Shopify pricing stays on the server.</p>
+        <p class="ai-chat__source">Chat with our AI shopkeeper. Review the items and price on your offer card before checkout.</p>
       </section>
 
       <button
@@ -99,7 +99,7 @@
 
     <script type="application/json" data-ai-chat-products>
       [
-        {%- for product in collections.all.products limit: 8 -%}
+        {%- for product in collections.all.products -%}
           {
             "productId": {{ product.id | json }},
             "handle": {{ product.handle | json }},

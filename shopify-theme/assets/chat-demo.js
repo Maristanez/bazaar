@@ -19,6 +19,16 @@
   var endpoint = normalizeEndpoint(widget.getAttribute('data-ai-chat-endpoint'));
   var sending = false;
   var activeProduct = currentProduct || null;
+  var negotiationId = null;
+  var negotiationProductKey = null;
+  var lastSentProductKey = null;
+  var quantitySelectionChanged = false;
+  var currentOfferArticle = null;
+  var offerArticles = new Map();
+  var offerPollers = new WeakMap();
+  var countdownTimers = new WeakMap();
+
+  if (currentProduct) setNegotiationForProduct(selectedProduct());
 
   var scriptedResponses = buildScriptedResponses();
 
@@ -106,7 +116,7 @@
 
   function getContextPayload(text) {
     var contextProduct = getContextProduct();
-    return {
+    var payload = {
       message: text,
       shopperId: shopperId,
       pageUrl: window.location.href,
@@ -114,6 +124,43 @@
       productContextSource: contextProduct.source,
       products: products.slice(0, 8)
     };
+    if (contextProduct.product && contextProduct.product.quantity !== undefined) payload.quantity = contextProduct.product.quantity;
+    var key = productKey(contextProduct.product);
+    if (negotiationId && negotiationProductKey === key) payload.negotiationId = negotiationId;
+    if (lastSentProductKey && lastSentProductKey !== key) payload.variantSelectionChanged = true;
+    if (quantitySelectionChanged) {
+      payload.quantitySelectionChanged = true;
+      quantitySelectionChanged = false;
+    }
+    lastSentProductKey = key;
+    return payload;
+  }
+
+  function productKey(product) {
+    if (!product) return 'none';
+    return [product.productId || product.id || product.handle || product.title || '', product.selectedVariantId || 'default'].join(':');
+  }
+
+  function selectedProduct() {
+    if (!currentProduct) return null;
+    var selector = document.querySelector('select[name="id"], select[id^="ProductSelect-"]');
+    var selectedVariantId = selector && selector.value ? String(selector.value) : currentProduct.selectedVariantId;
+    var selectedVariant = (currentProduct.variants || []).find(function (variant) {
+      return String(variant.id) === String(selectedVariantId);
+    });
+    var quantityInput = document.querySelector('input[name="quantity"], input[id^="Quantity-"], input[data-quantity-input]');
+    var quantity = quantityInput && quantityInput.value ? Number(quantityInput.value) : 1;
+    return Object.assign({}, currentProduct, {
+      selectedVariantId: selectedVariantId,
+      quantity: Number.isSafeInteger(quantity) && quantity > 0 ? quantity : 1,
+      ...(selectedVariant ? { selectedVariantTitle: selectedVariant.title, price: selectedVariant.price } : {})
+    });
+  }
+
+  function setNegotiationForProduct(product, quantityChanged) {
+    var key = productKey(product);
+    if (negotiationProductKey && (negotiationProductKey !== key || quantityChanged)) negotiationId = null;
+    negotiationProductKey = key;
   }
 
   function askEndpoint(text) {
@@ -125,6 +172,15 @@
       if (!response.ok) throw new Error('Chat endpoint returned ' + response.status);
       return response.json();
     });
+  }
+
+  function offersUrl(card) {
+    var path = '/api/offers/' + encodeURIComponent(card.offerId);
+    var query = '?shopperId=' + encodeURIComponent(shopperId) + '&negotiationId=' + encodeURIComponent(card.negotiationId || '');
+    if (/\/api\/chat$/i.test(endpoint)) return endpoint.replace(/\/api\/chat$/i, path) + query;
+    if (/\/api\/accept$/i.test(endpoint)) return endpoint.replace(/\/api\/accept$/i, path) + query;
+    if (/\/api\/offers$/i.test(endpoint)) return endpoint.replace(/\/api\/offers$/i, path) + query;
+    return endpoint + path + query;
   }
 
   function chatUrl() {
@@ -139,6 +195,7 @@
   }
 
   function acceptOffer(card, button) {
+    button.__bazaarAccepting = true;
     button.disabled = true;
     button.textContent = 'Minting...';
     return window.fetch(acceptUrl(), {
@@ -160,6 +217,7 @@
       addMessage(data.reply || 'Deal — opening Shopify Checkout.', 'bot');
       window.location.href = settlement.checkoutUrl;
     }).catch(function (error) {
+      button.__bazaarAccepting = false;
       button.disabled = false;
       button.textContent = 'Deal';
       addMessage(error.message || 'That offer could not be accepted. Try a fresh offer.', 'bot');
@@ -194,23 +252,31 @@
 
   function addOfferCard(card, sourceProducts) {
     if (!card || !card.option) return;
+    var negotiationKey = card.negotiationId || card.offerId;
+    var priorArticle = offerArticles.get(negotiationKey);
+    if (priorArticle && priorArticle.__bazaarCard && priorArticle.__bazaarCard.offerId !== card.offerId) {
+      markSuperseded(priorArticle);
+    }
     var article = document.createElement('article');
     var dealButton = document.createElement('button');
     var productLink = document.createElement('a');
     var firstItem = card.option.items && card.option.items[0] ? card.option.items[0] : {};
+    var itemSummary = offerItemsMarkup(card.option.items);
     var expires = new Date(card.expiresAt);
 
     article.className = 'ai-chat__offer-card';
+    article.__bazaarCard = card;
     article.innerHTML = [
       '<div class="ai-chat__offer-topline">',
-      '<span>' + escapeHtml(statusLabel(card)) + '</span>',
+      '<span data-offer-status-label>' + escapeHtml(statusLabel(card)) + '</span>',
       '<span data-offer-countdown="' + escapeHtml(card.expiresAt) + '">15:00</span>',
       '</div>',
       '<h3>' + escapeHtml(firstItem.title || 'Trailhead offer') + '</h3>',
-      '<p class="ai-chat__offer-price"><span>' + money(card.option.listTotal) + '</span><strong>' + money(card.option.total) + '</strong></p>',
-      '<p>' + escapeHtml(card.line || 'I can hold this for 15 minutes.') + '</p>',
-      '<div class="ai-chat__badges">' + (card.badges || []).map(function (badge) { return '<span>' + escapeHtml(badge) + '</span>'; }).join('') + '</div>',
-      '<div class="ai-chat__trail">' + (card.trail || []).map(function (step) { return '<span>' + escapeHtml(step.label) + ' ' + money(step.amount) + '</span>'; }).join('') + '</div>',
+      '<div class="ai-chat__offer-items" data-offer-items>' + itemSummary + '</div>',
+      '<p class="ai-chat__offer-price" data-offer-price><span>' + money(card.option.listTotal) + '</span><strong>' + money(card.option.total) + '</strong></p>',
+      '<p data-offer-line>' + escapeHtml(card.line || 'I can hold this for 15 minutes.') + '</p>',
+      '<div class="ai-chat__badges" data-offer-badges>' + (card.badges || []).map(function (badge) { return '<span>' + escapeHtml(badge) + '</span>'; }).join('') + '</div>',
+      '<div class="ai-chat__trail" data-offer-trail>' + (card.trail || []).map(function (step) { return '<span>' + escapeHtml(step.label) + ' ' + money(step.amount) + '</span>'; }).join('') + '</div>',
       '<div class="ai-chat__offer-actions" data-offer-actions></div>',
       '<p class="ai-chat__offer-footer">' + escapeHtml((card.disclosure && card.disclosure[1]) || 'Only this card is binding.') + '</p>'
     ].join('');
@@ -220,8 +286,8 @@
     productLink.href = cardProduct && cardProduct.url ? cardProduct.url : '/collections/all';
     productLink.textContent = 'View item';
     dealButton.type = 'button';
-    dealButton.textContent = endpoint ? 'Deal' : 'Deal needs API';
-    dealButton.disabled = !endpoint;
+    dealButton.textContent = endpoint && card.status === 'live' ? 'Deal' : card.status === 'pending_owner' ? 'Waiting for owner' : card.status === 'live' ? 'Deal' : 'Offer unavailable';
+    dealButton.disabled = !endpoint || card.status !== 'live';
     dealButton.addEventListener('click', function () {
       acceptOffer(card, dealButton);
     });
@@ -229,8 +295,82 @@
     article.querySelector('[data-offer-actions]').appendChild(productLink);
     article.querySelector('[data-offer-actions]').appendChild(dealButton);
     messages.appendChild(article);
-    startCountdown(article.querySelector('[data-offer-countdown]'), expires, dealButton);
+    currentOfferArticle = article;
+    offerArticles.set(negotiationKey, article);
+    renderOfferState(article, card, dealButton);
     messages.scrollTop = messages.scrollHeight;
+    if (endpoint && (card.status === 'live' || card.status === 'pending_owner')) startOfferPolling(card, article, dealButton);
+  }
+
+  function markSuperseded(article) {
+    if (!article || !article.__bazaarCard) return;
+    article.__bazaarCard = Object.assign({}, article.__bazaarCard, { status: 'superseded' });
+    article.setAttribute('data-offer-status', 'superseded');
+    article.classList.add('ai-chat__offer-card--superseded');
+    var button = article.querySelector('[data-offer-actions] button');
+    if (button) { button.disabled = true; button.textContent = 'Superseded'; }
+    var poller = offerPollers.get(article);
+    if (poller) { window.clearInterval(poller); offerPollers.delete(article); }
+    var key = article.__bazaarCard.negotiationId || article.__bazaarCard.offerId;
+    if (offerArticles.get(key) === article) offerArticles.delete(key);
+  }
+
+  function renderOfferState(article, card, button) {
+    article.__bazaarCard = card;
+    article.setAttribute('data-offer-status', card.status || 'live');
+    var status = article.querySelector('[data-offer-status-label]');
+    var title = article.querySelector('h3');
+    var items = article.querySelector('[data-offer-items]');
+    var price = article.querySelector('[data-offer-price]');
+    var badges = article.querySelector('[data-offer-badges]');
+    var trail = article.querySelector('[data-offer-trail]');
+    var line = article.querySelector('[data-offer-line]');
+    var firstItem = card.option && card.option.items && card.option.items[0] ? card.option.items[0] : {};
+    if (status) status.textContent = statusLabel(card);
+    if (title) title.textContent = firstItem.title || 'Trailhead offer';
+    if (items) items.innerHTML = offerItemsMarkup(card.option && card.option.items);
+    if (price) price.innerHTML = '<span>' + money(card.option && card.option.listTotal) + '</span><strong>' + money(card.option && card.option.total) + '</strong>';
+    if (line) line.textContent = card.line || 'I can hold this for 15 minutes.';
+    if (badges) badges.innerHTML = (card.badges || []).map(function (badge) { return '<span>' + escapeHtml(badge) + '</span>'; }).join('');
+    if (trail) trail.innerHTML = (card.trail || []).map(function (step) { return '<span>' + escapeHtml(step.label) + ' ' + money(step.amount) + '</span>'; }).join('');
+    var countdown = article.querySelector('[data-offer-countdown]');
+    var pending = card.status === 'pending_owner';
+    var expiry = pending && card.pendingUntil ? new Date(card.pendingUntil) : new Date(card.expiresAt);
+    countdown.setAttribute('data-offer-countdown', expiry.toISOString());
+    button.disabled = button.__bazaarAccepting || !endpoint || card.status !== 'live';
+    button.textContent = button.__bazaarAccepting ? 'Minting...' : !endpoint ? 'Deal needs API' : pending ? 'Waiting for owner' : card.status === 'live' ? 'Deal' : card.status === 'superseded' ? 'Superseded' : 'Offer unavailable';
+    startCountdown(countdown, expiry, button, pending);
+  }
+
+  function offerItemsMarkup(items) {
+    return (items || []).map(function (item) {
+      var size = item.size ? ' · size ' + escapeHtml(item.size) : '';
+      var quantity = item.qty === undefined || item.qty === null ? 1 : item.qty;
+      return '<span>' + escapeHtml(item.title || 'Item') + size + ' · qty ' + escapeHtml(String(quantity)) + '</span>';
+    }).join('');
+  }
+
+  function startOfferPolling(card, article, button) {
+    var poller = offerPollers.get(article);
+    if (poller) window.clearInterval(poller);
+    var poll = function () {
+      window.fetch(offersUrl(card), { headers: { Accept: 'application/json' } }).then(function (response) {
+        if (!response.ok) throw new Error('Offer status returned ' + response.status);
+        return response.json();
+      }).then(function (data) {
+        if (!data || !data.card || article.__bazaarCard.status === 'superseded') return;
+        var next = data.card;
+        var line = article.querySelector('[data-offer-line]');
+        if (line && next.line) line.textContent = next.line;
+        renderOfferState(article, next, button);
+        if (next.status !== 'live' && next.status !== 'pending_owner') {
+          window.clearInterval(offerPollers.get(article));
+          offerPollers.delete(article);
+        }
+      }).catch(function () { /* Keep the current card usable while the status endpoint is unavailable. */ });
+    };
+    poller = window.setInterval(poll, 2000);
+    offerPollers.set(article, poller);
   }
 
   function addProductCard(product) {
@@ -273,18 +413,21 @@
     });
   }
 
-  function startCountdown(node, expires, button) {
+  function startCountdown(node, expires, button, pending) {
+    var previous = countdownTimers.get(node);
+    if (previous) window.clearTimeout(previous);
     function tick() {
       var remaining = Math.max(0, expires.getTime() - Date.now());
       var minutes = Math.floor(remaining / 60000);
       var seconds = Math.floor((remaining % 60000) / 1000);
       node.textContent = minutes + ':' + String(seconds).padStart(2, '0');
       if (!remaining) {
+        countdownTimers.delete(node);
         button.disabled = true;
-        button.textContent = 'Expired';
+        button.textContent = pending ? 'Approval expired' : 'Expired';
         return;
       }
-      window.setTimeout(tick, 1000);
+      countdownTimers.set(node, window.setTimeout(tick, 1000));
     }
     tick();
   }
@@ -313,13 +456,28 @@
   }
 
   function getContextProduct() {
-    if (activeProduct) return { product: activeProduct, source: activeProduct === currentProduct ? 'current' : 'active' };
-    if (currentProduct) return { product: currentProduct, source: 'current' };
+    if (activeProduct) {
+      var product = activeProduct === currentProduct ? selectedProduct() : activeProduct;
+      setNegotiationForProduct(product);
+      return { product: product, source: activeProduct === currentProduct ? 'current' : 'active' };
+    }
+    if (currentProduct) {
+      var current = selectedProduct();
+      setNegotiationForProduct(current);
+      return { product: current, source: 'current' };
+    }
     return { product: null, source: 'none' };
   }
 
   function setActiveProduct(product) {
-    if (product && typeof product === 'object') activeProduct = product;
+    if (product && typeof product === 'object') {
+      var sameAsCurrent = currentProduct && (
+        String(product.productId || '') === String(currentProduct.productId || '')
+        || String(product.handle || '') === String(currentProduct.handle || '')
+      );
+      activeProduct = sameAsCurrent ? currentProduct : product;
+      setNegotiationForProduct(activeProduct === currentProduct ? selectedProduct() : activeProduct);
+    }
   }
 
   function getTurnProduct(text, sourceProducts, card) {
@@ -422,13 +580,21 @@
       setLoading(true);
       var thinking = addMessage('Thinking...', 'bot');
       askEndpoint(text).then(function (data) {
+        var context = getContextProduct();
         replaceMessage(thinking, data.reply || data.text || data.message || 'Here is what I found.');
-        addProductCard(getTurnProduct(text, data.products, data.card));
-        if (data.card) addOfferCard(data.card, data.products);
+        var turnProduct = getTurnProduct(text, data.products, data.card);
+        addProductCard(turnProduct);
+        if (data && data.negotiationId) {
+          negotiationId = data.negotiationId;
+          negotiationProductKey = productKey(activeProduct === currentProduct ? selectedProduct() : turnProduct || context.product);
+        }
+        if (data.card) {
+          negotiationId = data.card.negotiationId || negotiationId;
+          negotiationProductKey = productKey(activeProduct === currentProduct ? selectedProduct() : turnProduct || context.product);
+          addOfferCard(data.card, data.products);
+        }
       }).catch(function () {
-        replaceMessage(thinking, getScriptedResponse(text));
-        addProductCard(getTurnProduct(text));
-        if (/offer|deal|discount|checkout|haggle|\$/i.test(text)) addPreviewOfferCard();
+        replaceMessage(thinking, 'The shopkeeper is temporarily unavailable. Please try again.');
       }).finally(function () {
         setLoading(false);
         input.focus();
@@ -441,5 +607,15 @@
       addProductCard(getTurnProduct(text));
       if (/offer|deal|discount|checkout|haggle|\$/i.test(text)) addPreviewOfferCard();
     }, 350);
+  });
+
+  document.addEventListener('change', function (event) {
+    if (event.target && event.target.matches && event.target.matches('select[name="id"], select[id^="ProductSelect-"]')) {
+      setNegotiationForProduct(selectedProduct());
+    }
+    if (event.target && event.target.matches && event.target.matches('input[name="quantity"], input[id^="Quantity-"], input[data-quantity-input]')) {
+      quantitySelectionChanged = true;
+      setNegotiationForProduct(selectedProduct(), true);
+    }
   });
 })();

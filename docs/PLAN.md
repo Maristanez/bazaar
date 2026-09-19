@@ -4,14 +4,14 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 15:53 EDT — Backboard is now the live shopkeeper path, and the pricing policy bends only for convincing buyer intent while still protecting floor price/margin (Codex/Ritvik). *An earlier line on this row read 17:10 EDT; that time had not happened — clocks on this board are EDT.*
+**Last updated:** Sat 19 Sep 18:32 EDT — merged owner integration, shared live pricing menu, multi-product fixes, Gym and isolated red-team evidence with the upstream revival documents. 267 tests across 37 files, workspace type checks and production build pass. Hosted deployment acceptance remains open.
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
 | **Gate 1** | Sat 09:00 | Storefront: offer → fixed counter card → **Deal** → real code → **real Shopify Checkout at that price** | ☐ **code path LIVE** — R2/R4/R5/R6 ticked, `BAZAAR-2180U` minted on Railway 11:50. Open only on one browser click-through + the three store settings under R7 |
-| **Gate 0** | Sat 12:00 | A hello-world tool of ours shows a custom card in ChatGPT — or a clear "no", decided and closed | ☐ **due now, S3 not started** — write the outcome here and close it |
-| **Devpost** | Sat 14:00 **hard** | Submitted: team, badge IDs, public repo, **Shopify + Backboard + OpenAI + GoDaddy Registry** selected | ☐ **~2 h left, S13 not started** — the live checkout now exists, so nothing is blocking it |
-| **Gate 2** | Sun 00:00 | Full demo 3× untouched on both surfaces, on the hosted URL; backup video; 30-min attack session | ☐ |
+| **Gate 0** | Sat 12:00 | A hello-world tool of ours shows a custom card in ChatGPT — or a clear "no", decided and closed | ☐ **6 h overdue at 18:00, S3 still not started** — no MCP code exists on `main`. Write **card / text-only / what's-next sentence** here and close it; at this point the honest default is the what's-next sentence |
+| **Devpost** | Sat 14:00 **hard** | Submitted: team, badge IDs, public repo, **Shopify + Backboard + OpenAI + GoDaddy Registry** selected | ☐ **STATUS UNKNOWN at 18:00 — deadline passed 4 h ago.** Nothing in the repo or this board records a submission. **Whoever knows: write "submitted HH:MM, tracks: …" here now.** If it was not submitted, that outranks every task below |
+| **Gate 2** | Sun 00:00 | Full demo 3× untouched on both surfaces, on the hosted URL; backup video; 30-min attack session | ☐ 6 h away · 0 of 7 checklist items · see the progress block |
 | **Final submit** | Sun 08:00 | Final Devpost edit; code freeze; **deploy freeze** | ☐ |
 
 **Now / Next / Blocked** — overwrite these lines as you go. This block is the handoff.
@@ -19,13 +19,49 @@
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
 | 🛍️ A. Storefront + Shopify store | Ritvik | Trailhead logo/name wired into the live theme; chat haggling now asks for stronger buyer reasons before sharper discounts; live Railway minted `BAZAAR-2180U` | **① S13 DEVPOST — 14:00 HARD, still unstarted. Select all four tracks even if unbuilt; selection locks and cannot be added later ② S3 gate-0 decision, 100 min overdue ③** browser click-through of the checkout total | Shopify admin store rename for Checkout branding; remove-bundle-item check |
-| ⚙️ B. Engine, core, Gym + Console | Bryan | Storefront integration locally verified: real owner login, Adopt → Backboard prices, SSE feed, approvals, PAUSE and Shopify checkout. See `docs/console-integration.md` | Apply list-price migration and deploy server/theme; then B12 Gym | Gym, red-team and ChatGPT integration remain open; changes are local |
+| ⚙️ B. Engine, core, Gym + Console | Bryan | Owner routes, policy-to-Backboard updates, approvals, emergency PAUSE, 300-shopper Gym and isolated red-team artifact implemented and locally verified; 267 tests pass | Apply nullable-code migration, publish theme, verify Railway deployment, then rerun hosted flows | Shopify / Railway / Supabase dashboard access; live checkout and theme acceptance remain open |
 | 🔌 C. Platform | Ricardo | R2 token wrapper, R4 product mirror, `/api/products`, `/api/stream`, offer cards, `discountCodeBasicCreate` and cart permalinks are **live on Railway deploy `6f1032c6`** | Manual checkout-total / free-shipping / tax verification; then R16 remove-bundle-item test; then R12 pin + R13 domain before 13:00 | Store checkout settings / manual checkout verification |
 | 🤖 D. Agents + guardrails | **Ricardo / Codex for Backboard; remaining guardrails need an owner** | Shopper Q&A and checked offer wording now route through Backboard to OpenAI `gpt-4.1-mini`; indexed documents, seeded memory, thread reuse, telemetry and fallback were verified live. Per shopper Assistant creation and the complete B2 menu handoff remain | R9 *understand* direct OpenAI call, then finish R10 per shopper Assistants and connect the live route to the complete B2 menu | Ricardo / Codex for R10/R11 |
 
-### Local console integration verification — Sat 19 Sep
+> **▶ The plan from here is [`REVIVAL-PLAN.md`](REVIVAL-PLAN.md)** (Sat 18:15 EDT): six phases that plug the verified engine, the guardrails and the Gym into the live demo without breaking it, the cuts, and the nine human-only steps. It supersedes the remaining schedule in §5 below; this file stays the tracker — tick boxes here.
 
-See `docs/console-integration.md` for live evidence and deployment steps. R15/B14/B8/B7/B9 are implemented for the existing storefront server path and covered by integration tests; the wider cross-surface tracker stays open where ChatGPT, full menu, red-team, or deployment acceptance is still missing. Shared Backboard memory is now off until R10 isolates assistants. Original owner policy was restored after testing. No live theme/server deployment or paid order was performed.
+### Integration merge verification — Sat 19 Sep 18:32 EDT
+
+See `console-integration.md` for evidence and deployment steps. The current storefront server uses the pure engine negotiation menu with deterministic option-A fallback, authenticated owner routes and settlement audits. The Gym shares that menu; its 300 synthetic shoppers are rule-based and its figures are not promised demo outcomes. The isolated HTTP red-team run reports 20/20 passing cases with zero breaches, but does not prove live Shopify code reuse or bundle-removal enforcement. Shared persistent Backboard memory remains off pending per-shopper isolation.
+
+Eight local API calls against real Shopify and Backboard verified separate Socks L/XL quantity-two and Trail Runner 2 size-10 negotiations, resumed context, bundle inclusion/removal and a same-size cheaper alternative. Published homepage eight-versus-nine catalog and mobile cart-hit-area fixes are committed with the theme. No paid order was placed. Shopify theme publication, the database migration and hosted regression testing remain outstanding; a main push can trigger Railway deployment.
+
+The 18:00 audit below is preserved as a historical snapshot of `897417d`; its fixture-only and absent-guardrail statements do not describe the newly merged implementation. The revival plan remains useful for outstanding integration and human-only steps, but completed work must not be rebuilt from that snapshot.
+
+### Progress — Sat 18:00 EDT checkpoint (audited against the code on `main`, not taken from ticks)
+
+**Overall: 16 of 48 non-stretch tasks ticked (33%).** Counting work that is live but whose "Done when" is not yet met, roughly 40%. 6 h to gate 2 · 14 h to final submit.
+
+| Part | Owner | Ticked | Bar | Done | Open |
+|---|---|---|---|---|---|
+| 🤝 0. Everyone | all | **1 / 4** | `██░░░░░░` | B0 | E1 (10 log entries exist — only "one chosen for the demo sentence" is missing) · E2 · E3 |
+| 🛍️ A. Storefront | Ritvik | **2 / 13** | `█░░░░░░░` | R3 · R4 | S1 · S2 · S4 are **live in the Shopify theme but unticked** — each is one verification away (see their notes) · S3 · S13 · B10 · S12 · R16 · R8 · S11 · S14 |
+| ⚙️ B. Engine, core, Gym + Console | Bryan | **9 / 14** | `█████░░░` | B1 · B2 · B3 · B4 · B5 · B6 · B11 · S5 · S6 | B12 · S9 · S7 · S8 · S10 |
+| 🔌 C. Platform | Ricardo | **4 / 9** | `████░░░░` | R1 · R2 · R5 · R6 | R7 (3 store settings + one click-through — **this alone holds gate 1 open**) · R12 (Railway is live; pin + no-sleep unconfirmed) · R13 domain · R14 · R15 |
+| 🤖 D. Agents + guardrails | Backboard: Ricardo / Codex · **guardrails: nobody** | **0 / 8** | `░░░░░░░░` | — | R10 · R11 **partly live** (Backboard → `gpt-4.1-mini`, documents, memory, timeout, fallback; per-shopper Assistants and the B2 menu hand-off missing) · **R9 · B14 · B9 · B8 · B7 · B13 not started — no code on `main`** |
+
+| Phase | Window | Ticked | Note |
+|---|---|---|---|
+| 0. Everyone | first 30 min | 1 / 2 | B0 ✅ |
+| Before gate 1 | → Sat 09:00 | 9 / 13 | Part B 4/4 · Platform 4/5 · Storefront 1/4 |
+| Gate 1 → Devpost | 09:00 → 14:00 | 3 / 10 | Part B 2/2 · R4 · the rest open, incl. **S13 Devpost** and **S3 gate 0** |
+| Devpost → gate 2 | 14:00 → Sun 00:00 | 3 / 20 | Part B 3/8 (S5 · S6 · B11). Nothing else in this window is ticked |
+| After gate 2 | Sun 00:00 → 08:00 | 0 / 1 (+8 stretch) | S14 rehearsal; stretch untouched, as it should be |
+
+**What is verifiably built (Part B, all on `main`):** the engine (`formulas`, `buildMenu`, owner-side `audit`) with **11 fast-check properties × 1,000 seeded cases in < 1 s**; the offer lifecycle; the core's three functions behind `CorePorts` + an in-memory `CoreDb`; the check; the Gym run (300 shoppers in ~2 ms, deterministic, §A personas untuned, **haggling loses to the banner from floor 42%**) + `layout.ts` (`settle` / `frame`); the Console at `/console` — login, PAUSE control, feed with red blocked rows, policy slider + Adopt, approvals — on fixtures behind a typed port. The Gym region is a reserved placeholder with a disabled **Run the Gym** button; B12 fills it (`docs/design/gym-b12.{md,html}`).
+
+**Three gaps the ticks do not show — each one changes what we can honestly say on stage:**
+
+1. **The verified engine is not in the live path.** `apps/server/src/index.js` (1,325 lines, the Railway server) imports `core/check.ts` and the Backboard shopkeeper, and **nothing from `@bazaar/engine`** — no `buildMenu`. It prices with its own logic, and the 15:48 / 15:55 / 17:10 notes describe price behaviour being tuned on the LLM-side path ("scores buyer reasons", "bends only for convincing intent"). Until `makeOffer()` / `buildMenu` sit under `/api/chat`, the property tests, the Gym and invariant 1 describe code the demo does not run.
+2. **No guardrail from Part D exists.** `core/hooks.ts` is still the B5 no-op stub: PAUSE, approvals and the Auditor all permit everything. PAUSE and the check are on the **never-cut** list; the Auditor is what stands between an offer and a mint; B13 is the only evidence behind "20 attacks · 0 breaches" (README, HOW-IT-WORKS, DEMO). The build specs are ready in [`PART-D-BUILD.md`](PART-D-BUILD.md) — five plug-in tickets, ~7.5 h, unclaimed since 14:56.
+3. **R9 — no direct OpenAI API call exists.** OpenAI is reached only *through* Backboard (`BACKBOARD_MODEL_PROVIDER = "openai"`). The OpenAI prize asks what we built **with the OpenAI API**; the *understand* step with Structured Outputs is that exhibit, and it is ~1.5 h.
+
+**Cut order (§7) is due now and has not been applied.** Nothing is struck through below yet — that is the team's call, not the coordinator's. On the numbers: R14 (cut 1), B8 + S7 (cut 2) and S8 → S10 (cut 3) free ~9 h, which is about what gaps 1–3 cost.
 
 ### Next work decision — Sat 11:55 EDT (supersedes the 11:03 note below)
 
@@ -118,8 +154,12 @@ Four parts plus a shared strip. **Each part is one person's to-do list, top to b
 
 The contracts are the seam between all four parts. Nothing else starts until B0 is merged.
 
-- [ ] **B0** `packages/contracts` — all shared types [App. C] · _needs nothing · all three together_ · ~0.5 h · **Done when:** merged; all four parts import from it; a `ChatEvent` cannot hold an `Option` (type error)
+- [x] **B0** `packages/contracts` — all shared types [App. C] · _needs nothing · all three together_ · ~0.5 h · **Done when:** merged; all four parts import from it; a `ChatEvent` cannot hold an `Option` (type error)
+
+  _Sat 18:00 coordinator note:_ ticked late — merged Sat 03:14 (`b65b59b`). `apps/server`, `apps/web`, `packages/engine`, `packages/gym` and `packages/llm` all import it, and `public.typetest.ts` makes an `Option` inside a `ChatEvent` a compile error. The live `index.js` does not import it (it is untyped JS) — see gap 1 in the progress block.
 - [ ] **E1** [`codex-log.md`](codex-log.md) from hour 0 · _needs nothing_ · ongoing · **Done when:** ≥ 3 concrete entries exist and one is chosen for the demo sentence
+
+  _Sat 18:00 coordinator note:_ 10 entries exist, so the first half is met. Still open: the "Chosen for the demo sentence" line at the top of `codex-log.md` is blank. Candidate: the B3 entry — Codex refused to weaken a property, surfaced four contradictions in SPEC §6.2 and two engine bugs, and the owner ruled.
 
 **Before gate 2 / Saturday night**
 
@@ -324,6 +364,8 @@ What the app runs on: the Shopify app and token, the server, the discount-code m
 ### 🤖 D. Agents + guardrails — **______________** (same owner as Platform unless you say otherwise)
 
 The LLM steps and the layers that stop them losing money: OpenAI *understand*, Backboard memory and *choose + say*, the Auditor, PAUSE, ask-the-owner, the event bus and the red-team.
+
+> **Build specs for the five guardrail tickets — B14, B9, B8, B7, B13 — are in [`PART-D-BUILD.md`](PART-D-BUILD.md)** (written Sat 14:45 EDT, ~7.5 h in dependency order). The four `CoreHooks` seams they plug into already exist in `apps/server/src/core/hooks.ts`; B5 left them permissive on purpose. R9/R10/R11 are not in that file — they are the sponsor-track LLM work, not the guardrails.
 
 **Gate 1 → Devpost (Sat 09:00 → 14:00)**
 
