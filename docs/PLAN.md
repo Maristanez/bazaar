@@ -4,7 +4,7 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 09:52 EDT by Codex (A lane foundation)
+**Last updated:** Sat 19 Sep 10:10 EDT by Codex (Shopify Admin API access verified)
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
@@ -20,7 +20,7 @@
 |---|---|---|---|---|
 | 🛍️ A. Storefront + Shopify store | Ritvik | Theme preview has product-aware chat, shopper id, `?shopper=demo`, preview offer card, and seed files under `infra/seed` | R1/R2 app credentials → seed real Shopify products/costs → replace preview card with server-generated OfferCard | Shopify Admin API app install for private cost data and discount minting |
 | ⚙️ B. Engine, core, Gym + Console | Bryan | B1 + B4 done; checks green | B2 → B3 | — |
-| 🔌 C. Platform | ______ | — | B0 → R1 | — |
+| 🔌 C. Platform | ______ | R1 done; Admin API client-credentials token verified against `b8wzw0-h3` | R2 token wrapper in code, then R3/R4 product seed + sync | — |
 | 🤖 D. Agents + guardrails | ______ | — | R9 (after gate 1) | — |
 
 ### How to use this tracker
@@ -187,8 +187,12 @@ What the app runs on: the Shopify app and token, the server, the discount-code m
 
 **Before gate 1 (now → Sat 09:00)**
 
-- [ ] **R1** Shopify app via **`shopify app init`**; six scopes incl. `write_products`; install on the dev store [§10] · _needs nothing_ · ~1 h · **Done when:** client id + secret are in `.env` and the app is installed. **20-minute rule:** if the CLI fights back, make a plain Dev Dashboard app and tick this anyway
+- [x] **R1** Shopify app via **`shopify app init`**; six scopes incl. `write_products`; install on the dev store [§10] · _needs nothing_ · ~1 h · **Done when:** client id + secret are in `.env` and the app is installed. **20-minute rule:** if the CLI fights back, make a plain Dev Dashboard app and tick this anyway
+
+  _Sat 10:10 Codex note:_ `.env` has the Shopify shop, API version, client id, client secret and scopes; `.env` is ignored by git. Client-credentials token fetch succeeded and Admin GraphQL returned products from `b8wzw0-h3`.
 - [ ] **R2** Token: client-credentials fetch on startup, re-fetch on any 401, one wrapper for every call [§10] · _needs R1_ · ~1 h · **Done when:** corrupting the token in memory makes the next call self-heal
+
+  _Sat 10:10 Codex note:_ manual token fetch is verified, but R2 remains open until the reusable server-side wrapper exists and the forced-401 self-heal test passes.
 - [ ] **R5** Server shell: Hono, routes, `db.ts` (memory `Map`s), SSE with a 15 s heartbeat [§5] · _needs B0_ · ~1.5 h · **Done when:** `/api/products` returns public cards and an SSE stream stays open 5 minutes
 - [ ] **R6** Mint: `discountCodeBasicCreate` — amount off, `usageLimit 1`, 15 min, exact variants, **minimum subtotal = list total**, no combining; re-mint once; deactivate on expiry [§10] · _needs R2_ · ~2 h · **Done when:** a code exists in admin with every constraint set
 - [ ] **R7** Checkout permalink + store settings: **tax off, free shipping rate** [§10] · _needs R6_ · ~0.5 h · **Done when:** the checkout page total equals the agreed total to the cent
