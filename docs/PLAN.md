@@ -19,7 +19,7 @@
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
 | 🛍️ A. Storefront + Shopify store | Ritvik | — | B0 → S1 | — |
-| ⚙️ B. Engine, core, Gym + Console | Bryan | B2 + B3 done; checks green | Align B2 names → B11 → B5 → B6 | — |
+| ⚙️ B. Engine, core, Gym + Console | Bryan | B2 + B3 done; checks green | B11 → B5 → B6 | — |
 | 🔌 C. Platform | ______ | — | B0 → R1 | — |
 | 🤖 D. Agents + guardrails | ______ | — | R9 (after gate 1) | — |
 

@@ -63,3 +63,9 @@
 - **Verification/review:** `pnpm test:props`: 11 passed / 11,000 runs, 238 ms Vitest / **0.51 s wall**; `pnpm test`: 54 passed, 299 ms; typecheck green. Standards/spec reviews performed. Contracts and `formulas.test.ts` unchanged. B2 commit: `127af9f`.
 
 - **Owner SPEC amendment received before B11:** §6.2 now explicitly drops carts with floor above list, including acceptance, and includes bundles in the same-product offer bound. Two further seeded red cases (27¢ list / 28¢ floor; 1700¢ bundle below a rounded 1800¢ offer) drove the corresponding menu guards. Included the owner-authored SPEC change in this B3 commit.
+
+
+### B2 naming alignment — 2026-09-19 · Bryan (BM)
+
+- **Owner correction:** Follow PART-B-BUILD Step 6 so teammates use the same engine boundary. Renamed inputs to `main` plus explicit `addOns`, and results to `outcome` / `internals`. All prior assertions and pricing behavior are preserved; callers now pass the exact add-ons previously derived from their catalogs.
+- **Red → green:** New API test first failed typecheck on the former `product` input. All 54 tests and typecheck pass after the rename. No contracts changed. This is the separately requested rename-only implementation commit; B3 and its owner-authored SPEC clarification are in `6c35065`.
