@@ -1,5 +1,7 @@
 # The Bazaar — Plan v3 (human-to-agent)
 
+> **Superseded (19 Sep).** The live documents are in [`../docs/`](../docs/): `PRODUCT.md`, `SPEC.md`, `ARCHITECTURE.md`, `PLAN.md`, `DEMO.md`. This file was the root `PLAN.md`; it is kept for history only. Its engine formulas, schedule and section numbers are out of date.
+
 **Hack the North 2026 · team of 3 · coding window Sat 00:00 → Sun 08:00 EDT (32 h)**
 Supersedes `archive/v2-spec.md` (v2) and `archive/v2-team-plan.md`. Where they disagree with this file, this file wins.
 
