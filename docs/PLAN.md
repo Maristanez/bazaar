@@ -4,7 +4,7 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 10:30 EDT by Codex (chat endpoint-ready)
+**Last updated:** Sat 19 Sep 10:45 EDT by Codex (Railway chat server ready)
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
@@ -20,7 +20,7 @@
 |---|---|---|---|---|
 | 🛍️ A. Storefront + Shopify store | Ritvik | Chat launcher is now a Bazaar AI entry point with scripted fallback and optional backend endpoint for future Gemini proxy | R2/R4 product mirror → replace preview card with server-generated OfferCard | R2 token wrapper and R6/R7 settlement code for real Deal |
 | ⚙️ B. Engine, core, Gym + Console | Bryan | B1 + B4 done; checks green | B2 → B3 | — |
-| 🔌 C. Platform | ______ | R1 done; Admin API client-credentials token verified against `b8wzw0-h3` | R2 token wrapper in code, then R3/R4 product seed + sync | — |
+| 🔌 C. Platform | ______ | R5 starter server exists with `/health` and Gemini-backed `POST /api/chat`; Railway start command is configured | Deploy to Railway, set `GEMINI_API_KEY`, generate a public domain, paste `/api/chat` into Shopify theme settings | R6/R7 settlement code for real Deal |
 | 🤖 D. Agents + guardrails | ______ | — | R9 (after gate 1) | — |
 
 ### How to use this tracker
@@ -196,12 +196,16 @@ What the app runs on: the Shopify app and token, the server, the discount-code m
 
   _Sat 10:10 Codex note:_ manual token fetch is verified, but R2 remains open until the reusable server-side wrapper exists and the forced-401 self-heal test passes.
 - [ ] **R5** Server shell: Hono, routes, `db.ts` (memory `Map`s), SSE with a 15 s heartbeat [§5] · _needs B0_ · ~1.5 h · **Done when:** `/api/products` returns public cards and an SSE stream stays open 5 minutes
+
+  _Sat 10:45 Codex note:_ a minimal Railway-ready Node server now exists at `apps/server/src/index.js` with `GET /health` and `POST /api/chat`. `/api/chat` reads `GEMINI_API_KEY` from server env, calls Gemini (`GEMINI_MODEL` override, default `gemini-3.6-flash`), and returns `{ reply }` to the Shopify theme. This is enough to connect the storefront chat to Gemini, but R5 remains open because `/api/products`, `db.ts`, and SSE heartbeat are not implemented yet.
 - [ ] **R6** Mint: `discountCodeBasicCreate` — amount off, `usageLimit 1`, 15 min, exact variants, **minimum subtotal = list total**, no combining; re-mint once; deactivate on expiry [§10] · _needs R2_ · ~2 h · **Done when:** a code exists in admin with every constraint set
 - [ ] **R7** Checkout permalink + store settings: **tax off, free shipping rate** [§10] · _needs R6_ · ~0.5 h · **Done when:** the checkout page total equals the agreed total to the cent
 
 **Gate 1 → Devpost (Sat 09:00 → 14:00)** — domain live before 13:00.
 
 - [ ] **R12** **Hosting: one long-lived instance** — secrets in the host, push-to-deploy, health check, instance count pinned to 1, no sleep [§5] · _needs R5, gate 1_ · ~1.5 h · **Done when:** the storefront loads from the host, SSE survives 5 minutes, and two browsers see the same PAUSE state
+
+  _Sat 10:45 Codex note:_ `railway.json` is configured with Nixpacks, `pnpm --dir apps/server start`, and `/health` as the health check. Next manual step is creating/linking the Railway service, adding `GEMINI_API_KEY`, deploying, and generating the public Railway domain.
 - [ ] **R13** **GoDaddy Registry domain** via the MLH offer → pointed at the host; storefront at the root [§10] · _needs R12_ · ~0.5 h · **Done when:** `https://<domain>/` serves the storefront with a valid certificate — before 13:00, so it's on the Devpost page
 
 **Devpost → gate 2 (Sat 14:00 → Sun 00:00)**

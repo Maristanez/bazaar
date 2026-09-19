@@ -51,3 +51,12 @@
 - **Outcome:** The widget is ready for a real `/api/chat` or hosted proxy while preserving the existing demo behavior.
 
 <!-- Copy the block above for each new entry. Never edit an old entry to make it sound better — add a follow-up entry instead. -->
+
+### #5 — `Sat 10:45` · `Ritvik` · `R5/R12 Gemini endpoint`
+
+- **Prompt:**
+  > oh lets do railway then lets build it
+- **What Codex produced:** A Railway-ready Node server with `GET /health` and `POST /api/chat`, plus `railway.json` so the service starts with `pnpm --dir apps/server start`.
+- **What we kept:** Gemini is called only from the server using `GEMINI_API_KEY`; the Shopify theme still receives only `{ reply }`.
+- **What we changed or threw away, and why:** We skipped adding a Gemini SDK dependency for this slice because Node 22 has native `fetch`, which keeps the Railway deploy smaller and faster.
+- **Outcome:** The storefront chat has a real backend target ready to deploy; the remaining step is to create/link the Railway service, add env vars, deploy, and paste the Railway `/api/chat` URL into Shopify.
