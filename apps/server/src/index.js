@@ -106,13 +106,14 @@ const server = createServer(async (request, response) => {
         return;
       }
       const mirror = await safeSyncMirror();
-      const reply = await askGemini({
+      const context = {
         message,
         shopperId: stringOrNull(payload.shopperId),
         pageUrl: stringOrNull(payload.pageUrl),
         product: enrichPublicProduct(publicObjectOrNull(payload.product), mirror),
         products: publicProducts(mirror).slice(0, 8),
-      });
+      };
+      const reply = deterministicReply(context) || await askGemini(context);
       sendJson(response, request, 200, { reply, products: publicProducts(mirror).slice(0, 8) });
     } catch (error) {
       console.error("[api/chat]", error);
@@ -459,7 +460,7 @@ function enrichPublicProduct(product, mirror) {
 
 async function makeOfferFromPayload(payload, message) {
   const mirror = await syncMirror();
-  const match = findProductFromPayload(payload, mirror);
+  const match = findProductFromPayload({ ...payload, text: message }, mirror);
   if (!match) return { reply: "Pick a published product first, then send me a number like “Could you do $120?”", products: publicProducts(mirror).slice(0, 8) };
   const dollars = parseMoney(message) ?? parseMoney(payload.amount) ?? Math.round(match.item.list * 0.82 / 100);
   const offered = dollarsToCents(dollars);
@@ -507,6 +508,9 @@ async function makeOfferFromPayload(payload, message) {
 function priceOffer(main, offered, round, mirror) {
   if (main.cost === null) {
     return { kind: "closed", items: [main], listTotal: roundToShopper(main.list), total: roundToShopper(main.list), line: "I cannot safely haggle this item because the store cost is missing.", badges: ["missing cost"] };
+  }
+  if (offered >= main.list) {
+    return { kind: "accepted", items: [main], listTotal: roundToShopper(main.list), total: roundToShopper(main.list), line: `${main.title} is already ${formatMoney(roundToShopper(main.list))}. You can check out at list price, or send me a lower offer to haggle.`, badges: ["list price", "checkout ready"] };
   }
   const floor = Math.ceil(main.cost * (1 + FLOOR_PCT / 100));
   const target = targetOf(main, floor);
@@ -593,11 +597,17 @@ function checkoutUrl(items, code) {
 
 function findProductFromPayload(payload, mirror) {
   const product = payload.product && typeof payload.product === "object" ? payload.product : payload;
+  const text = String(payload.text || payload.message || "").toLowerCase();
   const wantedVariant = String(product.selectedVariantId || product.variantId || "").replace(/^gid:\/\/shopify\/ProductVariant\//, "");
   const wantedProduct = String(product.productId || product.id || "").replace(/^gid:\/\/shopify\/Product\//, "");
   const wantedHandle = stringOrNull(product.handle);
   const wantedTitle = stringOrNull(product.title);
-  let item = mirror.items.find((entry) => entry.variantNumericId === wantedVariant || entry.variantId === product.selectedVariantId);
+  let item = mirror.items.find((entry) => {
+    const title = entry.title.toLowerCase();
+    const handle = entry.handle.toLowerCase();
+    return (title.length > 3 && text.includes(title)) || (handle.length > 3 && text.includes(handle));
+  });
+  if (!item) item = mirror.items.find((entry) => entry.variantNumericId === wantedVariant || entry.variantId === product.selectedVariantId);
   if (!item && wantedProduct) item = mirror.items.find((entry) => entry.productNumericId === wantedProduct || entry.productId === product.productId);
   if (!item && wantedHandle) item = mirror.items.find((entry) => entry.handle === wantedHandle);
   if (!item && wantedTitle) item = mirror.items.find((entry) => entry.title.toLowerCase() === wantedTitle.toLowerCase());
@@ -623,7 +633,58 @@ async function askGemini(context) {
   if (!geminiResponse.ok) throw new Error(`Gemini ${geminiResponse.status}: ${(await geminiResponse.text()).slice(0, 500)}`);
   const data = await geminiResponse.json();
   const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text).filter(Boolean).join("\n").trim();
-  return text || fallbackReply();
+  if (!text || isProbablyTruncated(text)) return fallbackReply(context);
+  return text;
+}
+
+function deterministicReply(context) {
+  const message = String(context.message || "").toLowerCase();
+  const products = Array.isArray(context.products) ? context.products : [];
+  if (/\b(weekend|outfit|recommend|style|wear|fit)\b/.test(message)) return outfitReply(products);
+  if (/\b(price|prices|catalog|products|shop|how much|cost)\b/.test(message)) return catalogReply(products);
+  if (/\b(size|sizing|tee|shirt|shoe|fit)\b/.test(message)) return sizingReply(context.product, products);
+  if (/\b(shipping|ship|delivery|returns|return)\b/.test(message)) {
+    return "Shipping and returns are handled in Shopify Checkout. For this demo, use the checkout page as the source of truth for shipping, taxes, and the final total.";
+  }
+  return null;
+}
+
+function outfitReply(products) {
+  const tee = findPublicProduct(products, /tee|shirt/i);
+  const shoe = findPublicProduct(products, /runner|ridge|shoe/i);
+  const accessory = findPublicProduct(products, /sock|cap|gaiter|flask|vest/i);
+  const picks = [tee, shoe, accessory].filter(Boolean);
+  if (!picks.length) return "For a weekend outfit, start with one breathable layer, one trail-ready shoe, and one small accessory. Ask me about any product and I can help build around it.";
+  return `For a weekend trail outfit, I’d start with ${formatPublicProductList(picks)}. It keeps the fit simple: one everyday layer, one useful trail piece, and one practical add-on.`;
+}
+
+function catalogReply(products) {
+  if (!products.length) return "I do not see published products from the server yet. Once products are live, I can list the visible catalog prices.";
+  return `I can see these storefront prices: ${formatPublicProductList(products.slice(0, 6))}.`;
+}
+
+function sizingReply(product, products) {
+  const target = product?.title ? product : products[0];
+  if (!target) return "For sizing, choose your usual size. If you want a roomier trail fit, size up when that option is available.";
+  const sizes = Array.isArray(target.sizes) && target.sizes.length ? ` Available sizes: ${target.sizes.join(", ")}.` : "";
+  return `${target.title} is the item I’d size from here.${sizes} Choose your usual size for a standard fit, or size up if you want extra room.`;
+}
+
+function findPublicProduct(products, pattern) {
+  return products.find((product) => pattern.test(`${product.title || ""} ${product.type || ""}`));
+}
+
+function formatPublicProductList(products) {
+  return products.map((product) => `${product.title}${product.price ? ` (${product.price})` : ""}`).join(", ");
+}
+
+function isProbablyTruncated(text) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return true;
+  if (/[.!?)]$/.test(trimmed)) return false;
+  if (/[\s([][$€£¥]?$/.test(trimmed)) return true;
+  if (/\b(with|and|or|for|to|from|plus|pair|include|including|because|while|at|under|over)$/i.test(trimmed)) return true;
+  return trimmed.length < 140;
 }
 
 function systemPrompt() {
@@ -642,7 +703,9 @@ function buildUserPrompt(context) {
   return JSON.stringify({ shopperMessage: context.message, shopperId: context.shopperId, pageUrl: context.pageUrl, currentProduct: context.product, visibleProducts: context.products }, null, 2);
 }
 
-function fallbackReply() {
+function fallbackReply(context = {}) {
+  const products = Array.isArray(context.products) ? context.products : [];
+  if (products.length) return outfitReply(products);
   return "I can help with products, sizing, and offers. If you want to haggle, send a number like “Could you do $120?” and I will price a real offer card from the server.";
 }
 
