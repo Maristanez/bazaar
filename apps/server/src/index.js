@@ -469,7 +469,7 @@ async function makeOfferFromPayload(payload, message) {
   if (dollars === null) {
     return {
       reply: `I can talk bundle, but I need your number first. Try “Could you do ${formatMoney(roundToShopper(match.item.list * 0.85))} if I add socks?” and give me a reason.`,
-      products: publicProducts(mirror).slice(0, 8),
+      products: prioritizePublicProducts(mirror, match.item).slice(0, 8),
     };
   }
   const offered = dollarsToCents(dollars);
@@ -512,7 +512,7 @@ async function makeOfferFromPayload(payload, message) {
     disclosure: ["Priced from private cost data on the server.", "Only this card is binding; chat text is not."],
   };
   state.offers.set(offerId, { ...offer, offerId, negotiationId, expiresAt, status: "live" });
-  return { reply: offer.line, card, products: publicProducts(mirror).slice(0, 8) };
+  return { reply: offer.line, card, products: prioritizePublicProducts(mirror, match.item).slice(0, 8) };
 }
 
 function priceOffer(main, offered, round, mirror, reason = { score: 0, label: null }) {
@@ -720,6 +720,16 @@ function findProductFromPayload(payload, mirror) {
   if (!item) return null;
   const publicProduct = publicProducts(mirror).find((entry) => entry.productId === item.productId || entry.handle === item.handle);
   return { item, publicProduct };
+}
+
+function prioritizePublicProducts(mirror, item) {
+  const products = publicProducts(mirror);
+  if (!item) return products;
+  return products.slice().sort((a, b) => {
+    const aMatch = a.productId === item.productId || a.handle === item.handle ? 1 : 0;
+    const bMatch = b.productId === item.productId || b.handle === item.handle ? 1 : 0;
+    return bMatch - aMatch;
+  });
 }
 
 function bestExplicitProductMention(text, items) {
