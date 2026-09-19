@@ -658,9 +658,11 @@ function reasonAdjustedTarget(list, baseTarget, score) {
 }
 
 function sellerTargetFor(item, floor, baseTarget, reason, round) {
-  const reasonTarget = reasonAdjustedTarget(item.list, baseTarget, reason.score);
   const protectedDiscount = maxSellerDiscount(reason, round);
   const protectedTarget = roundToShopper(item.list * (1 - protectedDiscount));
+  const hasActionableReason = (reason.score || 0) >= 2;
+  const reasonBaseTarget = hasActionableReason && baseTarget >= item.list ? protectedTarget : baseTarget;
+  const reasonTarget = reasonAdjustedTarget(item.list, reasonBaseTarget, reason.score);
   return roundToShopper(Math.max(floor, reasonTarget, protectedTarget));
 }
 
