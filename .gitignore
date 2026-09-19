@@ -6,3 +6,9 @@ node_modules/
 dist/
 *.log
 .claude/worktrees/
+
+# Codex/Claude run prompts — scratch, not part of the build
+codex-prompt-*.txt
+codex-message-*.txt
+claude-design-*.txt
+CODEX-READ-THIS-BEFORE-*.md
