@@ -21,3 +21,11 @@
 - `USE-CASES.md` retains older cent-valued display examples and a sentence saying whole-dollar rounding is undecided. SPEC §6 and the protected worked example settle it: shopper amounts round up to whole dollars.
 
 Further implementation-specific decisions and verification evidence are recorded per task in `codex-log.md`.
+
+## B5 integration boundary
+
+- The task's buffered `Promise<ChatEvent[]>` result is retained with the owner-confirmed ports-first calling convention. The older Part B sketch uses `AsyncIterable`; adapters can publish the checked events through the injected event port. No unchecked text is streamed.
+- Quantity 1–20 is validated at the input boundary, but quantity haggling remains the USE-CASES stretch item. The engine's card explicitly quotes one main unit plus any displayed add-on; it does not invent bulk pricing.
+- B4/SPEC single-use rejection takes precedence over the older acceptance example that suggests returning a settlement again on replay. Negotiation serialization prevents concurrent requests from minting twice; a failed mint releases its claim for retry.
+- The no-op Auditor hook returns an audit, rather than a boolean, so B7 can pass fresh engine-derived cost/floor/target/profit to the minter and owner event. It does not implement the fresh Shopify read or authorize below-floor offers.
+- Question/document answers remain a static placeholder until the store-document adapter exists. They preserve the live offer and consume no round.

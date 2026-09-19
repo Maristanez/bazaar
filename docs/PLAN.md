@@ -19,7 +19,7 @@
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
 | 🛍️ A. Storefront + Shopify store | Ritvik | — | B0 → S1 | — |
-| ⚙️ B. Engine, core, Gym + Console | Bryan | B2 + B3 + B11 done; Gym crossover 42% | B5 core → B6 check | — |
+| ⚙️ B. Engine, core, Gym + Console | Bryan | B2 + B3 + B11 + B5 done; core ports verified | B6 check | — |
 | 🔌 C. Platform | ______ | — | B0 → R1 | — |
 | 🤖 D. Agents + guardrails | ______ | — | R9 (after gate 1) | — |
 
@@ -157,9 +157,11 @@ The maths that writes every price, the three core functions on top of it, the Gy
 
 **B11 verified — Sat 19 Sep (Codex):** 67 tests (349 ms) and typecheck green; 300 shoppers in 2.43 ms, deterministic seed 42, crossover 42%; regenerated fixture passes gymResultProblems; layout properties and reviews pass.
 
+**B5 verified — Sat 19 Sep (Codex):** 17 core tests; `pnpm test` 84 passed (351 ms), typecheck green; two-turn settlement, fallback/time budget, privacy, size validation, round cap and single-use concurrency verified; standards/spec reviews completed.
+
 **Gate 1 → Devpost (Sat 09:00 → 14:00)**
 
-- [ ] **B5** Core: `findProducts · makeOffer · acceptOffer` over `db.ts` [§5] · _needs B2, B4, R5_ · ~3 h · **Done when:** both adapters call only these three, and a full turn works end to end with the LLM stubbed
+- [x] **B5 (BM)** Core: `findProducts · makeOffer · acceptOffer` over `db.ts` [§5] · _needs B2, B4, R5_ · ~3 h · **Done when:** both adapters call only these three, and a full turn works end to end with the LLM stubbed
 - [ ] **B6** The check [§5.1 step 5] · _needs B5_ · ~1.5 h · **Done when:** an invented option id, an invented `$`, a reason with no fact, and a cost/floor word each produce option A + template + a `blocked: check` row
 
 **Devpost → gate 2 (Sat 14:00 → Sun 00:00)** — **this block is ~15 h of work in a 10 h window, so it is ordered keep-first:** everything down to S9 is never cut; S7, S8, S10 are on the cut order (§7) and come last. Ritvik is the helper for S9 / S10 once B10 is done.

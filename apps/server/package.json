@@ -6,6 +6,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@bazaar/contracts": "workspace:*"
+    "@bazaar/contracts": "workspace:*",
+    "@bazaar/engine": "workspace:*"
   }
 }

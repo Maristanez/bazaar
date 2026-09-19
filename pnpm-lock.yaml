@@ -29,6 +29,9 @@ importers:
       '@bazaar/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@bazaar/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
 
   packages/contracts: {}
 
