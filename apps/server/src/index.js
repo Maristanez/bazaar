@@ -543,6 +543,12 @@ function priceOffer(main, offered, round, mirror, reason = { score: 0, label: nu
     return { kind: "accepted", items: [mainQty], listTotal, total: safeOffered, line: `${reasonPrefix(reason)}Deal — I can hold ${formatMoney(safeOffered)} for 15 minutes.`, badges: reasonBadges(reason, ["good intent", "held 15:00"]) };
   }
   const addOn = mirror.items.find((item) => item.isAddOn && item.inStock && item.cost !== null);
+  if (addOn && round < MAX_ROUNDS && reason.hasAddOnIntent) {
+    const addonPart = Math.ceil(addOn.cost + (addOn.list - addOn.cost) / 2);
+    const bundleFloor = floor + Math.ceil(addOn.cost * (1 + FLOOR_PCT / 100));
+    const bundleTotal = roundToShopper(Math.max(ask + addonPart, bundleFloor));
+    return { kind: "bundle", items: [mainQty, addOn], listTotal: roundToShopper(main.list * quantity + addOn.list), total: bundleTotal, line: `${reasonPrefix(reason)}I would rather protect the single-item price, but I can make the cart better: ${formatMoney(bundleTotal)} with ${addOn.title} included.`, badges: reasonBadges(reason, [`＋ ${addOn.title}`, "bundle value"]) };
+  }
   if (round === 1 && reason.score > 0) {
     const openingAsk = sellerAskFor(pricedMain, sellerTarget, 1, reason);
     return {
@@ -553,12 +559,6 @@ function priceOffer(main, offered, round, mirror, reason = { score: 0, label: nu
       line: `${reasonPrefix(reason)}I can start at ${formatMoney(openingAsk)}. If you can show stronger intent — bundle, checkout today, or a real comparison — I may be able to sharpen it.`,
       badges: reasonBadges(reason, ["opening counter", "seller guarded"]),
     };
-  }
-  if (addOn && round < MAX_ROUNDS && reason.hasAddOnIntent) {
-    const addonPart = Math.ceil(addOn.cost + (addOn.list - addOn.cost) / 2);
-    const bundleFloor = floor + Math.ceil(addOn.cost * (1 + FLOOR_PCT / 100));
-    const bundleTotal = roundToShopper(Math.max(ask + addonPart, bundleFloor));
-    return { kind: "bundle", items: [mainQty, addOn], listTotal: roundToShopper(main.list * quantity + addOn.list), total: bundleTotal, line: `${reasonPrefix(reason)}I would rather protect the single-item price, but I can make the cart better: ${formatMoney(bundleTotal)} with ${addOn.title} included.`, badges: reasonBadges(reason, [`＋ ${addOn.title}`, "bundle value"]) };
   }
   if (reason.score === 0 && (round >= 3 || isLowball)) {
     return {
@@ -1071,7 +1071,7 @@ function parseQuantity(value, fallback = 1) {
   const text = normalizeSearchText(value);
   const match = text.match(/\b(?:buy|get|take|grab|want|order|add|need)\s+(\d{1,2})\b|\b(\d{1,2})\s*(?:x|pcs?|pieces?|items?|tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?)\b/i);
   const wordMatch = text.match(/\b(?:buy|get|take|grab|want|order|add|need)\s+([a-z -]+?)\s+(?:tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?|items?)\b/i);
-  const directWordMatch = text.match(/^([a-z -]+?)\s+(?:tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?|items?)\b/i);
+  const directWordMatch = text.match(new RegExp(`^(${NUMBER_WORD_PATTERN}(?:\\s+${NUMBER_WORD_PATTERN})*)\\s+(?:tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?|items?)\\b`, "i"));
   const pairMatch = /\b(pair|couple|both)\b/i.test(text);
   const halfDozen = /\bhalf dozen\b/i.test(text);
   const wordQuantity = wordMatch ? parseNumberWords(wordMatch[1]) : directWordMatch ? parseNumberWords(directWordMatch[1]) : null;
