@@ -7,6 +7,7 @@
     {% for link in section.settings.menu.links %}
       {{ link.title | link_to: link.url }}
     {% endfor %}
+    <a href="{{ routes.account_login_url }}">Login</a>
   </div>
 
   <div class="header__icons">
