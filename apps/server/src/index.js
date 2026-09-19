@@ -1039,7 +1039,8 @@ function isOfferIntent(text) {
   const message = String(text || "");
   const hasMoney = parseMoney(message) !== null;
   const hasOfferLanguage = /\b(offer|deal|discount|haggle|checkout|could you do|can you do|would you take|best price|can i get|could i get|give it to me|give them to me|buy|take|grab|order|lower|cheaper|knock|meet me|split the difference|work with me|out the door|otd)\b/i.test(message);
-  return hasMoney || hasOfferLanguage;
+  const hasCasualPriceLanguage = /\b(?:for|at|around|about|under|to|do|take|pay|price|make|call it)\s+(?:\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fourty|fifty|sixty|seventy|eighty|ninety|hundred|benjamin)\b/i.test(message);
+  return hasMoney || hasOfferLanguage || hasCasualPriceLanguage;
 }
 
 function parseOfferTerms(message, payload = {}, understanding = {}, options = {}) {
@@ -1056,7 +1057,7 @@ function parseOfferTerms(message, payload = {}, understanding = {}, options = {}
 function parseMoney(value) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   const text = String(value || "");
-  const match = text.match(/(?:c\$|\$)\s*(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s*(?:\$|cad|dollars?|bucks?|each|ea|apiece|a piece|a pop|per\b|\/\s*ea)/i);
+  const match = text.match(/(?:c\$|\$)\s*(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s*(?:\$|cad|dollars?|bucks?|each|ea|apiece|a piece|a pop|per\b|\/\s*ea|all in|total|altogether|otd|out the door)/i);
   if (match) return Number(match[1] || match[2]);
   const wordMoney = parseMoneyWords(text);
   if (wordMoney !== null) return wordMoney;
