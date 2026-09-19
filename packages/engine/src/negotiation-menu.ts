@@ -11,7 +11,13 @@ export type NegotiationMenuInput = {
   floorPct: number;
   now: Date;
   requestedAddOn?: string;
+  requestedItems?: readonly RequestedNegotiationItem[];
   allowAlternatives?: boolean;
+};
+
+export type RequestedNegotiationItem = {
+  variantId: string;
+  quantity: number;
 };
 
 export type NegotiationMenuCandidate = { id: string; offer: NegotiationOffer };
@@ -21,6 +27,9 @@ export type NegotiationMenuResult = readonly NegotiationMenuCandidate[];
 /** Build safe server-side choices while keeping all pricing in priceOffer. */
 export function buildNegotiationMenu(input: NegotiationMenuInput): NegotiationMenuResult {
   const { main, mirror, offered, round, reason, quantity, floorPct, now } = input;
+  const hasExplicitItems = Boolean(input.requestedItems?.length);
+  const requestedItems = resolveRequestedItems(input.requestedItems, mirror.items, main);
+  if (hasExplicitItems && requestedItems.length !== input.requestedItems!.length) return [];
   const requested = findRequestedAddOn(input.requestedAddOn, mirror.items, main);
   const requestedName = normalize(input.requestedAddOn || "");
   const addOns = uniqueAddOns(mirror.items, main, requested);
@@ -28,10 +37,18 @@ export function buildNegotiationMenu(input: NegotiationMenuInput): NegotiationMe
   const candidates: NegotiationOffer[] = [];
   if (primary) candidates.push(primary);
 
-  const bundleAddOns = requested ? [requested] : requestedName ? [] : reason.hasAddOnIntent ? addOns : [];
-  for (const addOn of bundleAddOns) {
-    const bundle = priceCandidate(main, offered, round, mirrorFor(main, [addOn], addOn), reasonFor(reason, true), quantity, floorPct, now);
-    if (bundle && bundle.kind === "bundle" && bundle.items.some(item => item.productId === addOn.productId)) candidates.push(bundle);
+  const bundleGroups = hasExplicitItems
+    ? [requestedItems]
+    : requested
+      ? [[requested]]
+      : requestedName
+        ? []
+        : reason.hasAddOnIntent
+          ? addOns.map(addOn => [addOn])
+          : [];
+  for (const bundleItems of bundleGroups) {
+    const bundle = priceCandidate(main, offered, round, mirrorFor(main, bundleItems), reasonFor(reason, true), quantity, floorPct, now);
+    if (bundle && bundle.kind === "bundle" && bundleContains(bundle, bundleItems)) candidates.push(bundle);
   }
 
   if (input.allowAlternatives && primary) {
@@ -51,15 +68,17 @@ export function buildNegotiationMenu(input: NegotiationMenuInput): NegotiationMe
       unique.push(offer);
     }
   }
-  const explicitBundles = requestedName
-    ? unique.filter(offer => offer.kind === "bundle" && requested && offer.items.some(item => item.productId === requested.productId))
+  const explicitBundles = hasExplicitItems
+    ? unique.filter(offer => offer.kind === "bundle" && bundleContains(offer, requestedItems))
+    : requestedName
+      ? unique.filter(offer => offer.kind === "bundle" && requested && offer.items.some(item => item.productId === requested.productId))
     : unique;
   return explicitBundles.map((offer, index) => ({ id: String.fromCharCode(65 + index), offer }));
 }
 
 /** Deterministic option-A fallback, shared by the server and synthetic rehearsals. */
-export function rankNegotiationMenu(choices: NegotiationMenuResult, input: Pick<NegotiationMenuInput, "main" | "offered" | "requestedAddOn" | "allowAlternatives">): NegotiationMenuResult {
-  const preferred = (input.requestedAddOn && choices.find(choice => choice.offer.kind === "bundle"))
+export function rankNegotiationMenu(choices: NegotiationMenuResult, input: Pick<NegotiationMenuInput, "main" | "offered" | "requestedAddOn" | "requestedItems" | "allowAlternatives">): NegotiationMenuResult {
+  const preferred = ((input.requestedAddOn || input.requestedItems?.length) && choices.find(choice => choice.offer.kind === "bundle"))
     || (input.allowAlternatives && choices.find(choice => choice.offer.items[0]!.productId !== input.main.productId && choice.offer.total <= input.offered)) || choices[0];
   return [preferred, ...choices.filter(choice => choice !== preferred)].filter((choice): choice is NegotiationMenuCandidate => Boolean(choice))
     .map((choice, index) => ({ ...choice, id: String.fromCharCode(65 + index) }));
@@ -87,9 +106,23 @@ function reasonFor(reason: BuyerReason, includeAddOn: boolean): BuyerReason {
   return includeAddOn ? { ...reason, hasAddOnIntent: true } : { ...reason, hasAddOnIntent: false };
 }
 
-function mirrorFor(main: NegotiationItem, addOns: readonly NegotiationItem[], selected?: NegotiationItem): NegotiationMirror {
-  const ordered = selected ? [selected, ...addOns.filter(item => item.variantId !== selected.variantId)] : addOns;
-  return { items: [main, ...ordered] };
+function mirrorFor(main: NegotiationItem, items: readonly NegotiationItem[]): NegotiationMirror {
+  return { items: [main, ...items] };
+}
+
+function resolveRequestedItems(requests: readonly RequestedNegotiationItem[] | undefined, items: readonly NegotiationItem[], main: NegotiationItem): NegotiationItem[] {
+  if (!requests?.length) return [];
+  return requests.flatMap(request => {
+    const item = items.find(candidate => candidate.variantId === request.variantId);
+    if (!item || item.productId === main.productId || !item.inStock || item.cost === null
+      || !Number.isSafeInteger(request.quantity) || request.quantity < 1 || request.quantity > 10
+      || !inventorySafe(item, request.quantity)) return [];
+    return [{ ...item, qty: request.quantity }];
+  });
+}
+
+function bundleContains(offer: NegotiationOffer, requested: readonly NegotiationItem[]): boolean {
+  return requested.every(expected => offer.items.some(item => item.variantId === expected.variantId && (item.qty || 1) === (expected.qty || 1)));
 }
 
 function findRequestedAddOn(request: string | undefined, items: readonly NegotiationItem[], main: NegotiationItem): NegotiationItem | undefined {

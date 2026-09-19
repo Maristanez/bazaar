@@ -106,6 +106,48 @@ describe("buildNegotiationMenu", () => {
     expect(bundle?.offer.total).toBe(28000);
   });
 
+  it("keeps every explicitly requested line and quantity in one safe bundle", () => {
+    const menu = buildNegotiationMenu(input({
+      main: tr2,
+      mirror: { items: [tr2, socks, gaiters] },
+      offered: 25000,
+      round: 2,
+      reason: analyzeBuyerReason("I want a full kit"),
+      quantity: 1,
+      requestedItems: [
+        { variantId: socks.variantId, quantity: 2 },
+        { variantId: gaiters.variantId, quantity: 1 },
+      ],
+      allowAlternatives: false,
+    }));
+
+    expect(menu).toHaveLength(1);
+    expect(menu[0]?.offer.items).toEqual([
+      expect.objectContaining({ productId: "tr2", qty: 1 }),
+      expect.objectContaining({ productId: "socks", qty: 2 }),
+      expect.objectContaining({ productId: "gaiters", qty: 1 }),
+    ]);
+    expect(menu[0]?.offer.listTotal).toBe(22000);
+  });
+
+  it("can price an explicit cart even when the current page item is an accessory", () => {
+    const menu = buildNegotiationMenu(input({
+      main: socks,
+      mirror: { items: [socks, tr2] },
+      offered: 15000,
+      round: 2,
+      reason: analyzeBuyerReason("I want both items"),
+      quantity: 2,
+      requestedItems: [{ variantId: tr2.variantId, quantity: 1 }],
+      allowAlternatives: false,
+    }));
+
+    expect(menu[0]?.offer.items).toEqual([
+      expect.objectContaining({ productId: "socks", qty: 2 }),
+      expect.objectContaining({ productId: "tr2", qty: 1 }),
+    ]);
+  });
+
   it("does not replace a missing requested add-on with another add-on", () => {
     const unavailableGaiters = { ...gaiters, inStock: false };
     const menu = buildNegotiationMenu(input({ mirror: { items: [tr3, socks, unavailableGaiters] }, requestedAddOn: "Trail Gaiters", reason: analyzeBuyerReason("gaiters"), allowAlternatives: false }));

@@ -647,10 +647,18 @@ async function makeOfferTurn(payload, message) {
   const match = findProductFromPayload({ ...payload, text: matchText }, mirror, { contextItem: shopperContext?.item, allowFallback: false });
   if (!match) return { reply: "Pick a published product first, then send me a number like “Could you do $120?”", products: publicProducts(mirror) };
   const sameContextItem = shopperContext?.item && shopperContext.item.productId === match.item.productId;
+  const cartRequest = requestedCartFromMessage(message, mirror, match.item);
+  if (cartRequest.unavailable.length) {
+    return {
+      reply: unavailableCartReply(cartRequest.unavailable, mirror, match.item),
+      products: prioritizePublicProducts(mirror, match.item),
+    };
+  }
   const pageItem = selectCatalogItem({ ...payload, message: "", text: "" }, mirror.items, undefined, false);
   const selectedQuantity = pageItem?.productId === match.item.productId && (!payload.negotiationId || payload.quantitySelectionChanged)
     ? payload.quantity : undefined;
   const terms = parseOfferTerms(message, payload, understanding, { fallbackQuantity: selectedQuantity ?? (sameContextItem ? shopperContext.quantity : 1) });
+  if (cartRequest.mainQuantity) terms.quantity = cartRequest.mainQuantity;
   if (!Number.isSafeInteger(terms.quantity) || terms.quantity < 1 || terms.quantity > MAX_OFFER_QUANTITY) {
     return { reply: `Please choose a quantity from 1 to ${MAX_OFFER_QUANTITY}.` };
   }
@@ -663,8 +671,28 @@ async function makeOfferTurn(payload, message) {
   const declinedAddOns = /\b(?:without|no|remove|skip|exclude)\s+(?:(?:the|any|merino|trail|soft)\s+)*(?:socks?|gaiters?|caps?|flasks?|vests?|add[ -]?ons?|bundles?)\b|\b(?:just|only) (?:the )?(?:shoes?|main item)\b/i.test(message);
   const reason = applyNegotiationContext(analyzeBuyerReason(reasonText), { quantity: terms.quantity });
   if (declinedAddOns) reason.hasAddOnIntent = false;
+  const requestedItems = declinedAddOns
+    ? []
+    : cartRequest.requestedItems.length
+      ? cartRequest.requestedItems
+      : sameContextItem && Array.isArray(shopperContext?.requestedItems)
+        ? shopperContext.requestedItems
+        : [];
+  if (requestedItems.length) {
+    reason.hasAddOnIntent = true;
+    reason.hasBulkIntent = true;
+    reason.score = Math.max(reason.score, 2);
+    reason.label ||= "quantity intent";
+    reason.labels = Array.from(new Set([...reason.labels, "quantity intent"]));
+  }
   if (terms.dollars === null) {
-    rememberShopperContext(payload.shopperId, match.item, terms.quantity || shopperContext?.quantity || 1, shopperContext?.negotiationId || null, { reasonText, reasonTags: reason.labels });
+    rememberShopperContext(payload.shopperId, match.item, terms.quantity || shopperContext?.quantity || 1, shopperContext?.negotiationId || null, { reasonText, reasonTags: reason.labels, requestedItems });
+    if (isStudentDiscountRequest(message)) {
+      return {
+        reply: `We do not have a fixed student discount, but I can treat student status as a budget reason. Tell me the total you want for ${match.item.title} and I will price it safely.`,
+        products: prioritizePublicProducts(mirror, match.item),
+      };
+    }
     return {
       reply: `I can talk about ${match.item.title}, but I need your number first. Try “Could you do ${formatMoney(roundToShopper(match.item.list * (terms.quantity || 1) * 0.85))}${(terms.quantity || 1) > 1 ? " total" : ""}?” and give me a reason.`,
       products: prioritizePublicProducts(mirror, match.item),
@@ -682,18 +710,16 @@ async function makeOfferTurn(payload, message) {
   if (pending) return { reply: pending.card.line, card: currentCard(pending), negotiationId };
   const round = Math.min(MAX_ROUNDS, previousRound + 1);
   negotiation.round = round;
-  rememberShopperContext(payload.shopperId, match.item, quantity, negotiationId, { reasonText, reasonTags: reason.labels });
+  rememberShopperContext(payload.shopperId, match.item, quantity, negotiationId, { reasonText, reasonTags: reason.labels, requestedItems });
   const policy = owner.getPolicy();
-  const requestedAddOn = declinedAddOns ? undefined : requestedAddOnName(message, mirror, match.item)
-    || (sameContextItem ? shopperContext.requestedAddOn : undefined);
   const allowAlternatives = /\b(alternative|something else|anything cheaper|recommend|instead|other options)\b/i.test(message);
   const priceMenu = floorPct => {
-    const choices = buildNegotiationMenu({ main: match.item, mirror, offered, round, reason, quantity, floorPct, now: new Date(), requestedAddOn, allowAlternatives });
-    return rankNegotiationMenu(choices, { main: match.item, offered, requestedAddOn, allowAlternatives });
+    const choices = buildNegotiationMenu({ main: match.item, mirror, offered, round, reason, quantity, floorPct, now: new Date(), requestedItems, allowAlternatives });
+    return rankNegotiationMenu(choices, { main: match.item, offered, requestedItems, allowAlternatives });
   };
   let candidates = priceMenu(policy.floorPct);
   const shopperId = requireShopperId(payload);
-  if (!candidates.length) return { reply: "This item or quantity is not open to offers right now.", negotiationId };
+  if (!candidates.length) return { reply: requestedItems.length ? "I could not price every requested item safely, so I did not create a partial offer." : "This item or quantity is not open to offers right now.", negotiationId };
   const fallback = choices => choices[0];
   let menu = negotiationOptions(candidates, round, match.item);
   let phrased = await phraseOfferWithBackboard({ menu, fallback: fallback(candidates), shopperId, negotiationId, message, round, main: match.item });
@@ -712,7 +738,7 @@ async function makeOfferTurn(payload, message) {
   const selectedMain = offer.items[0];
   negotiation.productId = selectedMain.productId;
   negotiation.variantId = selectedMain.variantId;
-  rememberShopperContext(shopperId, selectedMain, quantity, negotiationId, { reasonText, reasonTags: reason.labels, requestedAddOn });
+  rememberShopperContext(shopperId, selectedMain, quantity, negotiationId, { reasonText, reasonTags: reason.labels, requestedItems });
   const replyLine = phrased.line;
   const offerId = randomId("offer");
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
@@ -998,6 +1024,7 @@ function rememberShopperContext(shopperId, item, quantity, negotiationId, detail
     reasonText: stringOrNull(details.reasonText) || existing.reasonText || null,
     reasonTags: Array.isArray(details.reasonTags) && details.reasonTags.length ? details.reasonTags.slice(0, 6) : existing.reasonTags || [],
     requestedAddOn: details.requestedAddOn ?? existing.requestedAddOn,
+    requestedItems: Object.hasOwn(details, "requestedItems") ? details.requestedItems : existing.requestedItems || [],
     updatedAt: Date.now(),
   };
   state.shopperContexts.set(id, context);
@@ -1072,11 +1099,95 @@ async function answerWithBackboard(context, fallbackLine) {
   }
 }
 
-function requestedAddOnName(message, mirror, main) {
+function requestedCartFromMessage(message, mirror, main) {
   const text = normalizeSearchText(message);
-  return mirror.items.find(item => item.isAddOn && item.productId !== main.productId &&
-    (text.includes(normalizeSearchText(item.title)) ||
-     ["sock", "gaiter", "cap", "flask", "vest"].some(word => new RegExp(`\\b${word}s?\\b`).test(text) && new RegExp(`\\b${word}s?\\b`).test(normalizeSearchText(item.title)))))?.title;
+  const groups = new Map();
+  for (const item of mirror.items) {
+    const group = groups.get(item.productId) || [];
+    group.push(item);
+    groups.set(item.productId, group);
+  }
+  let mainQuantity = null;
+  const requestedItems = [];
+  const unavailable = [];
+  for (const variants of groups.values()) {
+    const sample = variants[0];
+    const mention = productMention(text, sample);
+    if (!mention) continue;
+    const explicitQuantity = quantityBeforeProduct(text, mention.index);
+    const quantity = explicitQuantity || 1;
+    if (sample.productId === main.productId) {
+      mainQuantity = explicitQuantity;
+      const selected = variants.find(item => item.variantId === main.variantId) || main;
+      if (!selected.inStock || selected.cost === null || Number(selected.inventory ?? quantity) < quantity) unavailable.push({ ...sample, quantity });
+      continue;
+    }
+    const available = variants.find(item => item.inStock && item.cost !== null && Number(item.inventory ?? quantity) >= quantity);
+    if (!available) unavailable.push({ ...sample, quantity });
+    else requestedItems.push({ variantId: available.variantId, quantity });
+  }
+  return { mainQuantity, requestedItems, unavailable };
+}
+
+function productMention(text, item) {
+  const aliases = productAliases(item).sort((left, right) => right.length - left.length);
+  for (const alias of aliases) {
+    const match = new RegExp(`\\b${escapeRegExp(alias).replace(/\\ /g, "\\s+")}\\b`, "i").exec(text);
+    if (match) return match;
+  }
+  return null;
+}
+
+function productAliases(item) {
+  const title = normalizeSearchText(item.title);
+  const handle = normalizeSearchText(item.handle || "");
+  const aliases = new Set([title, handle].filter(Boolean));
+  if (/\b(?:tee|shirt|top)\b/.test(title)) ["tee", "tees", "shirt", "shirts", "top", "tops"].forEach(alias => aliases.add(alias));
+  if (/\bsocks?\b/.test(title)) ["sock", "socks"].forEach(alias => aliases.add(alias));
+  if (/\bgaiters?\b/.test(title)) ["gaiter", "gaiters"].forEach(alias => aliases.add(alias));
+  if (/\bcap\b/.test(title)) ["cap", "caps", "hat", "hats"].forEach(alias => aliases.add(alias));
+  if (/\b(?:flask|bottle)\b/.test(title)) ["flask", "flasks", "bottle", "bottles"].forEach(alias => aliases.add(alias));
+  if (/\bvest\b/.test(title)) ["vest", "vests"].forEach(alias => aliases.add(alias));
+  return [...aliases];
+}
+
+function quantityBeforeProduct(text, index) {
+  const prefix = text.slice(Math.max(0, index - 70), index);
+  const numeric = prefix.match(/\b(\d+)\s*(?:x|pairs?\s+of|pieces?\s+of|items?\s+of)?\s*$/i);
+  if (numeric) return Number(numeric[1]);
+  const words = prefix.match(new RegExp(`\\b(${NUMBER_WORD_PATTERN}(?:\\s+${NUMBER_WORD_PATTERN})*)\\s*(?:pairs?\\s+of|pieces?\\s+of|items?\\s+of)?\\s*$`, "i"));
+  const parsed = words ? parseNumberWords(words[1]) : null;
+  return parsed && Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+function unavailableCartReply(unavailable, mirror, main) {
+  const item = unavailable[0];
+  const insufficientQuantity = item.quantity > 1;
+  const alternative = availableAlternativeFor(item, mirror.items, main);
+  const detail = insufficientQuantity ? " is unavailable in that quantity right now" : " is unavailable right now";
+  const suggestion = alternative ? ` ${alternative.title} is available if you want to swap it in.` : " Please choose another published product.";
+  return `${item.title}${detail}, so I did not create a partial offer.${suggestion}`;
+}
+
+function availableAlternativeFor(unavailable, items, main) {
+  const unique = new Map();
+  for (const item of items) {
+    if (item.productId === unavailable.productId || item.productId === main.productId || !item.inStock || item.cost === null || Number(item.inventory ?? 1) < 1) continue;
+    if (!unique.has(item.productId)) unique.set(item.productId, item);
+  }
+  const alternatives = [...unique.values()];
+  return alternatives.find(item => Boolean(item.isAddOn) === Boolean(unavailable.isAddOn))
+    || alternatives.find(item => item.productType === unavailable.productType)
+    || alternatives[0];
+}
+
+function isStudentDiscountRequest(message) {
+  const text = String(message || "");
+  return /\b(?:student|college|school)\b/i.test(text) && /\b(?:discount|deal|price|offer)\b/i.test(text);
+}
+
+function escapeRegExp(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function negotiationOptions(candidates, round, main) {

@@ -89,20 +89,24 @@ export function priceOffer(
   const safeOffered = roundToShopper(offered);
   const hasConvincingReason = reason.score >= 2 || reason.hasBulkIntent || quantity > 1;
   const isLowball = safeOffered < roundToShopper(main.list * quantity * 0.8);
-  const addOn = mirror.items.find(item => item.isAddOn && validItem(item) && item.inStock && item.cost !== null && item.productId !== main.productId);
-  if (addOn && !main.isAddOn && reason.hasAddOnIntent) {
-    const addonPart = Math.ceil(addOn.cost! + (addOn.list - addOn.cost!) / 2);
-    const bundleCost = main.cost * quantity + addOn.cost!;
-    const bundleList = main.list * quantity + addOn.list;
+  const bundleItems = mirror.items.filter(item => validItem(item) && item.inStock && item.cost !== null && item.productId !== main.productId);
+  if (bundleItems.length && reason.hasAddOnIntent) {
+    const bundlePart = bundleItems.reduce((sum, item) => {
+      const itemQuantity = item.qty || 1;
+      return sum + Math.ceil(item.cost! + (item.list - item.cost!) / 2) * itemQuantity;
+    }, 0);
+    const bundleCost = main.cost * quantity + bundleItems.reduce((sum, item) => sum + item.cost! * (item.qty || 1), 0);
+    const bundleList = main.list * quantity + bundleItems.reduce((sum, item) => sum + item.list * (item.qty || 1), 0);
     const bundleFloor = Math.max(bundleCost + 1, Math.ceil(bundleCost * (1 + options.floorPct / 100)));
-    const bundleTotal = roundToShopper(Math.max(ask + addonPart, bundleFloor));
+    const bundleTotal = roundToShopper(Math.max(ask + bundlePart, bundleFloor));
     if (bundleFloor <= bundleList && bundleTotal > bundleCost && bundleTotal >= bundleFloor && bundleTotal <= bundleList) {
       const accepted = round >= 2 && hasConvincingReason && safeOffered >= bundleTotal;
       const total = accepted ? Math.min(bundleList, safeOffered) : bundleTotal;
+      const itemSummary = bundleItems.map(item => `${item.qty || 1} × ${item.title}`).join(" plus ");
       const line = accepted
-        ? `${reasonPrefix(reason)}Deal — I can hold ${formatMoney(total)} for 15 minutes with ${addOn.title} included.`
-        : `${reasonPrefix(reason)}I would rather protect the single-item price, but I can make the cart better: ${formatMoney(total)} with ${addOn.title} included.`;
-      return { kind: "bundle", items: [mainQty, { ...addOn, qty: 1 }], listTotal: bundleList, total, line, badges: reasonBadges(reason, [`＋ ${addOn.title}`, accepted ? "held 15:00" : "bundle value"]) };
+        ? `${reasonPrefix(reason)}Deal, I can hold ${formatMoney(total)} for 15 minutes with ${itemSummary} included.`
+        : `${reasonPrefix(reason)}I would rather protect the single item price, but I can make the cart better: ${formatMoney(total)} with ${itemSummary} included.`;
+      return { kind: "bundle", items: [mainQty, ...bundleItems.map(item => ({ ...item, qty: item.qty || 1 }))], listTotal: bundleList, total, line, badges: reasonBadges(reason, [...bundleItems.map(item => `＋ ${item.qty || 1} × ${item.title}`), accepted ? "held 15:00" : "bundle value"]) };
     }
   }
   if (safeOffered >= floor && safeOffered >= sellerTarget && safeOffered <= listTotal && round >= 2 && hasConvincingReason) {

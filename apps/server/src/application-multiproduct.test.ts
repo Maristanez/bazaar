@@ -32,8 +32,8 @@ function database(): OwnerDatabase {
   };
 }
 
-async function start() {
-  const server = await createBazaarServer({ env: {}, ownerDb: database() });
+async function start(options: Parameters<typeof createBazaarServer>[0] = {}) {
+  const server = await createBazaarServer({ env: {}, ownerDb: database(), ...options });
   servers.push(server);
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -237,6 +237,64 @@ describe("multi-product shopper API integration", () => {
     expect(fourth.body.card.option.listTotal).toBe(16700);
   });
 
+  it("keeps every named product and quantity in a three-product cart", async () => {
+    const base = await start();
+    const trail2 = (await products(base)).find(product => product.title === "Trail Runner 2")!;
+    const response = await chat(base, productPayload(
+      trail2,
+      "three-product-cart",
+      "Could you do $500 total for 3 Trail Runner 2, 2 pairs of Merino Socks, and 1 Trail Cap?",
+    ));
+
+    expect(response.body.card.option.items).toEqual([
+      expect.objectContaining({ title: "Trail Runner 2", qty: 3 }),
+      expect.objectContaining({ title: "Merino Socks", qty: 2, thrownIn: true }),
+      expect.objectContaining({ title: "Trail Cap", qty: 1, thrownIn: true }),
+    ]);
+    expect(response.body.card.option.listTotal).toBe(51100);
+  });
+
+  it("answers a student discount request honestly and carries the budget reason forward", async () => {
+    const base = await start();
+    const trail2 = (await products(base)).find(product => product.title === "Trail Runner 2")!;
+    const shopperId = "student-shopper";
+    const question = await chat(base, productPayload(trail2, shopperId, "Can I get a student discount please?"));
+
+    expect(question.body.card).toBeUndefined();
+    expect(question.body.reply).toContain("do not have a fixed student discount");
+    expect(question.body.reply).toContain("budget reason");
+
+    const offer = await chat(base, productPayload(trail2, shopperId, "How about $120?"));
+    expect(offer.body.card.badges).toContain("reason: budget");
+  });
+
+  it("names an unavailable requested item and suggests a real available alternative", async () => {
+    const fetchImpl: typeof fetch = async (_url, init) => {
+      const request = JSON.parse(String(init?.body));
+      if (!request.query.includes("BazaarProducts")) throw new Error("Unexpected external request");
+      return Response.json({ data: { products: { nodes: [
+        shopifyProduct("1", "Trail Runner 2", "trail-runner-2", "Trail Shoes", "149.00", "78.00", 5),
+        shopifyProduct("2", "Merino Socks", "merino-socks", "Accessories", "18.00", "6.00", 0),
+        shopifyProduct("3", "Trail Cap", "trail-cap", "Accessories", "28.00", "9.00", 5),
+      ] } } });
+    };
+    const base = await start({
+      env: { SHOPIFY_SHOP: "test", SHOPIFY_ADMIN_ACCESS_TOKEN: "test" },
+      fetchImpl,
+    });
+    const trail2 = (await products(base)).find(product => product.title === "Trail Runner 2")!;
+    const response = await chat(base, productPayload(
+      trail2,
+      "unavailable-addon-shopper",
+      "Could you do $140 for Trail Runner 2 with Merino Socks?",
+    ));
+
+    expect(response.body.card).toBeUndefined();
+    expect(response.body.reply).toContain("Merino Socks");
+    expect(response.body.reply).toContain("unavailable");
+    expect(response.body.reply).toContain("Trail Cap");
+  });
+
   it("resumes negotiation A at its quantity after negotiation B uses the same shopper", async () => {
     const base = await start();
     const catalog = await products(base);
@@ -269,3 +327,22 @@ describe("multi-product shopper API integration", () => {
     expect(trailOffer.body.card.option.items[0]).toMatchObject({ title: "Trail Runner 2", qty: 1 });
   });
 });
+
+function shopifyProduct(id: string, title: string, handle: string, productType: string, price: string, cost: string, inventory: number) {
+  return {
+    id: `gid://shopify/Product/${id}`,
+    title,
+    handle,
+    productType,
+    featuredImage: null,
+    metafield: { value: "2026-06-01" },
+    variants: { nodes: [{
+      id: `gid://shopify/ProductVariant/${id}01`,
+      title: title === "Merino Socks" ? "S/M" : "Default Title",
+      sku: `${handle}-default`,
+      price,
+      inventoryQuantity: inventory,
+      inventoryItem: { tracked: true, unitCost: { amount: cost, currencyCode: "CAD" } },
+    }] },
+  };
+}

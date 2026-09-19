@@ -257,3 +257,13 @@
 **What changed:** Explicitly named add-ons now constrain the menu to cards containing that item. Bundle pricing runs before single-item acceptance and remains available on the final round. If the requested add-on is unavailable or cannot be priced safely, the server returns no misleading main-only offer. Two regressions cover the five-tee cart and a late final-round add-on.
 
 **Outcome:** The actual Shopify catalog replay produced five Everyday Heavyweight Tees plus one Merino Socks item, list $308, accepted at $280 on round four with “I can do $280 for both.” Full verification reports 278 passing tests, green workspace type checks and a green production web build.
+
+### #13 · `Sat 19:14` · `Ricardo / Codex` · `Smarter cart and discount handling`
+
+**Prompt:** Keep only the important fixes. Support several products and quantities in one offer, handle student discount requests honestly, and make unavailable requested items useful instead of vague. Fix and merge.
+
+**What changed:** The server now extracts every named catalog line and its local quantity from one shopper message. The deterministic menu receives those exact variants and quantities, and the pricing engine computes one safe cart without allowing Backboard to omit a requested line. Student discount questions explain that there is no fixed program and preserve student status as budget context for the next offer. Unavailable requested products stop the partial offer, name the unavailable line and suggest a real in stock alternative.
+
+**Safety:** Every visible total still comes from engine code. Every cart line must have cost, stock and sufficient inventory. A requested line that cannot be priced causes the whole candidate menu to close instead of silently selling a smaller cart.
+
+**Verification:** Added end to end coverage for a three product cart, student context across turns and an unavailable socks substitution, plus direct engine regressions for several requested lines and an accessory as the current page item. All 283 tests across 37 files pass, workspace type checks pass, the production web build passes and the diff has no whitespace errors.
