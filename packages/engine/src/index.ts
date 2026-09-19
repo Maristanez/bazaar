@@ -3,3 +3,5 @@ export const PACKAGE = "@bazaar/engine";
 export { ask, costOf, floorOf, targetOf, urgency } from "./formulas";
 export { toShopper } from "./money";
 export type { Item } from "./types";
+export { buildMenu } from "./menu";
+export type { MenuInput, MenuResult } from "./menu";

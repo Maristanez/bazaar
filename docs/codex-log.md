@@ -42,3 +42,12 @@
 - **Outcome:** …
 
 <!-- Copy the block above for each new entry. Never edit an old entry to make it sound better — add a follow-up entry instead. -->
+
+
+### B2 — 2026-09-19 · Bryan (BM) · menu builder
+
+- **Prompt (trimmed):** Implement B2 with strict red → green, the $120/TR3 worked menu, bundles, alternatives, audit, ranking and final offers; preserve contracts and the worked formula test.
+- **Produced:** `engine/src/menu.ts`, package exports, 14 menu tests; retained and adapted the pre-existing B2 draft to the requested API. First test failed on the old `main` API, then passed. Subsequent failing bundle, acceptance, final/gating, catalog-fact and list-rounding tests drove fixes.
+- **Ambiguities:** `product/decision/audit` follows the user's API over the older Part B build notes. $140 on TR2 round 3 accepts, so the alternative test uses $125. Non-whole-dollar accepted offers round upward. Cost/floor failures drop. Explicit bundle and alternative formulas conflict with three literal §6.2 properties; recorded in `part-b-spec-notes.md` for B3 without changing SPEC. Unknown stock age carries no invented age fact; product type alone does not prove shared fit.
+- **Review:** Standards and spec agents reviewed the diff; unsupported facts and unrounded public list totals were fixed with red/green regressions. The original worked-example floor loop is preserved.
+- **Verification:** `pnpm test`: 43 passed, 200 ms; `pnpm typecheck`: green. No changes to contracts or `formulas.test.ts`.
