@@ -4,7 +4,7 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 17:00 EDT — chat transcript reviewed; haggling no longer invents a price when shoppers ask for a bundle without naming a number, and strong reasons now require one more move before sharper offers (Codex/Ritvik)
+**Last updated:** Sat 19 Sep 17:10 EDT — live haggling policy now protects margin like a store negotiator: round count alone no longer walks to the floor, weak reasons get firm holds, and only stronger intent/bundles/credible comparisons earn sharper counters (Codex/Ritvik)
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
@@ -153,6 +153,8 @@ Everything a shopper sees, plus the store's products behind it: the offer card, 
   _Sat 16:45 Codex note:_ Trailhead wordmark asset added to the theme header, visible theme copy/metadata switched from My Store/Bazaar to Trailhead, and the chat now tells shoppers to include a reason. The live offer engine scores buyer reasons (bundle intent, repeat shopper, budget, market/last-season, race/trip/gift, ready-to-buy) and gives firmer counters when the shopper just asks for a lower price without a convincing reason.
 
   _Sat 17:00 Codex note:_ after reading the live chat transcript, fixed the “give me a bundle deal” path so the server asks for a concrete number instead of inventing an implicit $48 offer. Strong-reason first turns now start with an opening counter and “one more move” rather than jumping straight to the sharper bundle/final price.
+
+  _Sat 17:10 Codex note:_ the live server haggling policy now behaves more like a profit-protecting store negotiator than a scripted concession ladder. Multiple rounds by themselves do not reach the floor; weak/no-reason asks can be held firm, stronger intent is scored cumulatively, and bundle-specific value is offered only when the buyer actually signals bundle intent.
 - [ ] **S4** Deal flow on the storefront: accept → checkout opens; sparkles [§4.1] · _needs S1, R6, R7_ · ~1 h · **Done when:** **gate 1 passes**
 
   _Sat 09:52 Codex note:_ the preview card deliberately disables Deal and says the API is required. S4 remains blocked on R6/R7 so the first real Deal button mints a constrained Shopify discount and opens checkout.

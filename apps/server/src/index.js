@@ -524,58 +524,108 @@ function priceOffer(main, offered, round, mirror, reason = { score: 0, label: nu
   }
   const floor = Math.ceil(main.cost * (1 + FLOOR_PCT / 100));
   const baseTarget = targetOf(main, floor);
-  const target = reasonAdjustedTarget(main.list, baseTarget, reason.score);
-  const ask = roundToShopper(askFor(main.list, target, main.stockedAt, round));
+  const sellerTarget = sellerTargetFor(main, floor, baseTarget, reason, round);
+  const ask = sellerAskFor(main, sellerTarget, round, reason);
   const safeOffered = roundToShopper(offered);
-  const hasConvincingReason = reason.score >= 2;
-  if (safeOffered >= floor && safeOffered >= target && safeOffered <= main.list && round >= 2 && (hasConvincingReason || round >= 3)) {
-    return { kind: "accepted", items: [main], listTotal: roundToShopper(main.list), total: safeOffered, line: `${reasonPrefix(reason)}Deal — I can hold ${formatMoney(safeOffered)} for 15 minutes.`, badges: reasonBadges(reason, ["safe margin", "held 15:00"]) };
+  const hasConvincingReason = reason.score >= 2 || reason.hasBulkIntent;
+  const isLowball = safeOffered < roundToShopper(main.list * 0.8);
+  if (safeOffered >= floor && safeOffered >= sellerTarget && safeOffered <= main.list && round >= 2 && hasConvincingReason) {
+    return { kind: "accepted", items: [main], listTotal: roundToShopper(main.list), total: safeOffered, line: `${reasonPrefix(reason)}Deal — I can hold ${formatMoney(safeOffered)} for 15 minutes.`, badges: reasonBadges(reason, ["good intent", "held 15:00"]) };
   }
   const addOn = mirror.items.find((item) => item.isAddOn && item.inStock && item.cost !== null);
   if (round === 1 && reason.score > 0) {
-    const openingAsk = roundToShopper(askFor(main.list, target, main.stockedAt, 2));
+    const openingAsk = sellerAskFor(main, sellerTarget, 1, reason);
     return {
       kind: "counter",
       items: [main],
       listTotal: roundToShopper(main.list),
       total: openingAsk,
-      line: `${reasonPrefix(reason)}I will not jump to my best on the first pass. I can start at ${formatMoney(openingAsk)} — come back once and I can sharpen it.`,
-      badges: reasonBadges(reason, ["opening counter", "one more move"]),
+      line: `${reasonPrefix(reason)}I can start at ${formatMoney(openingAsk)}. If you can show stronger intent — bundle, checkout today, or a real comparison — I may be able to sharpen it.`,
+      badges: reasonBadges(reason, ["opening counter", "seller guarded"]),
     };
   }
-  if (addOn && round < MAX_ROUNDS && (reason.score > 0 || round >= 3)) {
+  if (addOn && round < MAX_ROUNDS && reason.hasBulkIntent) {
     const addonPart = Math.ceil(addOn.cost + (addOn.list - addOn.cost) / 2);
-    const bundleTotal = roundToShopper(Math.max(ask + addonPart, floor + addonPart));
-    return { kind: "bundle", items: [main, addOn], listTotal: roundToShopper(main.list + addOn.list), total: bundleTotal, line: `${reasonPrefix(reason)}I cannot do ${formatMoney(safeOffered)} on that alone, but I can do ${formatMoney(bundleTotal)} with ${addOn.title} included.`, badges: reasonBadges(reason, [`＋ ${addOn.title}`, "safe bundle"]) };
+    const bundleFloor = floor + Math.ceil(addOn.cost * (1 + FLOOR_PCT / 100));
+    const bundleTotal = roundToShopper(Math.max(ask + addonPart, bundleFloor));
+    return { kind: "bundle", items: [main, addOn], listTotal: roundToShopper(main.list + addOn.list), total: bundleTotal, line: `${reasonPrefix(reason)}I would rather protect the single-item price, but I can make the cart better: ${formatMoney(bundleTotal)} with ${addOn.title} included.`, badges: reasonBadges(reason, [`＋ ${addOn.title}`, "bundle value"]) };
   }
-  const weakReasonNudge = reason.score === 0 && round < MAX_ROUNDS ? "Give me a real reason and I can try harder. " : "";
-  return { kind: "counter", items: [main], listTotal: roundToShopper(main.list), total: ask, line: round === MAX_ROUNDS ? `My best is ${formatMoney(ask)}.` : `${weakReasonNudge}${reasonPrefix(reason)}I can hold ${formatMoney(ask)} for 15 minutes.`, badges: reasonBadges(reason, [round === MAX_ROUNDS ? "final offer" : reason.score === 0 ? "reason needed" : "held 15:00"]) };
+  if (reason.score === 0 && (round >= 3 || isLowball)) {
+    return {
+      kind: "counter",
+      items: [main],
+      listTotal: roundToShopper(main.list),
+      total: ask,
+      line: `I am going to hold firm at ${formatMoney(ask)} on this one. I need a stronger reason to move lower — a real bundle, checkout today, or a fair comparison.`,
+      badges: ["holding margin", "reason needed"],
+    };
+  }
+  const weakReasonNudge = reason.score === 0 && round < MAX_ROUNDS ? "I need a better reason before I move much. " : "";
+  const line = round === MAX_ROUNDS
+    ? `${reasonPrefix(reason)}I would stay at ${formatMoney(ask)} here. Going lower does not make sense for the store on this ask.`
+    : `${weakReasonNudge}${reasonPrefix(reason)}I can do ${formatMoney(ask)} if you want to move forward.`;
+  return { kind: "counter", items: [main], listTotal: roundToShopper(main.list), total: ask, line, badges: reasonBadges(reason, [round === MAX_ROUNDS ? "firm counter" : reason.score === 0 ? "reason needed" : "seller counter"]) };
 }
 
 function analyzeBuyerReason(message) {
   const text = String(message || "").toLowerCase();
   const signals = [
-    { pattern: /\b(student|college|school|tight budget|budget is|payday|saving up)\b/, score: 1, label: "budget reason" },
-    { pattern: /\b(buying|grab|take|get).*\b(two|2|both|bundle|pair|socks|cap|gaiters|vest|flask)\b|\b(bundle|multiple items|full kit|whole kit)\b/, score: 2, label: "bundle intent" },
+    { pattern: /\b(student|college|school|tight budget|budget is|payday|saving up)\b/, score: 1, label: "budget" },
+    { pattern: /\b(buying|grab|take|get|adding|add).*\b(two|2|both|bundle|pair|socks|cap|gaiters|vest|flask|kit)\b|\b(bundle|multiple items|full kit|whole kit)\b/, score: 2, label: "bundle intent", key: "bulk" },
     { pattern: /\b(returning|repeat|loyal|bought before|customer already|local)\b/, score: 1, label: "repeat shopper" },
-    { pattern: /\b(last season|older model|clearance|sale|price match|competitor|elsewhere|same shoe)\b/, score: 2, label: "market reason" },
+    { pattern: /\b(last season|older model|clearance|sale|price match|competitor|elsewhere|same shoe)\b/, score: 2, label: "market comparison", key: "market" },
     { pattern: /\b(race|marathon|trail day|trip|weekend hike|gift|birthday|team|club)\b/, score: 1, label: "real use case" },
-    { pattern: /\b(today|right now|checkout now|buy now|order now)\b/, score: 1, label: "ready to buy" },
+    { pattern: /\b(today|right now|checkout now|buy now|order now|ready to buy|buying now)\b/, score: 1, label: "ready to buy", key: "ready" },
   ];
-  return signals.reduce((best, signal) => {
-    if (!signal.pattern.test(text) || signal.score <= best.score) return best;
-    return { score: signal.score, label: signal.label };
-  }, { score: 0, label: null });
+  const matched = signals.filter((signal) => signal.pattern.test(text));
+  const score = Math.min(4, matched.reduce((sum, signal) => sum + signal.score, 0));
+  const primary = matched.slice().sort((a, b) => b.score - a.score)[0];
+  return {
+    score,
+    label: primary?.label || null,
+    labels: matched.map((signal) => signal.label),
+    hasBulkIntent: matched.some((signal) => signal.key === "bulk"),
+    hasMarketComparison: matched.some((signal) => signal.key === "market"),
+    isReadyToBuy: matched.some((signal) => signal.key === "ready"),
+  };
 }
 
 function reasonAdjustedTarget(list, baseTarget, score) {
-  const strength = score >= 2 ? 0.75 : score === 1 ? 0.55 : 0.3;
+  const strength = score >= 4 ? 0.7 : score >= 3 ? 0.55 : score === 2 ? 0.4 : score === 1 ? 0.2 : 0.05;
   return Math.ceil(list - strength * (list - baseTarget));
+}
+
+function sellerTargetFor(item, floor, baseTarget, reason, round) {
+  const reasonTarget = reasonAdjustedTarget(item.list, baseTarget, reason.score);
+  const protectedDiscount = maxSellerDiscount(reason, round);
+  const protectedTarget = roundToShopper(item.list * (1 - protectedDiscount));
+  return roundToShopper(Math.max(floor, reasonTarget, protectedTarget));
+}
+
+function sellerAskFor(item, sellerTarget, round, reason) {
+  if (reason.score === 0 && round <= 2) return roundToShopper(item.list);
+  return roundToShopper(askFor(item.list, sellerTarget, item.stockedAt, round));
+}
+
+function maxSellerDiscount(reason, round) {
+  const baseByScore = {
+    0: [0, 0, 0.04, 0.06],
+    1: [0.02, 0.04, 0.07, 0.09],
+    2: [0.03, 0.06, 0.1, 0.12],
+    3: [0.04, 0.08, 0.12, 0.15],
+    4: [0.05, 0.1, 0.15, 0.18],
+  };
+  const score = Math.max(0, Math.min(4, reason.score || 0));
+  let discount = baseByScore[score][Math.max(1, Math.min(MAX_ROUNDS, round)) - 1];
+  if (reason.hasBulkIntent) discount += 0.03;
+  if (reason.isReadyToBuy) discount += 0.02;
+  if (reason.hasMarketComparison) discount += 0.02;
+  return Math.min(0.22, discount);
 }
 
 function reasonPrefix(reason) {
   if (!reason || !reason.label) return "";
-  return `That is a better reason (${reason.label}). `;
+  return `That gives me something to work with (${reason.label}). `;
 }
 
 function reasonBadges(reason, badges) {

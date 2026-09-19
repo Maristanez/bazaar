@@ -94,6 +94,15 @@
 - **What Codex changed:** Bundle/deal requests without a number now ask for a concrete offer first. Strong first-turn reasons get an opening counter with a “one more move” badge instead of immediately jumping to the sharper bundle/final-style offer.
 - **Outcome:** The chat now has a more natural negotiation rhythm: ask → reason/number → opening counter → sharper counter/final later.
 
+### #10 — `Sat 17:10` · `Ritvik` · `Profit-protecting negotiator`
+
+- **Prompt:**
+  > Even with multiple back and forth, don't go to the floor price if the reason is bad or not bulk buying. Act as an actual store negotiator who wants to make as much profit as possible.
+- **What Codex changed:** The server pricing policy no longer treats round count as permission to walk toward the floor. It now keeps a seller-protected target based on reason quality, bundle intent, checkout readiness, market comparison, and margin safety.
+- **What we kept:** The money decision remains deterministic server code; Gemini can phrase the conversation, but the binding card cannot go below the guarded seller target or private floor.
+- **What we changed or threw away, and why:** We moved away from phrase-specific demo behavior. Weak/no-reason haggles can now get a firm “hold” even after multiple rounds, while credible bundle or ready-to-buy context can unlock a better cart value.
+- **Outcome:** The negotiation should feel less like a coupon machine and more like a merchant trying to win the order without giving away margin.
+
 <!-- Copy the block above for each new entry. Never edit an old entry to make it sound better — add a follow-up entry instead. -->
 
 ### R14 follow-up — 2026-09-19 · Ricardo / Codex · merchant domain correction
