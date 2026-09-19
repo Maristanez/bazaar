@@ -31,10 +31,61 @@
 
     {{ content_for_layout }}
 
-    <a class="account-widget" href="{{ routes.account_login_url }}" aria-label="Log in to your account">
-      <span aria-hidden="true">{{ 'icon-account.svg' | inline_asset_content }}</span>
-      <span>Login</span>
-    </a>
+    <div class="ai-chat" data-ai-chat>
+      <section
+        id="ai-chat-panel"
+        class="ai-chat__panel"
+        aria-labelledby="ai-chat-title"
+        hidden
+      >
+        <div class="ai-chat__header">
+          <div>
+            <p class="ai-chat__eyebrow">Scripted demo</p>
+            <h2 id="ai-chat-title">Bazaar AI shopkeeper</h2>
+          </div>
+          <button class="ai-chat__close" type="button" data-ai-chat-close aria-label="Close chat">&times;</button>
+        </div>
+
+        <div class="ai-chat__messages" data-ai-chat-messages aria-live="polite">
+          <p class="ai-chat__message ai-chat__message--bot">
+            Hi, I can help you find outfits, sizes, and shipping info. Try one of the prompts below.
+          </p>
+        </div>
+
+        <div class="ai-chat__prompts" aria-label="Suggested chat prompts">
+          <button type="button" data-ai-chat-prompt="Recommend a weekend outfit">Weekend outfit</button>
+          <button type="button" data-ai-chat-prompt="What size tee should I get?">Sizing help</button>
+          <button type="button" data-ai-chat-prompt="Do you have shipping and returns?">Shipping</button>
+        </div>
+
+        <form class="ai-chat__form" data-ai-chat-form>
+          <label class="visually-hidden" for="ai-chat-input">Message the Bazaar AI demo</label>
+          <input
+            id="ai-chat-input"
+            type="text"
+            name="message"
+            autocomplete="off"
+            placeholder="Ask about outfits..."
+            data-ai-chat-input
+          >
+          <button type="submit">Send</button>
+        </form>
+      </section>
+
+      <button
+        class="ai-chat__launcher"
+        type="button"
+        aria-label="Open Bazaar AI shopkeeper chat"
+        aria-expanded="false"
+        aria-controls="ai-chat-panel"
+        data-ai-chat-toggle
+      >
+        <span aria-hidden="true">{{ 'icon-account.svg' | inline_asset_content }}</span>
+        <span>AI chat</span>
+      </button>
+    </div>
+
+    <script src="{{ 'chat-demo.js' | asset_url }}" defer></script>
 
     {% sections 'footer-group' %}
   </body>
