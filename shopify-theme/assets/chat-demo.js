@@ -18,6 +18,7 @@
   var shopperId = getShopperId();
   var endpoint = normalizeEndpoint(widget.getAttribute('data-ai-chat-endpoint'));
   var sending = false;
+  var activeProduct = currentProduct || null;
 
   var scriptedResponses = buildScriptedResponses();
 
@@ -104,11 +105,13 @@
   }
 
   function getContextPayload(text) {
+    var contextProduct = getContextProduct();
     return {
       message: text,
       shopperId: shopperId,
       pageUrl: window.location.href,
-      product: currentProduct || getPrimaryProduct(),
+      product: contextProduct.product,
+      productContextSource: contextProduct.source,
       products: products.slice(0, 8)
     };
   }
@@ -212,7 +215,8 @@
       '<p class="ai-chat__offer-footer">' + escapeHtml((card.disclosure && card.disclosure[1]) || 'Only this card is binding.') + '</p>'
     ].join('');
 
-    var cardProduct = findProductByTitle(firstItem.title, sourceProducts) || currentProduct || getPrimaryProduct();
+    var cardProduct = findProductByTitle(firstItem.title, sourceProducts) || activeProduct || currentProduct || getPrimaryProduct();
+    setActiveProduct(cardProduct);
     productLink.href = cardProduct && cardProduct.url ? cardProduct.url : '/collections/all';
     productLink.textContent = 'View item';
     dealButton.type = 'button';
@@ -231,6 +235,7 @@
 
   function addProductCard(product) {
     if (!product) return;
+    setActiveProduct(product);
     var card = document.createElement('a');
     var meta = [product.type, product.available === false ? 'Sold out' : 'Open to offers'].filter(Boolean).join(' · ');
     card.className = 'ai-chat__product-card';
@@ -307,6 +312,16 @@
     return currentProduct || products[0] || null;
   }
 
+  function getContextProduct() {
+    if (activeProduct) return { product: activeProduct, source: activeProduct === currentProduct ? 'current' : 'active' };
+    if (currentProduct) return { product: currentProduct, source: 'current' };
+    return { product: null, source: 'none' };
+  }
+
+  function setActiveProduct(product) {
+    if (product && typeof product === 'object') activeProduct = product;
+  }
+
   function getTurnProduct(text, sourceProducts, card) {
     var pool = Array.isArray(sourceProducts) && sourceProducts.length ? sourceProducts : products;
     if (card && card.option && card.option.items && card.option.items[0]) {
@@ -320,7 +335,7 @@
         normalized.indexOf(String(product.handle || '').toLowerCase()) !== -1
       );
     });
-    return named || currentProduct || pool[0] || null;
+    return named || activeProduct || currentProduct || pool[0] || null;
   }
 
   function findProductByTitle(title, sourceProducts) {

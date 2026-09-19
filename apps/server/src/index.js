@@ -471,12 +471,21 @@ async function makeOfferFromPayload(payload, message) {
   const shopperContext = resolveShopperContext(payload.shopperId, mirror);
   const understanding = await understandOffer(message, payload, mirror);
   const matchText = [message, understanding.productHint].filter(Boolean).join(" ");
-  const match = findProductFromPayload({ ...payload, text: matchText }, mirror, { contextItem: shopperContext?.item });
+  const match = findProductFromPayload({ ...payload, text: matchText }, mirror, { contextItem: shopperContext?.item, allowFallback: false });
   if (!match) return { reply: "Pick a published product first, then send me a number like “Could you do $120?”", products: publicProducts(mirror).slice(0, 8) };
   const terms = parseOfferTerms(message, payload, understanding, { fallbackQuantity: shopperContext?.quantity || 1 });
+  const sameContextItem = shopperContext?.item && shopperContext.item.productId === match.item.productId;
+  const reasonText = [
+    message,
+    understanding.reasonText,
+    ...(understanding.reasonTags || []),
+    ...(sameContextItem ? [shopperContext?.reasonText, ...(shopperContext?.reasonTags || [])] : []),
+  ].filter(Boolean).join(" ");
+  const reason = applyNegotiationContext(analyzeBuyerReason(reasonText), { quantity: terms.quantity });
   if (terms.dollars === null) {
+    rememberShopperContext(payload.shopperId, match.item, terms.quantity || shopperContext?.quantity || 1, shopperContext?.negotiationId || null, { reasonText, reasonTags: reason.labels });
     return {
-      reply: `I can talk bundle, but I need your number first. Try “Could you do ${formatMoney(roundToShopper(match.item.list * 0.85))} if I add socks?” and give me a reason.`,
+      reply: `I can talk about ${match.item.title}, but I need your number first. Try “Could you do ${formatMoney(roundToShopper(match.item.list * (terms.quantity || 1) * 0.85))}${(terms.quantity || 1) > 1 ? " total" : ""}?” and give me a reason.`,
       products: prioritizePublicProducts(mirror, match.item).slice(0, 8),
     };
   }
@@ -486,8 +495,7 @@ async function makeOfferFromPayload(payload, message) {
   const previousRound = state.negotiations.get(negotiationId)?.round || 0;
   const round = Math.min(MAX_ROUNDS, previousRound + 1);
   state.negotiations.set(negotiationId, { round, productId: match.item.productId, quantity });
-  rememberShopperContext(payload.shopperId, match.item, quantity, negotiationId);
-  const reason = analyzeBuyerReason([message, understanding.reasonText, ...(understanding.reasonTags || [])].filter(Boolean).join(" "));
+  rememberShopperContext(payload.shopperId, match.item, quantity, negotiationId, { reasonText, reasonTags: reason.labels });
   const offer = priceOffer(match.item, offered, round, mirror, reason, quantity);
   const offerId = randomId("offer");
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
@@ -602,6 +610,19 @@ function analyzeBuyerReason(message) {
     hasAddOnIntent: matched.some((signal) => signal.key === "addon"),
     hasMarketComparison: matched.some((signal) => signal.key === "market"),
     isReadyToBuy: matched.some((signal) => signal.key === "ready"),
+  };
+}
+
+function applyNegotiationContext(reason, context = {}) {
+  const quantity = Number(context.quantity || 0);
+  if (quantity <= 1 || reason.hasBulkIntent) return reason;
+  const labels = Array.from(new Set([...(reason.labels || []), "quantity intent"]));
+  return {
+    ...reason,
+    score: Math.min(4, Math.max(reason.score || 0, 2)),
+    label: reason.score >= 2 && reason.label ? reason.label : "quantity intent",
+    labels,
+    hasBulkIntent: true,
   };
 }
 
@@ -722,18 +743,20 @@ function checkoutUrl(items, code) {
 function findProductFromPayload(payload, mirror, options = {}) {
   const product = payload.product && typeof payload.product === "object" ? payload.product : payload;
   const text = String(payload.text || payload.message || "").toLowerCase();
+  const allowFallback = options.allowFallback !== false;
+  const payloadIsAuthoritative = isAuthoritativeProductPayload(product, payload, mirror);
   const wantedVariant = String(product.selectedVariantId || product.variantId || "").replace(/^gid:\/\/shopify\/ProductVariant\//, "");
   const wantedProduct = String(product.productId || product.id || "").replace(/^gid:\/\/shopify\/Product\//, "");
   const wantedHandle = stringOrNull(product.handle);
   const wantedTitle = stringOrNull(product.title);
   const explicitItem = bestExplicitProductMention(text, mirror.items);
   let item = explicitItem;
-  if (!item && options.contextItem && !hasConcreteProductPayload(product)) item = options.contextItem;
-  if (!item) item = mirror.items.find((entry) => entry.variantNumericId === wantedVariant || entry.variantId === product.selectedVariantId);
-  if (!item && wantedProduct) item = mirror.items.find((entry) => entry.productNumericId === wantedProduct || entry.productId === product.productId);
-  if (!item && wantedHandle) item = mirror.items.find((entry) => entry.handle === wantedHandle);
-  if (!item && wantedTitle) item = mirror.items.find((entry) => entry.title.toLowerCase() === wantedTitle.toLowerCase());
-  if (!item) item = mirror.items.find((entry) => !entry.isAddOn && entry.inStock && entry.cost !== null) || mirror.items[0];
+  if (!item && options.contextItem && !payloadIsAuthoritative) item = options.contextItem;
+  if (!item && payloadIsAuthoritative) item = mirror.items.find((entry) => entry.variantNumericId === wantedVariant || entry.variantId === product.selectedVariantId);
+  if (!item && payloadIsAuthoritative && wantedProduct) item = mirror.items.find((entry) => entry.productNumericId === wantedProduct || entry.productId === product.productId);
+  if (!item && payloadIsAuthoritative && wantedHandle) item = mirror.items.find((entry) => entry.handle === wantedHandle);
+  if (!item && payloadIsAuthoritative && wantedTitle) item = mirror.items.find((entry) => entry.title.toLowerCase() === wantedTitle.toLowerCase());
+  if (!item && allowFallback) item = mirror.items.find((entry) => !entry.isAddOn && entry.inStock && entry.cost !== null) || mirror.items[0];
   if (!item) return null;
   const publicProduct = publicProducts(mirror).find((entry) => entry.productId === item.productId || entry.handle === item.handle);
   return { item, publicProduct };
@@ -741,6 +764,22 @@ function findProductFromPayload(payload, mirror, options = {}) {
 
 function hasConcreteProductPayload(product) {
   return Boolean(product?.selectedVariantId || product?.variantId || product?.productId || product?.id || product?.handle || product?.title);
+}
+
+function isAuthoritativeProductPayload(product, payload, mirror) {
+  if (!hasConcreteProductPayload(product)) return false;
+  const source = stringOrNull(payload.productContextSource);
+  if (source === "active" || source === "current") return true;
+  if (source === "none" || source === "default") return false;
+  const pageUrl = stringOrNull(payload.pageUrl) || "";
+  if (/\/products\//i.test(pageUrl)) return true;
+  const firstProduct = publicProducts(mirror)[0];
+  if (!firstProduct) return true;
+  const sameAsFirst = product.handle === firstProduct.handle
+    || product.productId === firstProduct.productId
+    || product.id === firstProduct.productId
+    || String(product.title || "").toLowerCase() === String(firstProduct.title || "").toLowerCase();
+  return !sameAsFirst;
 }
 
 function resolveShopperContext(shopperId, mirror) {
@@ -753,14 +792,18 @@ function resolveShopperContext(shopperId, mirror) {
   return item ? { ...context, item } : null;
 }
 
-function rememberShopperContext(shopperId, item, quantity, negotiationId) {
+function rememberShopperContext(shopperId, item, quantity, negotiationId, details = {}) {
   const id = stringOrNull(shopperId);
   if (!id || !item) return;
+  const existing = state.shopperContexts.get(id) || {};
   state.shopperContexts.set(id, {
+    ...existing,
     productId: item.productId,
     variantId: item.variantId,
     quantity,
     negotiationId,
+    reasonText: stringOrNull(details.reasonText) || existing.reasonText || null,
+    reasonTags: Array.isArray(details.reasonTags) && details.reasonTags.length ? details.reasonTags.slice(0, 6) : existing.reasonTags || [],
     updatedAt: Date.now(),
   });
 }
