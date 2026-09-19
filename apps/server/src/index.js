@@ -26,6 +26,7 @@ const state = {
   mirror: { loadedAt: 0, products: [], items: [], warnings: [], source: "empty" },
   offers: new Map(),
   negotiations: new Map(),
+  shopperContexts: new Map(),
 };
 
 const server = createServer(async (request, response) => {
@@ -464,9 +465,12 @@ function enrichPublicProduct(product, mirror) {
 
 async function makeOfferFromPayload(payload, message) {
   const mirror = await syncMirror();
-  const match = findProductFromPayload({ ...payload, text: message }, mirror);
+  const shopperContext = resolveShopperContext(payload.shopperId, mirror);
+  const understanding = await understandOffer(message, payload, mirror);
+  const matchText = [message, understanding.productHint].filter(Boolean).join(" ");
+  const match = findProductFromPayload({ ...payload, text: matchText }, mirror, { contextItem: shopperContext?.item });
   if (!match) return { reply: "Pick a published product first, then send me a number like “Could you do $120?”", products: publicProducts(mirror).slice(0, 8) };
-  const terms = parseOfferTerms(message, payload);
+  const terms = parseOfferTerms(message, payload, understanding, { fallbackQuantity: shopperContext?.quantity || 1 });
   if (terms.dollars === null) {
     return {
       reply: `I can talk bundle, but I need your number first. Try “Could you do ${formatMoney(roundToShopper(match.item.list * 0.85))} if I add socks?” and give me a reason.`,
@@ -479,7 +483,8 @@ async function makeOfferFromPayload(payload, message) {
   const previousRound = state.negotiations.get(negotiationId)?.round || 0;
   const round = Math.min(MAX_ROUNDS, previousRound + 1);
   state.negotiations.set(negotiationId, { round, productId: match.item.productId, quantity });
-  const reason = analyzeBuyerReason(message);
+  rememberShopperContext(payload.shopperId, match.item, quantity, negotiationId);
+  const reason = analyzeBuyerReason([message, understanding.reasonText, ...(understanding.reasonTags || [])].filter(Boolean).join(" "));
   const offer = priceOffer(match.item, offered, round, mirror, reason, quantity);
   const offerId = randomId("offer");
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
@@ -711,7 +716,7 @@ function checkoutUrl(items, code) {
   return `${shopBaseUrl()}/cart/${cart}${discount}`;
 }
 
-function findProductFromPayload(payload, mirror) {
+function findProductFromPayload(payload, mirror, options = {}) {
   const product = payload.product && typeof payload.product === "object" ? payload.product : payload;
   const text = String(payload.text || payload.message || "").toLowerCase();
   const wantedVariant = String(product.selectedVariantId || product.variantId || "").replace(/^gid:\/\/shopify\/ProductVariant\//, "");
@@ -720,6 +725,7 @@ function findProductFromPayload(payload, mirror) {
   const wantedTitle = stringOrNull(product.title);
   const explicitItem = bestExplicitProductMention(text, mirror.items);
   let item = explicitItem;
+  if (!item && options.contextItem && !hasConcreteProductPayload(product)) item = options.contextItem;
   if (!item) item = mirror.items.find((entry) => entry.variantNumericId === wantedVariant || entry.variantId === product.selectedVariantId);
   if (!item && wantedProduct) item = mirror.items.find((entry) => entry.productNumericId === wantedProduct || entry.productId === product.productId);
   if (!item && wantedHandle) item = mirror.items.find((entry) => entry.handle === wantedHandle);
@@ -728,6 +734,31 @@ function findProductFromPayload(payload, mirror) {
   if (!item) return null;
   const publicProduct = publicProducts(mirror).find((entry) => entry.productId === item.productId || entry.handle === item.handle);
   return { item, publicProduct };
+}
+
+function hasConcreteProductPayload(product) {
+  return Boolean(product?.selectedVariantId || product?.variantId || product?.productId || product?.id || product?.handle || product?.title);
+}
+
+function resolveShopperContext(shopperId, mirror) {
+  const id = stringOrNull(shopperId);
+  if (!id) return null;
+  const context = state.shopperContexts.get(id);
+  if (!context || Date.now() - context.updatedAt > 30 * 60_000) return null;
+  const item = mirror.items.find((entry) => entry.variantId === context.variantId || entry.productId === context.productId);
+  return item ? { ...context, item } : null;
+}
+
+function rememberShopperContext(shopperId, item, quantity, negotiationId) {
+  const id = stringOrNull(shopperId);
+  if (!id || !item) return;
+  state.shopperContexts.set(id, {
+    productId: item.productId,
+    variantId: item.variantId,
+    quantity,
+    negotiationId,
+    updatedAt: Date.now(),
+  });
 }
 
 function prioritizePublicProducts(mirror, item) {
@@ -768,11 +799,39 @@ function productMentionScore(text, item) {
 function productSearchTokens(item, type) {
   const source = normalizeSearchText(`${item.title || ""} ${item.handle || ""} ${type || ""}`);
   const tokens = new Set(source.split(" ").filter((token) => token.length >= 3 && !PRODUCT_STOP_WORDS.has(token)));
+  for (const alias of productAliasTokens(item, type)) tokens.add(alias);
   for (const token of [...tokens]) {
     if (token.endsWith("s") && token.length > 3) tokens.add(token.slice(0, -1));
     if (!token.endsWith("s")) tokens.add(`${token}s`);
   }
   return tokens;
+}
+
+function productAliasTokens(item, type) {
+  const text = normalizeSearchText(`${item.title || ""} ${item.handle || ""} ${type || ""}`);
+  const aliases = new Set();
+  if (/\b(tee|shirt|t shirts?|apparel)\b/.test(text)) {
+    ["top", "tops", "tshirt", "tshirts", "tshirt", "shirt", "shirts", "tee", "tees"].forEach((token) => aliases.add(token));
+  }
+  if (/\b(shoe|runner|ridge|footwear)\b/.test(text)) {
+    ["shoe", "shoes", "runner", "runners", "sneaker", "sneakers", "kick", "kicks", "footwear"].forEach((token) => aliases.add(token));
+  }
+  if (/\b(sock|socks)\b/.test(text)) {
+    ["sock", "socks", "pair", "pairs"].forEach((token) => aliases.add(token));
+  }
+  if (/\b(cap|hat)\b/.test(text)) {
+    ["cap", "caps", "hat", "hats"].forEach((token) => aliases.add(token));
+  }
+  if (/\b(flask|bottle)\b/.test(text)) {
+    ["flask", "flasks", "bottle", "bottles"].forEach((token) => aliases.add(token));
+  }
+  if (/\b(vest|hydration)\b/.test(text)) {
+    ["vest", "vests", "pack", "packs", "hydration"].forEach((token) => aliases.add(token));
+  }
+  if (/\b(gaiter|gaiters)\b/.test(text)) {
+    ["gaiter", "gaiters"].forEach((token) => aliases.add(token));
+  }
+  return aliases;
 }
 
 function normalizeSearchText(value) {
@@ -784,6 +843,101 @@ function normalizeSearchText(value) {
 }
 
 const PRODUCT_STOP_WORDS = new Set(["the", "and", "for", "with", "trail", "open", "offer", "offers", "product"]);
+
+async function understandOffer(message, payload, mirror) {
+  const deterministic = deterministicOfferUnderstanding(message, payload);
+  const ai = await aiOfferUnderstanding(message, payload, mirror).catch((error) => {
+    console.warn("[offer-understanding]", error.message);
+    return null;
+  });
+  return mergeOfferUnderstanding(deterministic, ai);
+}
+
+function deterministicOfferUnderstanding(message, payload = {}) {
+  return {
+    productHint: null,
+    quantity: parseQuantity(message, null),
+    dollars: parseMoney(message) ?? parseMoney(payload.amount),
+    perUnit: isPerUnitOffer(message),
+    reasonText: message,
+    reasonTags: [],
+    confidence: parseMoney(message) !== null ? 0.6 : 0.35,
+  };
+}
+
+async function aiOfferUnderstanding(message, payload, mirror) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  const catalog = publicProducts(mirror).slice(0, 12).map((product) => ({
+    title: product.title,
+    handle: product.handle,
+    type: product.type,
+    price: product.price,
+  }));
+  const prompt = [
+    "Extract shopper offer intent from messy retail chat.",
+    "Return JSON only with keys: wantsOffer, productHint, quantity, money, moneyIsPerUnit, reasonText, reasonTags, confidence.",
+    "productHint should be the closest catalog product title/handle/type words the shopper means, or null.",
+    "quantity is item count for the main product, or null if not stated.",
+    "money is the shopper's offered CAD amount as a number. If they say '$50 each' for quantity 2, money is 50 and moneyIsPerUnit is true. If they say '$100 for both', money is 100 and moneyIsPerUnit is false.",
+    "reasonTags may include bundle, quantity, ready_to_buy, budget, market_compare, use_case, repeat_customer.",
+    "Do not decide whether to accept. Do not invent prices or discounts.",
+    JSON.stringify({ shopperMessage: message, currentProduct: payload.product || null, catalog }),
+  ].join("\n");
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0, maxOutputTokens: 350, responseMimeType: "application/json" },
+    }),
+  });
+  if (!response.ok) throw new Error(`Gemini offer understanding ${response.status}: ${(await response.text()).slice(0, 300)}`);
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text).filter(Boolean).join("\n").trim();
+  return normalizeOfferUnderstanding(parseJsonObject(text));
+}
+
+function parseJsonObject(text) {
+  if (!text) return null;
+  const cleaned = String(text).trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    return match ? JSON.parse(match[0]) : null;
+  }
+}
+
+function normalizeOfferUnderstanding(value) {
+  if (!value || typeof value !== "object") return null;
+  const quantity = Number(value.quantity);
+  const money = Number(value.money);
+  return {
+    wantsOffer: value.wantsOffer !== false,
+    productHint: stringOrNull(value.productHint),
+    quantity: Number.isFinite(quantity) && quantity > 0 ? Math.min(MAX_OFFER_QUANTITY, Math.round(quantity)) : null,
+    dollars: Number.isFinite(money) && money > 0 ? money : null,
+    perUnit: typeof value.moneyIsPerUnit === "boolean" ? value.moneyIsPerUnit : null,
+    reasonText: stringOrNull(value.reasonText),
+    reasonTags: Array.isArray(value.reasonTags) ? value.reasonTags.map(String).slice(0, 6) : [],
+    confidence: Math.max(0, Math.min(1, Number(value.confidence) || 0)),
+  };
+}
+
+function mergeOfferUnderstanding(deterministic, ai) {
+  if (!ai || ai.wantsOffer === false || ai.confidence < 0.35) return deterministic;
+  return {
+    productHint: ai.productHint || deterministic.productHint,
+    quantity: ai.quantity || deterministic.quantity,
+    dollars: ai.dollars ?? deterministic.dollars,
+    perUnit: ai.perUnit ?? deterministic.perUnit,
+    reasonText: ai.reasonText || deterministic.reasonText,
+    reasonTags: ai.reasonTags?.length ? ai.reasonTags : deterministic.reasonTags,
+    confidence: Math.max(deterministic.confidence || 0, ai.confidence || 0),
+  };
+}
 
 async function askGemini(context) {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -880,44 +1034,121 @@ function fallbackReply(context = {}) {
 function isOfferIntent(text) {
   const message = String(text || "");
   const hasMoney = parseMoney(message) !== null;
-  const hasOfferLanguage = /\b(offer|deal|discount|haggle|checkout|could you do|can you do|would you take|best price|can i get|could i get|give it to me|give them to me|buy)\b/i.test(message);
+  const hasOfferLanguage = /\b(offer|deal|discount|haggle|checkout|could you do|can you do|would you take|best price|can i get|could i get|give it to me|give them to me|buy|take|grab|order|lower|cheaper|knock|meet me|split the difference|work with me|out the door|otd)\b/i.test(message);
   return hasMoney || hasOfferLanguage;
 }
 
-function parseOfferTerms(message, payload = {}) {
-  const quantity = parseQuantity(message);
-  const textDollars = parseMoney(message);
+function parseOfferTerms(message, payload = {}, understanding = {}, options = {}) {
+  const quantity = understanding.quantity || parseQuantity(message, options.fallbackQuantity || 1) || options.fallbackQuantity || 1;
+  const textDollars = understanding.dollars ?? parseMoney(message);
   const payloadDollars = parseMoney(payload.amount);
   return {
     dollars: textDollars ?? payloadDollars,
     quantity,
-    perUnit: isPerUnitOffer(message),
+    perUnit: typeof understanding.perUnit === "boolean" ? understanding.perUnit : isPerUnitOffer(message),
   };
 }
 
 function parseMoney(value) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   const text = String(value || "");
-  const match = text.match(/(?:c\$|\$)\s*(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s*(?:\$|cad|dollars?|bucks?)/i);
+  const match = text.match(/(?:c\$|\$)\s*(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s*(?:\$|cad|dollars?|bucks?|each|ea|apiece|a piece|a pop|per\b|\/\s*ea)/i);
   if (match) return Number(match[1] || match[2]);
+  const wordMoney = parseMoneyWords(text);
+  if (wordMoney !== null) return wordMoney;
   if (/^\s*\d+(?:\.\d{1,2})?\s*$/.test(text)) return Number(text);
   return null;
 }
 
-function parseQuantity(value) {
+function parseQuantity(value, fallback = 1) {
   const text = normalizeSearchText(value);
-  const match = text.match(/\b(?:buy|get|take|grab|want|order|add)\s+(\d{1,2})\b|\b(\d{1,2})\s*(?:x|pcs?|pieces?|items?|tees?|shirts?|socks?|pairs?)\b/i);
-  const quantity = match ? Number(match[1] || match[2]) : 1;
-  return Math.max(1, Math.min(MAX_OFFER_QUANTITY, Number.isFinite(quantity) ? quantity : 1));
+  const match = text.match(/\b(?:buy|get|take|grab|want|order|add|need)\s+(\d{1,2})\b|\b(\d{1,2})\s*(?:x|pcs?|pieces?|items?|tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?)\b/i);
+  const wordMatch = text.match(/\b(?:buy|get|take|grab|want|order|add|need)\s+([a-z -]+?)\s+(?:tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?|items?)\b/i);
+  const pairMatch = /\b(pair|couple|both)\b/i.test(text);
+  const halfDozen = /\bhalf dozen\b/i.test(text);
+  const wordQuantity = wordMatch ? parseNumberWords(wordMatch[1]) : null;
+  const quantity = match ? Number(match[1] || match[2]) : halfDozen ? 6 : pairMatch ? 2 : wordQuantity ?? fallback;
+  if (quantity === null || quantity === undefined) return null;
+  return Math.max(1, Math.min(MAX_OFFER_QUANTITY, Number.isFinite(quantity) ? quantity : fallback));
 }
 
 function isPerUnitOffer(value) {
-  return /\b(each|apiece|a piece|per piece|per item|per unit|each one)\b/i.test(String(value || ""));
+  return /\b(each|ea|apiece|a piece|a pop|per piece|per item|per unit|each one|per\b|\/\s*ea)\b/i.test(String(value || ""));
 }
 
 function withQuantity(item, qty) {
   return { ...item, qty };
 }
+
+function parseMoneyWords(value) {
+  const text = normalizeSearchText(value);
+  const moneyContext = text.match(/\b(?:for|at|around|about|under|to|do|take|offer|pay|price|give|make|call it)\s+([a-z -]+?)(?:\s+(?:cad|dollars?|bucks?|each|ea|apiece|a piece|a pop|piece|pop|per|total|altogether|all in|out the door))\b/i)
+    || text.match(/\b([a-z -]+?)\s+(?:cad|dollars?|bucks?|each|ea|apiece|a piece|a pop|total|altogether|all in|out the door)\b/i);
+  if (!moneyContext) {
+    if (/\b(benjamin)\b/i.test(text)) return 100;
+    return null;
+  }
+  const phrase = moneyContext[1].replace(/\b(?:a|an)$/i, "").trim();
+  const parsed = parseNumberWords(phrase);
+  if (parsed !== null) return parsed;
+  if (/\bbenjamin\b/i.test(phrase)) return 100;
+  return null;
+}
+
+function parseNumberWords(value) {
+  const text = normalizeSearchText(value).replace(/\band\b/g, " ");
+  if (!text) return null;
+  if (/\ba\s+hundred\b|\bone\s+hundred\b|\bhundred\b/.test(text)) return 100;
+  const words = text.split(" ").filter(Boolean);
+  let total = 0;
+  let sawNumber = false;
+  for (const word of words) {
+    if (SMALL_NUMBER_WORDS[word] !== undefined) {
+      total += SMALL_NUMBER_WORDS[word];
+      sawNumber = true;
+    } else if (TENS_NUMBER_WORDS[word] !== undefined) {
+      total += TENS_NUMBER_WORDS[word];
+      sawNumber = true;
+    }
+  }
+  return sawNumber ? total : null;
+}
+
+const SMALL_NUMBER_WORDS = {
+  a: 1,
+  an: 1,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19,
+};
+
+const TENS_NUMBER_WORDS = {
+  twenty: 20,
+  thirty: 30,
+  forty: 40,
+  fourty: 40,
+  fifty: 50,
+  sixty: 60,
+  seventy: 70,
+  eighty: 80,
+  ninety: 90,
+};
 
 function targetOf(item, floor) {
   const itemUrgency = urgencyFor(item.stockedAt);
