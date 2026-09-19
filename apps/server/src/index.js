@@ -528,7 +528,7 @@ function priceOffer(main, offered, round, mirror, reason = { score: 0, label: nu
     return { kind: "closed", items: [mainQty], listTotal: roundToShopper(main.list * quantity), total: roundToShopper(main.list * quantity), line: "I cannot safely haggle this item because the store cost is missing.", badges: ["missing cost"] };
   }
   const listTotal = roundToShopper(main.list * quantity);
-  if (offered >= listTotal) {
+  if (offered >= listTotal && !reason.hasAddOnIntent) {
     return { kind: "accepted", items: [mainQty], listTotal, total: listTotal, line: `${main.title} is already ${formatMoney(roundToShopper(main.list))}${quantity > 1 ? " each" : ""}. You can check out at list price, or send me a lower offer to haggle.`, badges: ["list price", "checkout ready"] };
   }
   const pricedMain = { ...main, list: main.list * quantity };
@@ -581,7 +581,7 @@ function analyzeBuyerReason(message) {
   const text = String(message || "").toLowerCase();
   const signals = [
     { pattern: /\b(student|college|school|tight budget|budget is|payday|saving up)\b/, score: 1, label: "budget" },
-    { pattern: /\b(buy|buying|grab|take|get|adding|add|order).*\b(two|2|both|multiple|pair|tees|shirts|items|bundle|socks|cap|gaiters|vest|flask|kit)\b|\b(bundle|multiple items|full kit|whole kit)\b/, score: 2, label: "quantity intent", key: "bulk" },
+    { pattern: /\b(buy|buying|grab|take|get|adding|add|order).*\b(two|2|both|multiple|pair|couple|tees|shirts|items|bundle|socks|cap|gaiters|vest|flask|kit)\b|\b(bundle|multiple items|full kit|whole kit|couple|pair)\b/, score: 2, label: "quantity intent", key: "bulk" },
     { pattern: /\b(socks?|cap|gaiters?|vest|flask|kit)\b/, score: 1, label: "add-on intent", key: "addon" },
     { pattern: /\b(returning|repeat|loyal|bought before|customer already|local)\b/, score: 1, label: "repeat shopper" },
     { pattern: /\b(last season|older model|clearance|sale|price match|competitor|elsewhere|same shoe)\b/, score: 2, label: "market comparison", key: "market" },
@@ -1071,7 +1071,7 @@ function parseQuantity(value, fallback = 1) {
   const text = normalizeSearchText(value);
   const match = text.match(/\b(?:buy|get|take|grab|want|order|add|need)\s+(\d{1,2})\b|\b(\d{1,2})\s*(?:x|pcs?|pieces?|items?|tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?)\b/i);
   const wordMatch = text.match(/\b(?:buy|get|take|grab|want|order|add|need)\s+([a-z -]+?)\s+(?:tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?|items?)\b/i);
-  const directWordMatch = text.match(/\b([a-z -]+?)\s+(?:tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?|items?)\b/i);
+  const directWordMatch = text.match(/^([a-z -]+?)\s+(?:tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?|items?)\b/i);
   const pairMatch = /\b(pair|couple|both)\b/i.test(text);
   const halfDozen = /\bhalf dozen\b/i.test(text);
   const wordQuantity = wordMatch ? parseNumberWords(wordMatch[1]) : directWordMatch ? parseNumberWords(directWordMatch[1]) : null;
@@ -1112,7 +1112,8 @@ function parseMoneyWords(value) {
 function parseNumberWords(value) {
   const text = normalizeSearchText(value).replace(/\band\b/g, " ");
   if (!text) return null;
-  if (/\ba\s+hundred\b|\bone\s+hundred\b|\bhundred\b/.test(text)) return 100;
+  const hundredMatch = text.match(/\b(?:(a|one)\s+)?hundred(?:\s+(.+))?$/);
+  if (hundredMatch) return 100 + (hundredMatch[2] ? (parseNumberWords(hundredMatch[2]) || 0) : 0);
   const words = text.split(" ").filter(Boolean);
   let total = 0;
   let sawNumber = false;
