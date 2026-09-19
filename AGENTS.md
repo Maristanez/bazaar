@@ -4,7 +4,7 @@ A Make-an-offer shopkeeper for one Shopify store. Hack the North 2026, three peo
 
 ## Where things are decided
 
-- `docs/PLAN.md` — **the tracker**. Read before starting any work: take the next unticked task in your lane. There are no tickets.
+- `docs/PLAN.md` — **the tracker**. Read before starting any work: take the next unticked task in your part (§4 is sectioned by owner). There are no tickets.
 - `docs/SPEC.md` — read when building or changing behaviour: engine maths, the six-step pipeline, guardrails, API, shared types, Shopify / Backboard / OpenAI integration.
 - `docs/ARCHITECTURE.md` — read when you need a flow, a state machine, a trust boundary, or the build-order graph.
 - `docs/USE-CASES.md` — read when writing tests: every use case carries Given / When / Then acceptance criteria.
@@ -34,7 +34,7 @@ A Make-an-offer shopkeeper for one Shopify store. Hack the North 2026, three peo
 - **Gate checks** (real checkout total, the card inside ChatGPT): `run` with `claude-in-chrome`.
 - **Before gate 2:** `security-review` against invariants 3 and 6.
 - **Plan changes:** `mattpocock-skills:grilling` first. A decision lands in `docs/SPEC.md` and `docs/PLAN.md` in the same commit.
-- **Session end or sleep rotation:** overwrite your lane's Now / Next / Blocked block in `docs/PLAN.md`, then `/handoff`.
+- **Session end or sleep rotation:** overwrite your part's Now / Next / Blocked block in `docs/PLAN.md`, then `/handoff`.
 
 ## Done
 

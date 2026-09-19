@@ -22,7 +22,7 @@ bazaar/
 │   ├── USE-CASES.md          actors, 27 use cases with main/alternate flows, acceptance criteria
 │   ├── SPEC.md               the technical spec — rules, surfaces, pipeline, data, API, engine, guardrails, integrations, the Gym, types
 │   ├── ARCHITECTURE.md       every diagram — context, containers, trust boundary, sequences, state machines, engine, data, deployment, API, the swarm
-│   ├── PLAN.md               the plan AND the tracker — status board, checkbox tasks per lane, schedule, gates, cut order, stretch, risks, checklists
+│   ├── PLAN.md               the plan AND the tracker — status board, checkbox tasks per part and owner, schedule, gates, cut order, stretch, risks, checklists
 │   ├── DEMO.md               demo scripts, stage layout, fallbacks, judge Q&A, "don't say these", Devpost checklist
 │   └── codex-log.md          the Codex log OpenAI judges ask for — fill it from hour 0
 └── mockups/                  index.html — visual reference only (see note below)
@@ -50,12 +50,12 @@ bazaar/
 | You are | Read |
 |---|---|
 | **Everyone** | `PRODUCT.md` + `PLAN.md` (status board first) |
-| 🧠 **Brain** | `SPEC.md` §6 engine, §7 guardrails, §5.1 pipeline, Appendix C + `ARCHITECTURE.md` §4–§7 |
-| 🔌 **Rails** | `SPEC.md` §10 Shopify, §8 Backboard, §11 OpenAI, §5 hosting, §5.2 data, §5.3 HTTP + `ARCHITECTURE.md` §8–§11 |
-| 🎭 **Stage** | `SPEC.md` §4 surfaces, §9 the Gym, §12 look and feel + `DEMO.md` + `ARCHITECTURE.md` §13 |
+| ⚙️ **B. Engine, core, Gym + Console** (Bryan) | `SPEC.md` §6 engine, §5.1 pipeline, §9 the Gym, §4.4 Console, Appendix C + `ARCHITECTURE.md` §4–§7 |
+| 🔌 **C. Platform** · 🤖 **D. Agents + guardrails** | `SPEC.md` §10 Shopify, §5 hosting, §5.2 data, §5.3 HTTP · §8 Backboard, §11 OpenAI, §7 guardrails + `ARCHITECTURE.md` §8–§11 |
+| 🛍️ **A. Storefront + Shopify store** (Ritvik) | `SPEC.md` §4.1–4.3 surfaces, §10 seed + sync, §12 look and feel + `DEMO.md` + `ARCHITECTURE.md` §13 |
 | **Pitch prep** | `DEMO.md` + `PRODUCT.md` |
 
-Five minutes: `PRODUCT.md`, then `DEMO.md` §3. About to build: `PLAN.md` status board → your lane's next unticked box.
+Five minutes: `PRODUCT.md`, then `DEMO.md` §3. About to build: `PLAN.md` status board → your part's next unticked box.
 
 ---
 
@@ -86,10 +86,10 @@ The team runs its engineering process through Claude Code skills.
 | Questions about the docs | "where is X decided?" | `/graphify` over `docs/` |
 | Prose for judges | Devpost page, README polish | `writing-guidelines` |
 
-**Per lane**
-- 🧠 **Brain** — domain-modeling → codebase-design → tdd; diagnosing-bugs when needed.
-- 🔌 **Rails** — wizard for every dashboard step, research for API unknowns, then tdd + run.
-- 🎭 **Stage** — prototype, impeccable, dataviz, run + claude-in-chrome; writing-guidelines for Devpost.
+**Per part**
+- ⚙️ **B. Engine, core, Gym + Console** — domain-modeling → codebase-design → tdd; diagnosing-bugs when needed.
+- 🔌 **C. Platform** · 🤖 **D. Agents** — wizard for every dashboard step, research for API unknowns, then tdd + run.
+- 🛍️ **A. Storefront** (and the Console / Gym UI in B) — prototype, impeccable, dataviz, run + claude-in-chrome; writing-guidelines for Devpost.
 - 👥 **Everyone** — code-review before merging, /handoff before sleeping, grilling before changing the plan.
 
 [`AGENTS.md`](AGENTS.md) and [`CLAUDE.md`](CLAUDE.md) at the repo root carry the same routing for coding agents (Claude Code and Codex); `CLAUDE.md` just imports `AGENTS.md`.

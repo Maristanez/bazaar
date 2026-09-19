@@ -16,11 +16,12 @@
 
 **Now / Next / Blocked** — overwrite these lines as you go. This block is the handoff.
 
-| Lane | Now | Next | Blocked by |
-|---|---|---|---|
-| 🧠 Brain | B1 + B4 done; checks green | B2 → B3 | — |
-| 🔌 Rails | — | R1 | — |
-| 🎭 Stage | — | S1 | — |
+| Part | Owner | Now | Next | Blocked by |
+|---|---|---|---|---|
+| 🛍️ A. Storefront + Shopify store | Ritvik | — | B0 → S1 | — |
+| ⚙️ B. Engine, core, Gym + Console | Bryan | B1 + B4 done; checks green | B2 → B3 | — |
+| 🔌 C. Platform | ______ | — | B0 → R1 | — |
+| 🤖 D. Agents + guardrails | ______ | — | R9 (after gate 1) | — |
 
 ### How to use this tracker
 
@@ -31,7 +32,7 @@ There are no tickets. **This file is the tracker.**
 - **If a task is cut, strike it through and say why:** `- [ ] ~~**S11** Deal trail~~ — cut Sat 18:00, behind on Console`. **Never delete lines.**
 - **Before you sleep, update Now / Next / Blocked** and the "Last updated" line. That block is the handoff.
 - When a gate passes, change its ☐ to ☑ on the status board.
-- Ids are stable: **B** = Brain, **R** = Rails, **S** = Stage, **E** = Everyone. Don't renumber.
+- Ids are stable and **don't renumber**. The letters (B / R / S / E) are left over from the old lane split and no longer say who owns a task — **the section it sits in does** (§4).
 
 *What and why:* [`PRODUCT.md`](PRODUCT.md) · *How it behaves:* [`SPEC.md`](SPEC.md) · *Diagrams:* [`ARCHITECTURE.md`](ARCHITECTURE.md) · *The demo:* [`DEMO.md`](DEMO.md). If this file disagrees with SPEC.md about behaviour, SPEC.md wins; about **who, when or in what order**, this file wins.
 
@@ -51,15 +52,18 @@ There are no tickets. **This file is the tracker.**
 
 ---
 
-## 2. Team — three lanes
+## 2. Team — four parts, three people
 
-| Lane | Owner (fill in) | Owns |
+| Part | Owner | Owns |
 |---|---|---|
-| 🧠 **Brain** | ______________ | `contracts`, engine + property tests, core functions, the check, the Auditor, offers / approvals / PAUSE, `/mcp` tools, Gym run, red-team + verifier, the functional dot histogram |
-| 🔌 **Rails** | ______________ | Shopify app, token + refresh, seed, sync, mint, checkout link, store settings, Backboard client, OpenAI client, server shell, `db.ts`, Supabase + auth middleware, SSE, hosting, the domain |
-| 🎭 **Stage** | ______________ | The offer card, storefront + chat, the ChatGPT widget (gate 0), Console UI, swarm animation + styling, trail, faces, sparkles, demo script, offline replay, Devpost page, video |
+| 🛍️ **A. Storefront + Shopify store** | **Ritvik** | The offer card, storefront + chat, Deal flow, deal trail, faces, sparkles; product seed + sync; the ChatGPT widget (gate 0) and `/mcp`; demo script, offline replay, Devpost page, video |
+| ⚙️ **B. Engine, core, Gym + Owner Console** | **Bryan** | `contracts`, engine + property tests, offers, core functions, the check; Gym run, dot histogram, swarm animation, click-a-dot, red-dot wall; Console UI (`/console`): feed, policy panel, Approve card |
+| 🔌 **C. Platform** | ______________ | Shopify app, token + refresh, server shell, `db.ts`, SSE, mint, checkout link, store settings, Supabase + auth middleware, owner routes, hosting, the domain |
+| 🤖 **D. Agents + guardrails** | ______________ | OpenAI client (*understand*), Backboard client (memory, documents, *choose + say*), the Auditor, PAUSE, approvals, event bus, red-team + verifier |
 
-**Rule zero — shared contracts first.** The first 30 minutes, all three together, write `packages/contracts` (SPEC Appendix C) and merge it. After that every lane codes against those types and nobody changes them without saying so out loud. The split that matters most: `ChatEvent` carries public data only; `ConsoleEvent` may carry everything (SPEC rule 11).
+The storefront and the Console are one web app (`apps/web`: `/` and `/console`) — two owners, two routes, one shared card component. **Gate 1 is a two-person chain:** Ritvik's Deal button (S4) on top of Platform's mint + checkout link (R6, R7).
+
+**Rule zero — shared contracts first.** The first 30 minutes, all three together, write `packages/contracts` (SPEC Appendix C) and merge it. After that every part codes against those types and nobody changes them without saying so out loud. The split that matters most: `ChatEvent` carries public data only; `ConsoleEvent` may carry everything (SPEC rule 11).
 
 ---
 
@@ -83,15 +87,63 @@ bazaar/
 
 ---
 
-## 4. The tracker — work breakdown
+## 4. The tracker — work breakdown, by part
 
-Estimates are focused hours. **Done when** is the acceptance check — if you can't show it, it isn't done. SPEC section in square brackets.
+Four parts plus a shared strip. **Each part is one person's to-do list, top to bottom** — work down your own section; the **Handoffs** line under it says what you wait on and who waits on you. Estimates are focused hours. **Done when** is the acceptance check — if you can't show it, it isn't done. SPEC section in square brackets.
 
-### 🧠 Brain
+### 🤝 0. Everyone — do first, together
 
-**Before gate 1 (Sat 00:00 → 09:00)** — the engine is *not* on the gate-1 path; build it in parallel.
+The contracts are the seam between all four parts. Nothing else starts until B0 is merged.
 
-- [ ] **B0** `packages/contracts` — all shared types [App. C] · _needs nothing · all three together_ · ~0.5 h · **Done when:** merged; all three lanes import from it; a `ChatEvent` cannot hold an `Option` (type error)
+- [ ] **B0** `packages/contracts` — all shared types [App. C] · _needs nothing · all three together_ · ~0.5 h · **Done when:** merged; all four parts import from it; a `ChatEvent` cannot hold an `Option` (type error)
+- [ ] **E1** [`codex-log.md`](codex-log.md) from hour 0 · _needs nothing_ · ongoing · **Done when:** ≥ 3 concrete entries exist and one is chosen for the demo sentence
+
+**Before gate 2 / Saturday night**
+
+- [ ] **E2** 30-minute attack session on our own build · _needs gate 2_ · ~0.5 h · **Done when:** every breach found is fixed or has a failing test
+- [ ] **E3** Latency and numbers pass: replace every illustrative figure in DEMO.md · _needs B11, R11_ · ~0.5 h · **Done when:** no "illustrative" marker remains on a number we say out loud
+
+### 🛍️ A. Storefront + Shopify store — **Ritvik**
+
+Everything a shopper sees, plus the store's products behind it: the offer card, storefront and chat, the Deal button, the product seed and sync, and the same card inside ChatGPT.
+
+**Before gate 1 (now → Sat 09:00)** — for gate 1, build only the **counter** state of S1; finish the other six states after 09:00. Until R4 lands, the storefront reads products from `infra/seed/products.json` plus the variant ids R3 wrote back.
+
+- [ ] **S1** The offer card — a pure component from `OfferCard`; all seven states; countdown; honesty footer [§4.1] · _needs B0_ · ~3 h · **Done when:** one page shows every state side by side and it reads in light and dark
+- [ ] **R3** Seed ~8 products with **cost per item**, size variants, `bazaar.stocked_at` metafield [§10, App. A] · _needs R2_ · ~1.5 h · **Done when:** products show in admin with costs; TR3 stocked 12 d ago, TR2 94 d ago
+- [ ] **S2** Storefront: grid, product page, sticker, chat panel, `localStorage` shopper id, `?shopper=demo`, typing effect from checked text [§4.2] · _needs S1, R5_ · ~3 h · **Done when:** opening the TR3 page greets by product and a card appears in the chat
+- [ ] **S4** Deal flow on the storefront: accept → checkout opens; sparkles [§4.1] · _needs S1, R6, R7_ · ~1 h · **Done when:** **gate 1 passes**
+
+**Gate 1 → Devpost (Sat 09:00 → 14:00)**
+
+- [ ] **R4** Sync every 60 s → in-memory mirror; flag missing cost [§10] · _needs R3_ · ~1.5 h · **Done when:** the mirror has price, unitCost, inventory, type, image, stockedAt — and we know whether `read_inventory` alone reads `unitCost`
+- [ ] **S3** **Gate 0:** widget → single HTML file; a hello-world tool of ours renders a custom card in ChatGPT [§4.1] · _needs S1 · **time-box 90 min**_ · **Done when:** the card is visible in ChatGPT developer mode — or a clear "no" is written on the status board and the discussion is closed
+- [ ] **S13** Devpost page, screenshots, ≤ 2-min video [DEMO §10] · _needs gate 1_ · ~2 h · **Done when:** submitted by Sat 14:00 with all four sponsor tracks selected
+
+**Devpost → gate 2 (Sat 14:00 → Sun 00:00)**
+
+- [ ] **B10** `/mcp` — three tools wired to the core, empty `content`, annotations, subject → shopper id [§4.3] · _needs B5, S3 passed, R13_ · ~2 h · **Done when:** from ChatGPT: find → offer → card → Deal → checkout, the feed row is tagged `chatgpt`, and ask-the-owner never fires
+- [ ] **S12** Offline replay: `DEMO_OFFLINE=1`, recorded event stream, pre-minted link [DEMO §7] · _needs B14_ · ~1.5 h · **Done when:** with Wi-Fi off the whole demo still runs
+- [ ] **R16** Verify the minimum-subtotal code on a real bundle [§10] · _needs R6, B2_ · ~0.5 h · **Done when:** removing one bundle item at checkout drops the code, and the amount spreads across the cart rather than per item
+- [ ] **R8** Draft-order backup settlement [§10] · _needs R2_ · ~1 h · **Done when:** an invoice URL opens at the agreed price in the demo browser (behind the store password)
+- [ ] **S11** Deal trail, five faces, cream-paper styling [§12] · _needs S1_ · ~2 h · **Done when:** the trail forks when another product is recommended and never shows the floor
+
+**After gate 2 (Sun 00:00 → 08:00) — stretch is optional, see §8**
+
+- [ ] **S14** Demo script with real numbers; rehearse 5× [DEMO] · _needs gate 2_ · ~1.5 h · **Done when:** three clean runs in a row
+- [ ] **R18** *(stretch 3)* The same `/mcp` as a custom connector in Claude · _needs B10_ · ~1 h · **Done when:** an offer made in Claude shows up in the Console feed
+- [ ] **S-opt** *(optional · deferred — **planned, not being built now**)* **UI prototype / design reference:** update `../mockups/index.html` to the final engine formulas and add the swarm Gym view · _needs nothing_ · ~2–3 h · **Done when:** its numbers match SPEC §6
+
+> **About `mockups/index.html`:** it is a **visual reference only**. It was built against the earlier engine formulas, its update was stopped part-way, and **its numbers are not authoritative** — take look and layout from it; take every formula and figure from SPEC §6. The swarm Gym view itself **is** in the product plan: it is built in the real app (B11–B12, S8–S10), not in the mockup.
+
+**Handoffs:** needs **R2** (token wrapper) from Platform before R3 · needs **R5, R6, R7** from Platform before S2 / S4 · needs **R6** and Bryan's **B2** before R16 · needs **B5** from Bryan before B10 · gives **R4** (the product mirror) to Bryan's B5 and the Auditor B7.
+
+### ⚙️ B. Engine, core, Gym + Owner Console — **Bryan**
+
+The maths that writes every price, the three core functions on top of it, the Gym that replays it 300 times, and the owner's Console page (`/console`) where the Gym and the agent swarm live.
+
+**Before gate 1 (now → Sat 09:00)** — not on the gate-1 path; build in parallel.
+
 - [x] **B1 (BM)** Engine formulas: cost, floor, urgency, target, ask [§6] · _needs B0_ · ~1.5 h · **Done when:** `target = list − urgency × (list − floor)`, `ask(4) = target`, and unit tests reproduce the worked example in ARCHITECTURE §6 (TR3 target = $169; TR2 asks $149 → $135 → $127 → $120); maths in cents, shopper-facing totals rounded **up** to whole dollars; no `stocked_at` ⇒ urgency 0
 - [ ] **B2** Menu builder — held, bundles (add-on at cost + ½ margin; shoe at `ask(r+1)` if profit holds), something else (`x < target(p)` or `r ≥ 3`; priced `max(target, min(ask, budget))`), ranking, final label [§6] · _needs B1_ · ~3 h · **Done when:** "$120 on the TR3, round 1" returns a TR2 option at $120 and a TR2 + gaiters option, and every option ≥ `floor(cart)`
 - [ ] **B3** Property tests (fast-check) [§6.2] · _needs B2_ · ~1.5 h · **Done when:** every property in SPEC §6.2 passes on 1,000 runs and the suite runs live for a judge in under 10 s
@@ -103,41 +155,40 @@ Estimates are focused hours. **Done when** is the acceptance check — if you ca
 
 - [ ] **B5** Core: `findProducts · makeOffer · acceptOffer` over `db.ts` [§5] · _needs B2, B4, R5_ · ~3 h · **Done when:** both adapters call only these three, and a full turn works end to end with the LLM stubbed
 - [ ] **B6** The check [§5.1 step 5] · _needs B5_ · ~1.5 h · **Done when:** an invented option id, an invented `$`, a reason with no fact, and a cost/floor word each produce option A + template + a `blocked: check` row
-- [ ] **B7** The Auditor, incl. the Shopify-unreachable rule [§5.1] · _needs B5, R4_ · ~1.5 h · **Done when:** stale cost, paused store and below-floor-without-approval all block, and no code is minted on any block
-- [ ] **B9** PAUSE [rule 8] · _needs B5_ · ~0.5 h · **Done when:** the next message on either surface returns the paused line and accept is blocked
-- [ ] **B14** Event bus: `ChatEvent` to the surface, `ConsoleEvent` to the Console, reasoning composed in code [§4.4] · _needs B5_ · ~1 h · **Done when:** a feed row shows offer, floor, menu, pick, memory, model, ms, cost — and a test proves none of it appears in `/api/chat` output
 
-**Devpost → gate 2 (Sat 14:00 → Sun 00:00)**
+**Devpost → gate 2 (Sat 14:00 → Sun 00:00)** — **this block is ~15 h of work in a 10 h window, so it is ordered keep-first:** everything down to S9 is never cut; S7, S8, S10 are on the cut order (§7) and come last. Ritvik is the helper for S9 / S10 once B10 is done.
 
-- [ ] **B8** Approvals: `pending_owner`, 45 s timer, Approve / Decline / timeout, once, storefront only; a decline **restates the final offer** [§6.1] · _needs B5_ · ~2 h · **Done when:** decline and timeout both produce "My best stays $…" at the final ask (never the floor), and a second ask in the same negotiation is refused
+- [ ] **S5** Console shell: login, top bar + PAUSE, live feed with red blocked rows, SSE over `fetch` [§4.4] · _needs R5 (R15 for real data)_ · ~2.5 h · **Done when:** a haggle on the left produces feed rows on the right in < 1 s
+- [ ] **S6** Console policy panel: floor slider, ask-me switch, missing-cost list, **Adopt** [§4.4] · _needs S5_ · ~1.5 h · **Done when:** Adopt changes the floor used by the very next shopper turn
 - [ ] **B11** Gym run: personas, seeded, per-shopper records, A vs B, deals missed, would-ask-owner, profit vs banner [§9.1] · _needs B2_ · ~2.5 h · **Done when:** 300 shoppers run in < 50 ms in the browser, the same seed gives an identical `GymResult`, and `profitVsBanner` goes negative at some floor
 - [ ] **B12** Functional static dot histogram + metric cards [§9.2] · _needs B11, S6_ · ~2 h · **Done when:** one dot per shopper coloured by persona, grey outline for policy A, reference lines, shaded cost → floor band, and the headline card turns red when haggling loses
-- [ ] **B13** Red-team script (20 attacks, dry-run minter, in-memory deals) + separate verifier [§7] · _needs B6, B7_ · ~2.5 h · **Done when:** `infra/redteam-result.json` is committed and the verifier recounts **0 breaches** from the deal rows alone
-- [ ] **B10** `/mcp` — three tools wired to the core, empty `content`, annotations, subject → shopper id [§4.3] · _needs B5, S3 passed, R13_ · ~2 h · **Done when:** from ChatGPT: find → offer → card → Deal → checkout, the feed row is tagged `chatgpt`, and ask-the-owner never fires
+- [ ] **S9** Click-a-dot mini-transcript + persona legend as a filter [§9.2] · _needs B12_ · ~1.5 h · **Done when:** any dot shows persona, willingness, offers and asks per round, the trade, the outcome
+- [ ] **S7** Approve / Decline card with profit $ and %, 45 s bar [§4.4] · _needs S5, B8_ · ~1 h · **Done when:** both buttons and the timeout each resolve the shopper's pending card
+- [ ] **S8** Swarm round animation R1 → R4 (~3 s): ask line stepping down, settle-and-drop, walked pile / deals missed, yellow thin-margin dots, scrubber + Replay; **no animation while dragging** [§9.2] · _needs B12_ · ~3 h · **Done when:** pressing Run settles into exactly the static histogram from B12
+- [ ] **S10** Red-dot wall animation + "20 attacks · 0 breaches" card [§9.2] · _needs B13_ · ~1.5 h · **Done when:** each dot bounces off the labelled layer that blocked it and the card matches the JSON
 
-**After gate 2 — stretch (Sun 00:00 → 06:00)**
+**After gate 2 (Sun 00:00 → 08:00) — stretch is optional, see §8**
 
 - [ ] **B15** *(stretch 2)* Quantity haggle · _needs gate 2_ · ~3 h · **Done when:** "ten for $50 each?" returns two quantity options, both above the bulk floor
 - [ ] **B16** *(stretch 4)* Deal Meter from the Gym distribution · _needs B11_ · ~1 h · **Done when:** the card shows "better than N% of deals today" from the real run
-- [ ] **B17** *(stretch 5)* Backboard tool calling for choose + say · _needs R11_ · ~1.5 h · **Done when:** the pick arrives as a `present_offer` call and still passes the check
+- [ ] **S15** *(stretch 6)* Gym voices — ~20 LLM-driven shoppers as larger dots with speech bubbles · _needs S8, R11_ · ~2 h · **Done when:** they are visibly labelled as a different kind of shopper
 
-### 🔌 Rails
+**Handoffs:** needs **R5** (server + `db.ts`) and **R4** (mirror) before B5 · needs **B14** (event bus) and **R15** (owner routes) from the Agents / Platform owner for a live Console feed · needs **B8** before S7 and **B13** before S10 · gives **B2** to R11 and **B5 / B6** to everything in part D.
 
-**Before gate 1 (Sat 00:00 → 09:00)** — this lane *is* the gate-1 critical path.
+### 🔌 C. Platform — **______________**
+
+What the app runs on: the Shopify app and token, the server, the discount-code mint and checkout link, the database, hosting and the domain. **The mint (R6) and checkout link (R7) are the gate-1 critical path.**
+
+**Before gate 1 (now → Sat 09:00)**
 
 - [ ] **R1** Shopify app via **`shopify app init`**; six scopes incl. `write_products`; install on the dev store [§10] · _needs nothing_ · ~1 h · **Done when:** client id + secret are in `.env` and the app is installed. **20-minute rule:** if the CLI fights back, make a plain Dev Dashboard app and tick this anyway
 - [ ] **R2** Token: client-credentials fetch on startup, re-fetch on any 401, one wrapper for every call [§10] · _needs R1_ · ~1 h · **Done when:** corrupting the token in memory makes the next call self-heal
-- [ ] **R3** Seed ~8 products with **cost per item**, size variants, `bazaar.stocked_at` metafield [§10, App. A] · _needs R2_ · ~1.5 h · **Done when:** products show in admin with costs; TR3 stocked 12 d ago, TR2 94 d ago
-- [ ] **R4** Sync every 60 s → in-memory mirror; flag missing cost [§10] · _needs R3_ · ~1.5 h · **Done when:** the mirror has price, unitCost, inventory, type, image, stockedAt — and we know whether `read_inventory` alone reads `unitCost`
 - [ ] **R5** Server shell: Hono, routes, `db.ts` (memory `Map`s), SSE with a 15 s heartbeat [§5] · _needs B0_ · ~1.5 h · **Done when:** `/api/products` returns public cards and an SSE stream stays open 5 minutes
 - [ ] **R6** Mint: `discountCodeBasicCreate` — amount off, `usageLimit 1`, 15 min, exact variants, **minimum subtotal = list total**, no combining; re-mint once; deactivate on expiry [§10] · _needs R2_ · ~2 h · **Done when:** a code exists in admin with every constraint set
 - [ ] **R7** Checkout permalink + store settings: **tax off, free shipping rate** [§10] · _needs R6_ · ~0.5 h · **Done when:** the checkout page total equals the agreed total to the cent
 
-**Gate 1 → Devpost (Sat 09:00 → 14:00)**
+**Gate 1 → Devpost (Sat 09:00 → 14:00)** — domain live before 13:00.
 
-- [ ] **R9** OpenAI *understand*: Responses API + Structured Outputs, 2.5 s timeout, regex fallback [§11] · _needs R5_ · ~1.5 h · **Done when:** "uhh i could maybe do like 115 if socks are in?" → `{ kind, amount: 115, wants: socks }` in < 1 s, and the fallback fires on a forced timeout
-- [ ] **R10** Backboard: assistant per shopper, thread per negotiation, documents uploaded and `indexed` **first**, memory seeded for the demo shopper [§8] · _needs R5_ · ~2 h · **Done when:** "do these run small?" is answered from the sizing guide and the chat opens with "still a size 10?"
-- [ ] **R11** Backboard choose + say: an OpenAI model routed through Backboard, `OPTION: X` + line, buffered, 4 s timeout, `run_failed` handling, `cost_usd` [§8] · _needs R10, B2_ · ~2 h · **Done when:** **latency is measured and written into §9 of this file**, and the fallback fires on a forced timeout
 - [ ] **R12** **Hosting: one long-lived instance** — secrets in the host, push-to-deploy, health check, instance count pinned to 1, no sleep [§5] · _needs R5, gate 1_ · ~1.5 h · **Done when:** the storefront loads from the host, SSE survives 5 minutes, and two browsers see the same PAUSE state
 - [ ] **R13** **GoDaddy Registry domain** via the MLH offer → pointed at the host; storefront at the root [§10] · _needs R12_ · ~0.5 h · **Done when:** `https://<domain>/` serves the storefront with a valid certificate — before 13:00, so it's on the Devpost page
 
@@ -145,52 +196,37 @@ Estimates are focused hours. **Done when** is the acceptance check — if you ca
 
 - [ ] **R14** Thin Supabase: `schema.sql` (3 tables, RLS on, no public policies), owner user, auth middleware, policy cache, one `deals` write per settlement [§5.2] · _needs R5, gate 1 · **start by 16:00**_ · ~1.5 h · **Done when:** a shopper route can't read owner data, Adopt inserts a row, and a restart reloads the policy
 - [ ] **R15** `GET /api/console/state` + owner routes (`policy`, `approvals/:id`, `pause`, `stream`) [§5.3] · _needs R5, B8_ · ~1 h · **Done when:** the Console loads policy + products with costs + pending approvals + red-team result in one call, and every owner route returns 401 without a token
-- [ ] **R8** Draft-order backup settlement [§10] · _needs R2_ · ~1 h · **Done when:** an invoice URL opens at the agreed price in the demo browser (behind the store password)
-- [ ] **R16** Verify the minimum-subtotal code on a real bundle [§10] · _needs R6, B2_ · ~0.5 h · **Done when:** removing one bundle item at checkout drops the code, and the amount spreads across the cart rather than per item
 
-**After gate 2 — stretch (Sun 00:00 → 06:00)**
+**After gate 2 (Sun 00:00 → 08:00) — stretch is optional, see §8**
 
 - [ ] **R17** *(stretch 1)* Shopify Function: refuse any checkout line at or below `bazaar.min_price` · _needs gate 2 · **time-box 3 h, drop without regret**_ · **Done when:** Shopify's own checkout refuses a below-cost line with our app switched off
-- [ ] **R18** *(stretch 3)* The same `/mcp` as a custom connector in Claude · _needs B10_ · ~1 h · **Done when:** an offer made in Claude shows up in the Console feed
 - [ ] **R19** *(stretch 10)* `orders/create` webhook → a ledger row · _needs R14_ · ~1 h · **Done when:** a test order produces a row
 
-### 🎭 Stage
+**Handoffs:** gives **R2** to Ritvik's seed · gives **R5** to everyone · gives **R6 / R7** to Ritvik's Deal button (**gate 1**) · gives **R15** to Bryan's Console · needs **B8** (part D) before R15.
 
-**Before gate 1 (Sat 00:00 → 09:00)**
+### 🤖 D. Agents + guardrails — **______________** (same owner as Platform unless you say otherwise)
 
-- [ ] **S1** The offer card — a pure component from `OfferCard`; all seven states; countdown; honesty footer [§4.1] · _needs B0_ · ~3 h · **Done when:** one page shows every state side by side and it reads in light and dark
-- [ ] **S2** Storefront: grid, product page, sticker, chat panel, `localStorage` shopper id, `?shopper=demo`, typing effect from checked text [§4.2] · _needs S1, R5_ · ~3 h · **Done when:** opening the TR3 page greets by product and a card appears in the chat
-- [ ] **S4** Deal flow on the storefront: accept → checkout opens; sparkles [§4.1] · _needs S1, R6, R7_ · ~1 h · **Done when:** **gate 1 passes**
+The LLM steps and the layers that stop them losing money: OpenAI *understand*, Backboard memory and *choose + say*, the Auditor, PAUSE, ask-the-owner, the event bus and the red-team.
 
 **Gate 1 → Devpost (Sat 09:00 → 14:00)**
 
-- [ ] **S3** **Gate 0:** widget → single HTML file; a hello-world tool of ours renders a custom card in ChatGPT [§4.1] · _needs S1 · **time-box 90 min**_ · **Done when:** the card is visible in ChatGPT developer mode — or a clear "no" is written on the status board and the discussion is closed
-- [ ] **S5** Console shell: login, top bar + PAUSE, live feed with red blocked rows, SSE over `fetch` [§4.4] · _needs R5 (R15 for real data)_ · ~2.5 h · **Done when:** a haggle on the left produces feed rows on the right in < 1 s
-- [ ] **S6** Console policy panel: floor slider, ask-me switch, missing-cost list, **Adopt** [§4.4] · _needs S5_ · ~1.5 h · **Done when:** Adopt changes the floor used by the very next shopper turn
-- [ ] **S13** Devpost page, screenshots, ≤ 2-min video [DEMO §10] · _needs gate 1_ · ~2 h · **Done when:** submitted by Sat 14:00 with all four sponsor tracks selected
+- [ ] **R9** OpenAI *understand*: Responses API + Structured Outputs, 2.5 s timeout, regex fallback [§11] · _needs R5_ · ~1.5 h · **Done when:** "uhh i could maybe do like 115 if socks are in?" → `{ kind, amount: 115, wants: socks }` in < 1 s, and the fallback fires on a forced timeout
+- [ ] **R10** Backboard: assistant per shopper, thread per negotiation, documents uploaded and `indexed` **first**, memory seeded for the demo shopper [§8] · _needs R5_ · ~2 h · **Done when:** "do these run small?" is answered from the sizing guide and the chat opens with "still a size 10?"
+- [ ] **R11** Backboard choose + say: an OpenAI model routed through Backboard, `OPTION: X` + line, buffered, 4 s timeout, `run_failed` handling, `cost_usd` [§8] · _needs R10, B2_ · ~2 h · **Done when:** **latency is measured and written into §9 of this file**, and the fallback fires on a forced timeout
 
-**Devpost → gate 2 (Sat 14:00 → Sun 00:00)**
+**Devpost → gate 2 (Sat 14:00 → Sun 00:00)** — B14 first (the Console feed waits on it), then B8 (R15 and the Approve card wait on it).
 
-- [ ] **S7** Approve / Decline card with profit $ and %, 45 s bar [§4.4] · _needs S5, B8_ · ~1 h · **Done when:** both buttons and the timeout each resolve the shopper's pending card
-- [ ] **S8** Swarm round animation R1 → R4 (~3 s): ask line stepping down, settle-and-drop, walked pile / deals missed, yellow thin-margin dots, scrubber + Replay; **no animation while dragging** [§9.2] · _needs B12_ · ~3 h · **Done when:** pressing Run settles into exactly the static histogram from B12
-- [ ] **S9** Click-a-dot mini-transcript + persona legend as a filter [§9.2] · _needs B12_ · ~1.5 h · **Done when:** any dot shows persona, willingness, offers and asks per round, the trade, the outcome
-- [ ] **S10** Red-dot wall animation + "20 attacks · 0 breaches" card [§9.2] · _needs B13_ · ~1.5 h · **Done when:** each dot bounces off the labelled layer that blocked it and the card matches the JSON
-- [ ] **S11** Deal trail, five faces, cream-paper styling [§12] · _needs S1_ · ~2 h · **Done when:** the trail forks when another product is recommended and never shows the floor
-- [ ] **S12** Offline replay: `DEMO_OFFLINE=1`, recorded event stream, pre-minted link [DEMO §7] · _needs B14_ · ~1.5 h · **Done when:** with Wi-Fi off the whole demo still runs
+- [ ] **B14** Event bus: `ChatEvent` to the surface, `ConsoleEvent` to the Console, reasoning composed in code [§4.4] · _needs B5_ · ~1 h · **Done when:** a feed row shows offer, floor, menu, pick, memory, model, ms, cost — and a test proves none of it appears in `/api/chat` output
+- [ ] **B8** Approvals: `pending_owner`, 45 s timer, Approve / Decline / timeout, once, storefront only; a decline **restates the final offer** [§6.1] · _needs B5_ · ~2 h · **Done when:** decline and timeout both produce "My best stays $…" at the final ask (never the floor), and a second ask in the same negotiation is refused
+- [ ] **B7** The Auditor, incl. the Shopify-unreachable rule [§5.1] · _needs B5, R4_ · ~1.5 h · **Done when:** stale cost, paused store and below-floor-without-approval all block, and no code is minted on any block
+- [ ] **B9** PAUSE [rule 8] · _needs B5_ · ~0.5 h · **Done when:** the next message on either surface returns the paused line and accept is blocked
+- [ ] **B13** Red-team script (20 attacks, dry-run minter, in-memory deals) + separate verifier [§7] · _needs B6, B7_ · ~2.5 h · **Done when:** `infra/redteam-result.json` is committed and the verifier recounts **0 breaches** from the deal rows alone
 
-**After gate 2 (Sun 00:00 → 08:00)**
+**After gate 2 (Sun 00:00 → 08:00) — stretch is optional, see §8**
 
-- [ ] **S14** Demo script with real numbers; rehearse 5× [DEMO] · _needs gate 2_ · ~1.5 h · **Done when:** three clean runs in a row
-- [ ] **S15** *(stretch 6)* Gym voices — ~20 LLM-driven shoppers as larger dots with speech bubbles · _needs S8, R11_ · ~2 h · **Done when:** they are visibly labelled as a different kind of shopper
-- [ ] **S-opt** *(optional · deferred — **planned, not being built now**)* **UI prototype / design reference:** update `../mockups/index.html` to the final engine formulas and add the swarm Gym view · _needs nothing_ · ~2–3 h · **Done when:** its numbers match SPEC §6
+- [ ] **B17** *(stretch 5)* Backboard tool calling for choose + say · _needs R11_ · ~1.5 h · **Done when:** the pick arrives as a `present_offer` call and still passes the check
 
-> **About `mockups/index.html`:** it is a **visual reference only**. It was built against the earlier engine formulas, its update was stopped part-way, and **its numbers are not authoritative** — take look and layout from it; take every formula and figure from SPEC §6. The swarm Gym view itself **is** in the product plan: it is built in the real app (B11–B12, S8–S10), not in the mockup.
-
-### 👥 Everyone
-
-- [ ] **E1** [`codex-log.md`](codex-log.md) from hour 0 · _needs nothing_ · ongoing · **Done when:** ≥ 3 concrete entries exist and one is chosen for the demo sentence
-- [ ] **E2** 30-minute attack session on our own build · _needs gate 2_ · ~0.5 h · **Done when:** every breach found is fixed or has a failing test
-- [ ] **E3** Latency and numbers pass: replace every illustrative figure in DEMO.md · _needs B11, R11_ · ~0.5 h · **Done when:** no "illustrative" marker remains on a number we say out loud
+**Handoffs:** needs **B2** (menu) before R11 and **B5 / B6** (core, check) from Bryan before B7, B8, B9, B13, B14 · gives **B14** to the Console feed and S12 replay · gives **B8** to S7 and **B13** to S10.
 
 ---
 
@@ -198,16 +234,16 @@ Estimates are focused hours. **Done when** is the acceptance check — if you ca
 
 | When | What must be true |
 |---|---|
-| Sat 00:00–00:30 | B0 merged — all three |
-| Sat 00:30–09:00 | Rails: R1 → R2 → R3 → R4 → R6 → R7 (R5 alongside). Stage: S1 → S2 → S4. Brain: B1 → B2 → B3 → B4 |
+| First 30 min | B0 merged — all three, before anything else |
+| Now → Sat 09:00 | **Ritvik:** S1 (counter state) → R3 → S2 → S4. **Bryan:** B1 → B2 → B3 → B4. **Platform:** R1 → R2 → R5 → R6 → R7 |
 | **Sat 09:00 — GATE 1** | Real checkout from the storefront. **If not, all three stop and fix only this.** |
-| Sat 09:00–12:00 | Brain: B5 → B6. Rails: R9 → R10 → **R11 (measure latency)** → R12. Stage: **S3 gate 0**, then S5 |
+| Sat 09:00–12:00 | **Ritvik:** R4 → **S3 gate 0** → rest of S1. **Bryan:** B5 → B6. **Platform / Agents:** R9 → R10 → **R11 (measure latency)** → R12 |
 | **Sat 12:00 — GATE 0** | ChatGPT card test. *One person, 90 min, blocks nobody.* Needs a paid ChatGPT plan with Developer mode (Settings → Apps & Connectors → Advanced). Pass → wire B10 in the evening. Card won't render → text-only finale. No developer mode → one "what's next" sentence. **Decide here and stop discussing it.** |
-| Sat 12:00–14:00 | Rails: **R13 domain**. Brain: B7, B9, B14. Stage: S5, S6, S13 |
+| Sat 12:00–14:00 | **Ritvik:** S13 Devpost. **Bryan:** B6 done → start S5. **Platform / Agents:** R12 → **R13 domain** → B14 |
 | **Sat 14:00 — DEVPOST, hard** | Team, badge IDs, public repo, Shopify + Backboard + OpenAI + GoDaddy Registry selected |
-| Sat 14:00–18:00 | Brain: B8, B11. Rails: **R14 (start by 16:00)**, R15, R8. Stage: S7, S11 |
-| **Sat 18:00 — checkpoint** | Behind? Apply the cut order (§7) **now**. Supabase not working → env-var password + policy in memory |
-| Sat 18:00–24:00 | Brain: B12, B13, B10. Rails: R16, memory beat, host pinned. Stage: S8, S9, S10, S12. Then the Saturday-night checklist |
+| Sat 14:00–18:00 | **Ritvik:** sleep, then B10. **Bryan:** S5 → S6 → B11. **Platform / Agents:** B14 → **R14 (start by 16:00)** → B8 → R15 |
+| **Sat 18:00 — checkpoint** | Devpost → gate 2 holds ~35 h of tasks for ~22 awake person-hours — **expect to cut.** Each section is ordered keep-first, so cut from the bottom. Apply the cut order (§7) **now**. Supabase not working → env-var password + policy in memory |
+| Sat 18:00–24:00 | **Ritvik:** S12 → R16 → R8 → S11, then helps S9 / S10. **Bryan:** B12 → S9 → S7 → S8 → S10. **Platform / Agents:** B7 → B9 → B13, memory beat, host pinned. Then the Saturday-night checklist |
 | **Sun 00:00 — GATE 2** | Full demo ×3 on both surfaces, hosted URL. Backup video. Attack session. ~20 offer phrasings rehearsed in ChatGPT |
 | Sun 00:00–06:00 | Stretch (§8), strictly in order |
 | Sun 06:00–08:00 | Final Devpost edit, README, real numbers, rehearse 5×, Sunday-morning checklist |
@@ -215,7 +251,7 @@ Estimates are focused hours. **Done when** is the acceptance check — if you ca
 | **Sun 09:45–11:45** | Sponsor judging |
 | Sun after | HTN round 1 (5 min, top 2 per room) → round 2 at 12:00 (4 min + 1 min Q&A) |
 
-**Sleep rotation:** one 4-hour block each between Sat 14:00 and Sun 04:00, **never two asleep at once.** Suggested: Stage 14:30–18:30 (after Devpost) · Rails 19:00–23:00 · Brain 00:30–04:30 (after gate 2). Before you sleep: update Now / Next / Blocked.
+**Sleep rotation:** one 4-hour block each between Sat 14:00 and Sun 04:00, **never two asleep at once.** Suggested: Ritvik 14:30–18:30 (after Devpost) · Platform / Agents 19:00–23:00 · Bryan 00:30–04:30 (after gate 2). Before you sleep: update Now / Next / Blocked.
 
 ### Gate checklists
 
@@ -291,10 +327,11 @@ flowchart LR
   CT --> ENG
   TOK --> SEED
   SEED --> SYNC
-  SYNC --> MINT
+  TOK --> MINT
   CARD --> SF
   MINT --> G1
   SF --> G1
+  SEED --> SF
   CARD --> WID
   WID --> G0
   ENG --> CORE
@@ -327,7 +364,7 @@ flowchart LR
   G2 --> SUB
 ```
 
-The path to gate 1 is **Rails (token → seed → sync → mint) joined with Stage (card → storefront)**; the engine runs in parallel and is not on it. After gate 1 everything funnels through the core. Gate 0 needs only the card and the widget, so it blocks nobody.
+The path to gate 1 is **Platform (token → mint → checkout link) joined with Ritvik's part (seed, card → storefront → Deal)**; Bryan's engine runs in parallel and is not on it. After gate 1 everything funnels through the core. Gate 0 needs only the card and the widget, so it blocks nobody.
 
 ---
 
@@ -370,7 +407,8 @@ The path to gate 1 is **Rails (token → seed → sync → mint) joined with Sta
 |---|---|---|
 | Token expires mid-judging (24 h) | **H** | Refresh on startup and on any 401 — tested Saturday night |
 | LLM latency makes the haggle feel dead | H | Thinking face at once; 4 s cap → option A + template; warm threads. **Measured choose + say latency: ______ ms (R11 fills this in)** |
-| Stage lane overloaded — the swarm adds ~6 h | H | Card built once; Brain builds the functional dot histogram; the animation is cut #3 |
+| Part B overloaded — engine, core, Console and the swarm are one person (~27 h) | H | Static dot histogram (B12) before any animation; S8 / S10 are cut #3; Ritvik helps S9 / S10 once B10 is done |
+| One person owns both Platform and Agents (C + D) | H | Agents work starts only after gate 1; Ritvik takes the checkout checks (R8, R16); if C + D is behind at Sat 18:00, Supabase (R14) is cut #1 and Ritvik takes B9 |
 | Host restarts, sleeps, or scales to two instances | M | One pinned instance, non-sleeping plan, deploy freeze Sun 08:00, health check; laptop + tunnel fallback |
 | Host proxy drops SSE | M | 15 s heartbeat comment; clients auto-reconnect |
 | Code doesn't apply / total doesn't match / minimum subtotal misbehaves | M | Tax off + free shipping; assert the total; re-mint once; draft-order backup; pre-minted link; R16 |
@@ -390,20 +428,20 @@ The path to gate 1 is **Rails (token → seed → sync → mint) joined with Sta
 
 ### First hour
 
-**🧠 Brain**
+**⚙️ Bryan — engine**
 - [ ] `contracts` merged (with everyone)
 - [ ] Repo, pnpm workspaces, vitest + fast-check running
 - [ ] Engine formulas started, with the worked example as the first test
 - [ ] First Codex prompt logged in `codex-log.md`
 
-**🔌 Rails**
+**🔌 Platform / Agents**
 - [ ] `shopify app init` (20-minute rule)
 - [ ] Six scopes, installed, the token curl works
 - [ ] Backboard + OpenAI keys in `.env`; **store documents uploaded now** so they're `indexed` by morning
 - [ ] Supabase project and host account created (not wired yet)
 - [ ] MLH GoDaddy offer claimed
 
-**🎭 Stage**
+**🛍️ Ritvik — storefront**
 - [ ] Vite + Tailwind + shadcn up
 - [ ] The card rendering from a hard-coded `OfferCard`
 - [ ] Palette, fonts, the five faces as SVG
