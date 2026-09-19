@@ -61,6 +61,12 @@
 
 <!-- Copy the block above for each new entry. Never edit an old entry to make it sound better — add a follow-up entry instead. -->
 
+### R14 follow-up — 2026-09-19 · Ricardo / Codex · merchant domain correction
+
+- **Prompt:** Replace the old Supabase merchant domain with the live team store.
+- **Produced:** Updated the live `merchants.shop_domain` value and changed the idempotent schema seed to upsert `b8wzw0-h3.myshopify.com` without touching the owner binding.
+- **Verification:** The live update returned merchant `00000000-0000-4000-8000-000000000001` with `shop_domain = b8wzw0-h3.myshopify.com`; the server smoke check read the same value.
+
 
 ### B2 — 2026-09-19 · Bryan (BM) · menu builder
 
