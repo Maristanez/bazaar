@@ -4,7 +4,7 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 11:55 EDT by Bryan (Part B backbone complete through B6; gate 1 reassigned)
+**Last updated:** Sat 19 Sep 11:50 EDT by Bryan (Part B backbone complete through B6; gate 1 reassigned; Shopify credentials verified live)
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
@@ -19,8 +19,8 @@
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
 | 🛍️ A. Storefront + Shopify store | Ritvik | Live Shopify theme `Bazaar coded storefront` is connected to Railway `/api/chat`; Gemini answers are verified | **S13 Devpost — start it now on the host URL, don't wait for gate 1** · then S3 gate-0 decision (90 min box) · then R4 mirror | R6/R7 for a real Deal (Bryan has taken them) |
-| ⚙️ B. Engine, core, Gym + Console | Bryan | Part B backbone COMPLETE — B1 B2 B3 B4 B5 B6 B11 ticked, merged to `main`. Lane clear, so **taking R2 + R6 + R7** off Platform to unblock gate 1 | R2 token wrapper → R6 mint → R7 permalink (`codex-prompt-settlement.txt`), then back to S5 → S6 → B12 | **Shopify client id + secret — Ricardo must send them; no `.env` on Bryan's machine** |
-| 🔌 C. Platform | Ricardo | R14 Supabase live read verified; Railway `bazaar-chat` is online with `GEMINI_API_KEY`; `/health` and `/api/chat` verified | **① send Bryan the Shopify creds ② R5 Hono shell + `/api/products` + SSE ③ R12 real app on the host ④ R13 domain before 13:00** — R2/R6/R7 are Bryan's now | — |
+| ⚙️ B. Engine, core, Gym + Console | Bryan | Part B backbone COMPLETE — B1 B2 B3 B4 B5 B6 B11 ticked, merged to `main`. Took R2 + R6 + R7 to unblock gate 1; **credentials verified live 11:50**, Codex run started | R2 token wrapper → R6 mint → R7 permalink (`codex-prompt-settlement.txt`), then back to S5 → S6 → B12 | — |
+| 🔌 C. Platform | Ricardo | R14 Supabase live read verified; Railway `bazaar-chat` is online with `GEMINI_API_KEY`; `/health` and `/api/chat` verified | **① R5 Hono shell + `/api/products` + SSE ② R12 real app on the host ③ R13 domain before 13:00** — R2/R6/R7 are Bryan's now, creds received | — |
 | 🤖 D. Agents + guardrails | **still unowned — name someone at the 14:00 Devpost check** | Gemini answers basic shopper Q&A through the storefront; official OpenAI/Backboard path not started. B5/B6 have been waiting for a consumer since 11:00 | R9 *understand* (OpenAI prize needs a direct OpenAI call) → R10/R11 Backboard | an owner |
 
 ### Next work decision — Sat 11:55 EDT (supersedes the 11:03 note below)
@@ -223,6 +223,8 @@ What the app runs on: the Shopify app and token, the server, the discount-code m
 - [x] **R1** Shopify app via **`shopify app init`**; six scopes incl. `write_products`; install on the dev store [§10] · _needs nothing_ · ~1 h · **Done when:** client id + secret are in `.env` and the app is installed. **20-minute rule:** if the CLI fights back, make a plain Dev Dashboard app and tick this anyway
 
   _Sat 10:10 Codex note:_ `.env` has the Shopify shop, API version, client id, client secret and scopes; `.env` is ignored by git. Client-credentials token fetch succeeded and Admin GraphQL returned products from `b8wzw0-h3`.
+
+  _Sat 11:50 Bryan note (live probe, independent of Codex):_ token fetch returns 200, token lives **86,399 s (~24 h)** — one fetch covers the rest of the window, but the 401 self-heal still ships. Shop `b8wzw0-h3`, API version **2026-07**, currency **CAD**. **The granted scopes are not the six SPEC §10 lists** — we hold `write_price_rules, write_discounts, write_discounts_allocator_functions, write_draft_orders, write_inventory, write_inventory_shipments_received_items, write_orders, write_products`. That is functionally fine (`write_X` implies `read_X`) and a live products + `unitCost` read succeeded, so **do not reinstall to "fix" it** — a reinstall costs a new app version we don't have time for. **SPEC §14 unknown resolved:** `inventoryItem { unitCost { amount } }` reads fine (strictly via `write_inventory`, not `read_inventory` alone). Seed matches Appendix A exactly: TR3 169/95 stocked 2026-09-07, TR2 149/78 stocked 2026-06-17, Ridge Lite 99/52 stocked 2026-08-10.
 - [ ] **R2 (BM)** Token: client-credentials fetch on startup, re-fetch on any 401, one wrapper for every call [§10] · _needs R1_ · ~1 h · **Done when:** corrupting the token in memory makes the next call self-heal
 
   _Sat 10:10 Codex note:_ manual token fetch is verified, but R2 remains open until the reusable server-side wrapper exists and the forced-401 self-heal test passes.
@@ -233,6 +235,8 @@ What the app runs on: the Shopify app and token, the server, the discount-code m
   _Sat 11:03 Codex note:_ Railway is online at `https://bazaar-chat-production.up.railway.app`, public `/health` returns `ok: true`, and the live Shopify theme sends chat requests to this service. R5 is still open: the current server is a minimal Node HTTP server, not the planned Hono shell with `/api/products`, `db.ts`, and SSE.
 - [ ] **R6 (BM)** Mint: `discountCodeBasicCreate` — amount off, `usageLimit 1`, 15 min, exact variants, **minimum subtotal = list total**, no combining; re-mint once; deactivate on expiry [§10] · _needs R2_ · ~2 h · **Done when:** a code exists in admin with every constraint set
 - [ ] **R7 (BM)** Checkout permalink + store settings: **tax off, free shipping rate** [§10] · _needs R6_ · ~0.5 h · **Done when:** the checkout page total equals the agreed total to the cent
+
+  _Sat 11:50 Bryan note:_ three human settings changes, none of them code, all of them visible to a judge on the checkout page — **(a) the store is still named "My Store"; rename it to "Trailhead Co."**, (b) turn tax off, (c) add a free shipping rate. Without (b) and (c) the total cannot match to the cent; without (a) the demo's one real Shopify screen contradicts the pitch.
 
 **Gate 1 → Devpost (Sat 09:00 → 14:00)** — domain live before 13:00.
 
