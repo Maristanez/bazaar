@@ -19,7 +19,7 @@
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
 | 🛍️ A. Storefront + Shopify store | Ritvik | — | B0 → S1 | — |
-| ⚙️ B. Engine, core, Gym + Console | Bryan | B2 + B3 done; checks green | B11 → B5 → B6 | — |
+| ⚙️ B. Engine, core, Gym + Console | Bryan | B2 + B3 + B11 done; Gym crossover 42% | B5 core → B6 check | — |
 | 🔌 C. Platform | ______ | — | B0 → R1 | — |
 | 🤖 D. Agents + guardrails | ______ | — | R9 (after gate 1) | — |
 
@@ -155,6 +155,8 @@ The maths that writes every price, the three core functions on top of it, the Gy
 
 **B3 verified — Sat 19 Sep (Codex):** 11 properties × 1,000 seeded runs pass in `pnpm test:props` (0.51 s wall); 54 tests (299 ms) and typecheck green; owner clarified raw concession steps and bundle shoe targets; property counterexamples drove two code fixes.
 
+**B11 verified — Sat 19 Sep (Codex):** 67 tests (349 ms) and typecheck green; 300 shoppers in 2.43 ms, deterministic seed 42, crossover 42%; regenerated fixture passes gymResultProblems; layout properties and reviews pass.
+
 **Gate 1 → Devpost (Sat 09:00 → 14:00)**
 
 - [ ] **B5** Core: `findProducts · makeOffer · acceptOffer` over `db.ts` [§5] · _needs B2, B4, R5_ · ~3 h · **Done when:** both adapters call only these three, and a full turn works end to end with the LLM stubbed
@@ -164,7 +166,7 @@ The maths that writes every price, the three core functions on top of it, the Gy
 
 - [ ] **S5** Console shell: login, top bar + PAUSE, live feed with red blocked rows, SSE over `fetch` [§4.4] · _needs R5 (R15 for real data)_ · ~2.5 h · **Done when:** a haggle on the left produces feed rows on the right in < 1 s
 - [ ] **S6** Console policy panel: floor slider, ask-me switch, missing-cost list, **Adopt** [§4.4] · _needs S5_ · ~1.5 h · **Done when:** Adopt changes the floor used by the very next shopper turn
-- [ ] **B11** Gym run: personas, seeded, per-shopper records, A vs B, deals missed, would-ask-owner, profit vs banner [§9.1] · _needs B2_ · ~2.5 h · **Done when:** 300 shoppers run in < 50 ms in the browser, the same seed gives an identical `GymResult`, and `profitVsBanner` goes negative at some floor
+- [x] **B11 (BM)** Gym run: personas, seeded, per-shopper records, A vs B, deals missed, would-ask-owner, profit vs banner [§9.1] · _needs B2_ · ~2.5 h · **Done when:** 300 shoppers run in < 50 ms in the browser, the same seed gives an identical `GymResult`, and `profitVsBanner` goes negative at some floor
 - [ ] **B12** Functional static dot histogram + metric cards [§9.2] · _needs B11, S6_ · ~2 h · **Done when:** one dot per shopper coloured by persona, grey outline for policy A, reference lines, shaded cost → floor band, and the headline card turns red when haggling loses
 - [ ] **S9** Click-a-dot mini-transcript + persona legend as a filter [§9.2] · _needs B12_ · ~1.5 h · **Done when:** any dot shows persona, willingness, offers and asks per round, the trade, the outcome
 - [ ] **S7** Approve / Decline card with profit $ and %, 45 s bar [§4.4] · _needs S5, B8_ · ~1 h · **Done when:** both buttons and the timeout each resolve the shopper's pending card

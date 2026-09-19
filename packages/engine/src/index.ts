@@ -5,3 +5,5 @@ export { toShopper } from "./money";
 export type { Item } from "./types";
 export { buildMenu } from "./menu";
 export type { MenuInput, MenuResult } from "./menu";
+export { auditAccepted, addOnPart } from "./audit";
+export type { PriceAudit } from "./audit";

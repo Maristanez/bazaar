@@ -1,5 +1,6 @@
 import type { Option } from "@bazaar/contracts";
 import { ask, costOf, floorOf, targetOf, urgency } from "./formulas";
+import { addOnPart } from "./audit";
 import { toShopper } from "./money";
 import type { Item } from "./types";
 
@@ -91,18 +92,18 @@ export function buildMenu(input: MenuInput): MenuResult {
 
   let nextBundleId = 1;
   for (const addOn of eligibleAddOns) {
-    const addOnPart = addOn.cost! + (addOn.list - addOn.cost!) / 2;
+    const part = addOnPart(addOn)!;
     const nextRound = round === 4 ? 4 : (round + 1) as 2 | 3 | 4;
     const nextAsk = ask(product.list, mainTarget, mainUrgency, nextRound);
     const heldProfit = mainAsk - product.cost;
-    const nextRoundProfit = nextAsk + addOnPart - (product.cost + addOn.cost!);
+    const nextRoundProfit = nextAsk + part - (product.cost + addOn.cost!);
     const shoePart = nextRoundProfit >= heldProfit ? nextAsk : mainAsk;
     if (shoePart < mainTarget) continue;
     append(
       `B${nextBundleId++}`,
       "bundle",
       [product, addOn],
-      shoePart + addOnPart,
+      shoePart + part,
       [`includes ${addOn.title}`],
     );
   }

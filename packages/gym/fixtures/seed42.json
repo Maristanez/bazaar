@@ -3,7 +3,7 @@
  "n": 300,
  "floorPct": 25,
  "bought": 195,
- "avgAgreed": 13656,
+ "avgAgreed": 13662,
  "bins": [
   7800,
   8300,
@@ -31,16 +31,16 @@
   0,
   0,
   18,
-  39,
-  1,
-  64,
-  10,
+  36,
+  4,
+  62,
+  12,
   13,
   50
  ],
- "profitVsBanner": 208140,
+ "profitVsBanner": 209140,
  "aovUplift": 358,
- "wouldAskOwner": 19,
+ "wouldAskOwner": 20,
  "dealsMissed": 76,
  "shoppers": [
   {
@@ -48,12 +48,21 @@
    "persona": "budgeted",
    "willingness": 13100,
    "rounds": [
-    { "offer": 12100, "ask": 14900 },
-    { "offer": 12400, "ask": 13500 },
-    { "offer": 12700, "ask": 12700 }
+    {
+     "offer": 12100,
+     "ask": 14900
+    },
+    {
+     "offer": 12400,
+     "ask": 13500
+    },
+    {
+     "offer": 12800,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
-   "agreed": 12700,
+   "agreed": 12800,
    "trade": "accepted"
   },
   {
@@ -61,10 +70,22 @@
    "persona": "lowballer",
    "willingness": 10000,
    "rounds": [
-    { "offer": 6100, "ask": 14900 },
-    { "offer": 7000, "ask": 13500 },
-    { "offer": 8000, "ask": 12700 },
-    { "offer": 9000, "ask": 12000 }
+    {
+     "offer": 6100,
+     "ask": 14900
+    },
+    {
+     "offer": 7100,
+     "ask": 13500
+    },
+    {
+     "offer": 8100,
+     "ask": 12700
+    },
+    {
+     "offer": 9000,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -73,9 +94,18 @@
    "persona": "bargain",
    "willingness": 13300,
    "rounds": [
-    { "offer": 10400, "ask": 14900 },
-    { "offer": 11100, "ask": 13500 },
-    { "offer": 11800, "ask": 12700 }
+    {
+     "offer": 10400,
+     "ask": 14900
+    },
+    {
+     "offer": 11100,
+     "ask": 13500
+    },
+    {
+     "offer": 11900,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -86,10 +116,22 @@
    "persona": "bargain",
    "willingness": 11300,
    "rounds": [
-    { "offer": 9600, "ask": 14900 },
-    { "offer": 10000, "ask": 13500 },
-    { "offer": 10400, "ask": 12700 },
-    { "offer": 10800, "ask": 12000 }
+    {
+     "offer": 9600,
+     "ask": 14900
+    },
+    {
+     "offer": 10000,
+     "ask": 13500
+    },
+    {
+     "offer": 10500,
+     "ask": 12700
+    },
+    {
+     "offer": 10900,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -99,9 +141,18 @@
    "persona": "bargain",
    "willingness": 13000,
    "rounds": [
-    { "offer": 9100, "ask": 14900 },
-    { "offer": 10000, "ask": 13500 },
-    { "offer": 11000, "ask": 12700 }
+    {
+     "offer": 9100,
+     "ask": 14900
+    },
+    {
+     "offer": 10100,
+     "ask": 13500
+    },
+    {
+     "offer": 11100,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -112,10 +163,22 @@
    "persona": "bargain",
    "willingness": 11400,
    "rounds": [
-    { "offer": 10200, "ask": 14900 },
-    { "offer": 10500, "ask": 13500 },
-    { "offer": 10800, "ask": 12700 },
-    { "offer": 11100, "ask": 12000 }
+    {
+     "offer": 10200,
+     "ask": 14900
+    },
+    {
+     "offer": 10500,
+     "ask": 13500
+    },
+    {
+     "offer": 10800,
+     "ask": 12700
+    },
+    {
+     "offer": 11100,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -125,10 +188,22 @@
    "persona": "bargain",
    "willingness": 11400,
    "rounds": [
-    { "offer": 9400, "ask": 14900 },
-    { "offer": 9900, "ask": 13500 },
-    { "offer": 10400, "ask": 12700 },
-    { "offer": 10900, "ask": 12000 }
+    {
+     "offer": 9400,
+     "ask": 14900
+    },
+    {
+     "offer": 9900,
+     "ask": 13500
+    },
+    {
+     "offer": 10400,
+     "ask": 12700
+    },
+    {
+     "offer": 10900,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -138,8 +213,14 @@
    "persona": "impatient",
    "willingness": 14500,
    "rounds": [
-    { "offer": 13900, "ask": 14900 },
-    { "offer": 14200, "ask": 13500 }
+    {
+     "offer": 13900,
+     "ask": 14900
+    },
+    {
+     "offer": 14200,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 14200,
@@ -150,8 +231,14 @@
    "persona": "impatient",
    "willingness": 13100,
    "rounds": [
-    { "offer": 12600, "ask": 14900 },
-    { "offer": 12800, "ask": 13500 }
+    {
+     "offer": 12600,
+     "ask": 14900
+    },
+    {
+     "offer": 12900,
+     "ask": 13500
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -161,7 +248,10 @@
    "persona": "loyal",
    "willingness": 15200,
    "rounds": [
-    { "offer": 13600, "ask": 14900 }
+    {
+     "offer": 13600,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -172,9 +262,18 @@
    "persona": "bargain",
    "willingness": 12700,
    "rounds": [
-    { "offer": 9800, "ask": 14900 },
-    { "offer": 10500, "ask": 13500 },
-    { "offer": 11200, "ask": 12700 }
+    {
+     "offer": 9800,
+     "ask": 14900
+    },
+    {
+     "offer": 10500,
+     "ask": 13500
+    },
+    {
+     "offer": 11300,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -185,9 +284,18 @@
    "persona": "budgeted",
    "willingness": 12200,
    "rounds": [
-    { "offer": 12200, "ask": 14900 },
-    { "offer": 12200, "ask": 13500 },
-    { "offer": 12200, "ask": 12700 }
+    {
+     "offer": 12200,
+     "ask": 14900
+    },
+    {
+     "offer": 12200,
+     "ask": 13500
+    },
+    {
+     "offer": 12200,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -197,10 +305,22 @@
    "persona": "lowballer",
    "willingness": 9500,
    "rounds": [
-    { "offer": 5900, "ask": 14900 },
-    { "offer": 6800, "ask": 13500 },
-    { "offer": 7700, "ask": 12700 },
-    { "offer": 8600, "ask": 12000 }
+    {
+     "offer": 5900,
+     "ask": 14900
+    },
+    {
+     "offer": 6800,
+     "ask": 13500
+    },
+    {
+     "offer": 7700,
+     "ask": 12700
+    },
+    {
+     "offer": 8600,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -209,7 +329,10 @@
    "persona": "loyal",
    "willingness": 15300,
    "rounds": [
-    { "offer": 14700, "ask": 14900 }
+    {
+     "offer": 14700,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -220,9 +343,18 @@
    "persona": "budgeted",
    "willingness": 12900,
    "rounds": [
-    { "offer": 11400, "ask": 14900 },
-    { "offer": 11900, "ask": 13500 },
-    { "offer": 12400, "ask": 12700 }
+    {
+     "offer": 11400,
+     "ask": 14900
+    },
+    {
+     "offer": 11900,
+     "ask": 13500
+    },
+    {
+     "offer": 12400,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -233,8 +365,14 @@
    "persona": "budgeted",
    "willingness": 13800,
    "rounds": [
-    { "offer": 11600, "ask": 14900 },
-    { "offer": 12300, "ask": 13500 }
+    {
+     "offer": 11600,
+     "ask": 14900
+    },
+    {
+     "offer": 12300,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -245,9 +383,18 @@
    "persona": "budgeted",
    "willingness": 12100,
    "rounds": [
-    { "offer": 10600, "ask": 14900 },
-    { "offer": 11100, "ask": 13500 },
-    { "offer": 11600, "ask": 12700 }
+    {
+     "offer": 10600,
+     "ask": 14900
+    },
+    {
+     "offer": 11100,
+     "ask": 13500
+    },
+    {
+     "offer": 11600,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -257,8 +404,14 @@
    "persona": "impatient",
    "willingness": 13800,
    "rounds": [
-    { "offer": 13800, "ask": 14900 },
-    { "offer": 13800, "ask": 13500 }
+    {
+     "offer": 13800,
+     "ask": 14900
+    },
+    {
+     "offer": 13800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13800,
@@ -269,8 +422,14 @@
    "persona": "budgeted",
    "willingness": 13700,
    "rounds": [
-    { "offer": 10600, "ask": 14900 },
-    { "offer": 11600, "ask": 13500 }
+    {
+     "offer": 10600,
+     "ask": 14900
+    },
+    {
+     "offer": 11600,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -281,10 +440,22 @@
    "persona": "bargain",
    "willingness": 11200,
    "rounds": [
-    { "offer": 9800, "ask": 14900 },
-    { "offer": 10100, "ask": 13500 },
-    { "offer": 10500, "ask": 12700 },
-    { "offer": 10800, "ask": 12000 }
+    {
+     "offer": 9800,
+     "ask": 14900
+    },
+    {
+     "offer": 10200,
+     "ask": 13500
+    },
+    {
+     "offer": 10500,
+     "ask": 12700
+    },
+    {
+     "offer": 10900,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -294,7 +465,10 @@
    "persona": "impatient",
    "willingness": 15200,
    "rounds": [
-    { "offer": 13300, "ask": 14900 }
+    {
+     "offer": 13300,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -305,8 +479,14 @@
    "persona": "budgeted",
    "willingness": 14300,
    "rounds": [
-    { "offer": 11200, "ask": 14900 },
-    { "offer": 12200, "ask": 13500 }
+    {
+     "offer": 11200,
+     "ask": 14900
+    },
+    {
+     "offer": 12200,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -317,10 +497,22 @@
    "persona": "bargain",
    "willingness": 12300,
    "rounds": [
-    { "offer": 8700, "ask": 14900 },
-    { "offer": 9600, "ask": 13500 },
-    { "offer": 10500, "ask": 12700 },
-    { "offer": 11400, "ask": 12000 }
+    {
+     "offer": 8700,
+     "ask": 14900
+    },
+    {
+     "offer": 9600,
+     "ask": 13500
+    },
+    {
+     "offer": 10500,
+     "ask": 12700
+    },
+    {
+     "offer": 11400,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -331,10 +523,22 @@
    "persona": "bargain",
    "willingness": 11300,
    "rounds": [
-    { "offer": 8800, "ask": 14900 },
-    { "offer": 9400, "ask": 13500 },
-    { "offer": 10000, "ask": 12700 },
-    { "offer": 10600, "ask": 12000 }
+    {
+     "offer": 8800,
+     "ask": 14900
+    },
+    {
+     "offer": 9400,
+     "ask": 13500
+    },
+    {
+     "offer": 10100,
+     "ask": 12700
+    },
+    {
+     "offer": 10700,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -344,10 +548,22 @@
    "persona": "bargain",
    "willingness": 12000,
    "rounds": [
-    { "offer": 9300, "ask": 14900 },
-    { "offer": 9900, "ask": 13500 },
-    { "offer": 10600, "ask": 12700 },
-    { "offer": 11300, "ask": 12000 }
+    {
+     "offer": 9300,
+     "ask": 14900
+    },
+    {
+     "offer": 10000,
+     "ask": 13500
+    },
+    {
+     "offer": 10700,
+     "ask": 12700
+    },
+    {
+     "offer": 11300,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -358,10 +574,22 @@
    "persona": "lowballer",
    "willingness": 7900,
    "rounds": [
-    { "offer": 6800, "ask": 14900 },
-    { "offer": 7000, "ask": 13500 },
-    { "offer": 7300, "ask": 12700 },
-    { "offer": 7600, "ask": 12000 }
+    {
+     "offer": 6800,
+     "ask": 14900
+    },
+    {
+     "offer": 7100,
+     "ask": 13500
+    },
+    {
+     "offer": 7400,
+     "ask": 12700
+    },
+    {
+     "offer": 7600,
+     "ask": 12000
+    }
    ],
    "outcome": "walked"
   },
@@ -370,7 +598,10 @@
    "persona": "loyal",
    "willingness": 16200,
    "rounds": [
-    { "offer": 13300, "ask": 14900 }
+    {
+     "offer": 13300,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -381,10 +612,22 @@
    "persona": "bargain",
    "willingness": 10500,
    "rounds": [
-    { "offer": 9000, "ask": 14900 },
-    { "offer": 9300, "ask": 13500 },
-    { "offer": 9700, "ask": 12700 },
-    { "offer": 10100, "ask": 12000 }
+    {
+     "offer": 9000,
+     "ask": 14900
+    },
+    {
+     "offer": 9400,
+     "ask": 13500
+    },
+    {
+     "offer": 9800,
+     "ask": 12700
+    },
+    {
+     "offer": 10100,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -394,8 +637,14 @@
    "persona": "impatient",
    "willingness": 13400,
    "rounds": [
-    { "offer": 13400, "ask": 14900 },
-    { "offer": 13400, "ask": 13500 }
+    {
+     "offer": 13400,
+     "ask": 14900
+    },
+    {
+     "offer": 13400,
+     "ask": 13500
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -405,8 +654,14 @@
    "persona": "budgeted",
    "willingness": 14100,
    "rounds": [
-    { "offer": 11200, "ask": 14900 },
-    { "offer": 12100, "ask": 13500 }
+    {
+     "offer": 11200,
+     "ask": 14900
+    },
+    {
+     "offer": 12200,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -417,10 +672,22 @@
    "persona": "bargain",
    "willingness": 10500,
    "rounds": [
-    { "offer": 9800, "ask": 14900 },
-    { "offer": 9900, "ask": 13500 },
-    { "offer": 10100, "ask": 12700 },
-    { "offer": 10300, "ask": 12000 }
+    {
+     "offer": 9800,
+     "ask": 14900
+    },
+    {
+     "offer": 10000,
+     "ask": 13500
+    },
+    {
+     "offer": 10200,
+     "ask": 12700
+    },
+    {
+     "offer": 10300,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -430,8 +697,14 @@
    "persona": "impatient",
    "willingness": 13800,
    "rounds": [
-    { "offer": 12400, "ask": 14900 },
-    { "offer": 13100, "ask": 13500 }
+    {
+     "offer": 12400,
+     "ask": 14900
+    },
+    {
+     "offer": 13100,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -442,8 +715,14 @@
    "persona": "budgeted",
    "willingness": 13100,
    "rounds": [
-    { "offer": 10700, "ask": 14900 },
-    { "offer": 11500, "ask": 13500 }
+    {
+     "offer": 10700,
+     "ask": 14900
+    },
+    {
+     "offer": 11500,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -454,9 +733,18 @@
    "persona": "bargain",
    "willingness": 12700,
    "rounds": [
-    { "offer": 9200, "ask": 14900 },
-    { "offer": 10000, "ask": 13500 },
-    { "offer": 10900, "ask": 12700 }
+    {
+     "offer": 9200,
+     "ask": 14900
+    },
+    {
+     "offer": 10100,
+     "ask": 13500
+    },
+    {
+     "offer": 11000,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -467,8 +755,14 @@
    "persona": "budgeted",
    "willingness": 14000,
    "rounds": [
-    { "offer": 11500, "ask": 14900 },
-    { "offer": 12300, "ask": 13500 }
+    {
+     "offer": 11500,
+     "ask": 14900
+    },
+    {
+     "offer": 12300,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -479,11 +773,17 @@
    "persona": "loyal",
    "willingness": 14500,
    "rounds": [
-    { "offer": 13400, "ask": 14900 },
-    { "offer": 13700, "ask": 13500 }
+    {
+     "offer": 13400,
+     "ask": 14900
+    },
+    {
+     "offer": 13800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
-   "agreed": 13700,
+   "agreed": 13800,
    "trade": "accepted"
   },
   {
@@ -491,11 +791,17 @@
    "persona": "impatient",
    "willingness": 14700,
    "rounds": [
-    { "offer": 12400, "ask": 14900 },
-    { "offer": 13500, "ask": 13500 }
+    {
+     "offer": 12400,
+     "ask": 14900
+    },
+    {
+     "offer": 13600,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
-   "agreed": 13500,
+   "agreed": 13600,
    "trade": "accepted"
   },
   {
@@ -503,10 +809,22 @@
    "persona": "lowballer",
    "willingness": 8300,
    "rounds": [
-    { "offer": 4900, "ask": 14900 },
-    { "offer": 5700, "ask": 13500 },
-    { "offer": 6600, "ask": 12700 },
-    { "offer": 7400, "ask": 12000 }
+    {
+     "offer": 4900,
+     "ask": 14900
+    },
+    {
+     "offer": 5800,
+     "ask": 13500
+    },
+    {
+     "offer": 6600,
+     "ask": 12700
+    },
+    {
+     "offer": 7500,
+     "ask": 12000
+    }
    ],
    "outcome": "walked"
   },
@@ -515,7 +833,10 @@
    "persona": "loyal",
    "willingness": 15500,
    "rounds": [
-    { "offer": 14100, "ask": 14900 }
+    {
+     "offer": 14100,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -526,9 +847,18 @@
    "persona": "bargain",
    "willingness": 13200,
    "rounds": [
-    { "offer": 9400, "ask": 14900 },
-    { "offer": 10300, "ask": 13500 },
-    { "offer": 11300, "ask": 12700 }
+    {
+     "offer": 9400,
+     "ask": 14900
+    },
+    {
+     "offer": 10400,
+     "ask": 13500
+    },
+    {
+     "offer": 11300,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -539,10 +869,22 @@
    "persona": "lowballer",
    "willingness": 7600,
    "rounds": [
-    { "offer": 7300, "ask": 14900 },
-    { "offer": 7300, "ask": 13500 },
-    { "offer": 7400, "ask": 12700 },
-    { "offer": 7500, "ask": 12000 }
+    {
+     "offer": 7300,
+     "ask": 14900
+    },
+    {
+     "offer": 7400,
+     "ask": 13500
+    },
+    {
+     "offer": 7500,
+     "ask": 12700
+    },
+    {
+     "offer": 7500,
+     "ask": 12000
+    }
    ],
    "outcome": "walked"
   },
@@ -551,8 +893,14 @@
    "persona": "impatient",
    "willingness": 13500,
    "rounds": [
-    { "offer": 12000, "ask": 14900 },
-    { "offer": 12700, "ask": 13500 }
+    {
+     "offer": 12000,
+     "ask": 14900
+    },
+    {
+     "offer": 12800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -563,7 +911,10 @@
    "persona": "loyal",
    "willingness": 15700,
    "rounds": [
-    { "offer": 14500, "ask": 14900 }
+    {
+     "offer": 14500,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -574,7 +925,10 @@
    "persona": "impatient",
    "willingness": 15200,
    "rounds": [
-    { "offer": 12900, "ask": 14900 }
+    {
+     "offer": 12900,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -585,7 +939,10 @@
    "persona": "loyal",
    "willingness": 15600,
    "rounds": [
-    { "offer": 14000, "ask": 14900 }
+    {
+     "offer": 14000,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -596,8 +953,14 @@
    "persona": "budgeted",
    "willingness": 14200,
    "rounds": [
-    { "offer": 10600, "ask": 14900 },
-    { "offer": 11800, "ask": 13500 }
+    {
+     "offer": 10600,
+     "ask": 14900
+    },
+    {
+     "offer": 11800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -608,8 +971,14 @@
    "persona": "budgeted",
    "willingness": 14600,
    "rounds": [
-    { "offer": 10900, "ask": 14900 },
-    { "offer": 12100, "ask": 13500 }
+    {
+     "offer": 10900,
+     "ask": 14900
+    },
+    {
+     "offer": 12100,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -620,10 +989,22 @@
    "persona": "lowballer",
    "willingness": 9300,
    "rounds": [
-    { "offer": 6300, "ask": 14900 },
-    { "offer": 7000, "ask": 13500 },
-    { "offer": 7800, "ask": 12700 },
-    { "offer": 8500, "ask": 12000 }
+    {
+     "offer": 6300,
+     "ask": 14900
+    },
+    {
+     "offer": 7100,
+     "ask": 13500
+    },
+    {
+     "offer": 7800,
+     "ask": 12700
+    },
+    {
+     "offer": 8600,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -632,10 +1013,22 @@
    "persona": "bargain",
    "willingness": 12400,
    "rounds": [
-    { "offer": 8500, "ask": 14900 },
-    { "offer": 9400, "ask": 13500 },
-    { "offer": 10400, "ask": 12700 },
-    { "offer": 11400, "ask": 12000 }
+    {
+     "offer": 8500,
+     "ask": 14900
+    },
+    {
+     "offer": 9500,
+     "ask": 13500
+    },
+    {
+     "offer": 10500,
+     "ask": 12700
+    },
+    {
+     "offer": 11400,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -646,8 +1039,14 @@
    "persona": "bargain",
    "willingness": 12900,
    "rounds": [
-    { "offer": 9000, "ask": 14900 },
-    { "offer": 9900, "ask": 13500 }
+    {
+     "offer": 9000,
+     "ask": 14900
+    },
+    {
+     "offer": 10000,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -658,10 +1057,22 @@
    "persona": "bargain",
    "willingness": 12000,
    "rounds": [
-    { "offer": 9900, "ask": 14900 },
-    { "offer": 10400, "ask": 13500 },
-    { "offer": 10900, "ask": 12700 },
-    { "offer": 11400, "ask": 12000 }
+    {
+     "offer": 9900,
+     "ask": 14900
+    },
+    {
+     "offer": 10400,
+     "ask": 13500
+    },
+    {
+     "offer": 11000,
+     "ask": 12700
+    },
+    {
+     "offer": 11500,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -672,7 +1083,10 @@
    "persona": "loyal",
    "willingness": 15200,
    "rounds": [
-    { "offer": 13600, "ask": 14900 }
+    {
+     "offer": 13600,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -683,9 +1097,18 @@
    "persona": "budgeted",
    "willingness": 11700,
    "rounds": [
-    { "offer": 11700, "ask": 14900 },
-    { "offer": 11700, "ask": 13500 },
-    { "offer": 11700, "ask": 12700 }
+    {
+     "offer": 11700,
+     "ask": 14900
+    },
+    {
+     "offer": 11700,
+     "ask": 13500
+    },
+    {
+     "offer": 11700,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -695,9 +1118,18 @@
    "persona": "budgeted",
    "willingness": 12900,
    "rounds": [
-    { "offer": 11000, "ask": 14900 },
-    { "offer": 11600, "ask": 13500 },
-    { "offer": 12200, "ask": 12700 }
+    {
+     "offer": 11000,
+     "ask": 14900
+    },
+    {
+     "offer": 11600,
+     "ask": 13500
+    },
+    {
+     "offer": 12300,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -708,10 +1140,22 @@
    "persona": "lowballer",
    "willingness": 7600,
    "rounds": [
-    { "offer": 6500, "ask": 14900 },
-    { "offer": 6700, "ask": 13500 },
-    { "offer": 7000, "ask": 12700 },
-    { "offer": 7300, "ask": 12000 }
+    {
+     "offer": 6500,
+     "ask": 14900
+    },
+    {
+     "offer": 6800,
+     "ask": 13500
+    },
+    {
+     "offer": 7100,
+     "ask": 12700
+    },
+    {
+     "offer": 7300,
+     "ask": 12000
+    }
    ],
    "outcome": "walked"
   },
@@ -720,8 +1164,14 @@
    "persona": "budgeted",
    "willingness": 14300,
    "rounds": [
-    { "offer": 12100, "ask": 14900 },
-    { "offer": 12800, "ask": 13500 }
+    {
+     "offer": 12100,
+     "ask": 14900
+    },
+    {
+     "offer": 12800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -732,8 +1182,14 @@
    "persona": "budgeted",
    "willingness": 14000,
    "rounds": [
-    { "offer": 10600, "ask": 14900 },
-    { "offer": 11700, "ask": 13500 }
+    {
+     "offer": 10600,
+     "ask": 14900
+    },
+    {
+     "offer": 11700,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -744,9 +1200,18 @@
    "persona": "budgeted",
    "willingness": 13300,
    "rounds": [
-    { "offer": 11500, "ask": 14900 },
-    { "offer": 12100, "ask": 13500 },
-    { "offer": 12700, "ask": 12700 }
+    {
+     "offer": 11500,
+     "ask": 14900
+    },
+    {
+     "offer": 12100,
+     "ask": 13500
+    },
+    {
+     "offer": 12700,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -757,9 +1222,18 @@
    "persona": "budgeted",
    "willingness": 13000,
    "rounds": [
-    { "offer": 11400, "ask": 14900 },
-    { "offer": 11900, "ask": 13500 },
-    { "offer": 12400, "ask": 12700 }
+    {
+     "offer": 11400,
+     "ask": 14900
+    },
+    {
+     "offer": 11900,
+     "ask": 13500
+    },
+    {
+     "offer": 12500,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -770,10 +1244,22 @@
    "persona": "lowballer",
    "willingness": 7500,
    "rounds": [
-    { "offer": 6600, "ask": 14900 },
-    { "offer": 6800, "ask": 13500 },
-    { "offer": 7000, "ask": 12700 },
-    { "offer": 7200, "ask": 12000 }
+    {
+     "offer": 6600,
+     "ask": 14900
+    },
+    {
+     "offer": 6800,
+     "ask": 13500
+    },
+    {
+     "offer": 7100,
+     "ask": 12700
+    },
+    {
+     "offer": 7300,
+     "ask": 12000
+    }
    ],
    "outcome": "walked"
   },
@@ -782,10 +1268,22 @@
    "persona": "bargain",
    "willingness": 12500,
    "rounds": [
-    { "offer": 8600, "ask": 14900 },
-    { "offer": 9500, "ask": 13500 },
-    { "offer": 10500, "ask": 12700 },
-    { "offer": 11500, "ask": 12000 }
+    {
+     "offer": 8600,
+     "ask": 14900
+    },
+    {
+     "offer": 9600,
+     "ask": 13500
+    },
+    {
+     "offer": 10600,
+     "ask": 12700
+    },
+    {
+     "offer": 11500,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -796,9 +1294,18 @@
    "persona": "bargain",
    "willingness": 12600,
    "rounds": [
-    { "offer": 10300, "ask": 14900 },
-    { "offer": 10800, "ask": 13500 },
-    { "offer": 11400, "ask": 12700 }
+    {
+     "offer": 10300,
+     "ask": 14900
+    },
+    {
+     "offer": 10900,
+     "ask": 13500
+    },
+    {
+     "offer": 11500,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 14400,
@@ -809,10 +1316,22 @@
    "persona": "lowballer",
    "willingness": 9800,
    "rounds": [
-    { "offer": 7200, "ask": 14900 },
-    { "offer": 7800, "ask": 13500 },
-    { "offer": 8500, "ask": 12700 },
-    { "offer": 9100, "ask": 12000 }
+    {
+     "offer": 7200,
+     "ask": 14900
+    },
+    {
+     "offer": 7900,
+     "ask": 13500
+    },
+    {
+     "offer": 8500,
+     "ask": 12700
+    },
+    {
+     "offer": 9200,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -821,9 +1340,18 @@
    "persona": "budgeted",
    "willingness": 11800,
    "rounds": [
-    { "offer": 11700, "ask": 14900 },
-    { "offer": 11700, "ask": 13500 },
-    { "offer": 11700, "ask": 12700 }
+    {
+     "offer": 11700,
+     "ask": 14900
+    },
+    {
+     "offer": 11700,
+     "ask": 13500
+    },
+    {
+     "offer": 11800,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -833,9 +1361,18 @@
    "persona": "budgeted",
    "willingness": 12900,
    "rounds": [
-    { "offer": 11500, "ask": 14900 },
-    { "offer": 11900, "ask": 13500 },
-    { "offer": 12400, "ask": 12700 }
+    {
+     "offer": 11500,
+     "ask": 14900
+    },
+    {
+     "offer": 12000,
+     "ask": 13500
+    },
+    {
+     "offer": 12400,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -846,10 +1383,22 @@
    "persona": "bargain",
    "willingness": 10800,
    "rounds": [
-    { "offer": 9800, "ask": 14900 },
-    { "offer": 10000, "ask": 13500 },
-    { "offer": 10300, "ask": 12700 },
-    { "offer": 10500, "ask": 12000 }
+    {
+     "offer": 9800,
+     "ask": 14900
+    },
+    {
+     "offer": 10100,
+     "ask": 13500
+    },
+    {
+     "offer": 10300,
+     "ask": 12700
+    },
+    {
+     "offer": 10600,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -859,8 +1408,14 @@
    "persona": "budgeted",
    "willingness": 14400,
    "rounds": [
-    { "offer": 12300, "ask": 14900 },
-    { "offer": 13000, "ask": 13500 }
+    {
+     "offer": 12300,
+     "ask": 14900
+    },
+    {
+     "offer": 13000,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -871,8 +1426,14 @@
    "persona": "impatient",
    "willingness": 12700,
    "rounds": [
-    { "offer": 12700, "ask": 14900 },
-    { "offer": 12700, "ask": 13500 }
+    {
+     "offer": 12700,
+     "ask": 14900
+    },
+    {
+     "offer": 12700,
+     "ask": 13500
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -882,9 +1443,18 @@
    "persona": "budgeted",
    "willingness": 13200,
    "rounds": [
-    { "offer": 11500, "ask": 14900 },
-    { "offer": 12000, "ask": 13500 },
-    { "offer": 12600, "ask": 12700 }
+    {
+     "offer": 11500,
+     "ask": 14900
+    },
+    {
+     "offer": 12100,
+     "ask": 13500
+    },
+    {
+     "offer": 12600,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -895,9 +1465,18 @@
    "persona": "budgeted",
    "willingness": 13300,
    "rounds": [
-    { "offer": 11800, "ask": 14900 },
-    { "offer": 12300, "ask": 13500 },
-    { "offer": 12800, "ask": 12700 }
+    {
+     "offer": 11800,
+     "ask": 14900
+    },
+    {
+     "offer": 12300,
+     "ask": 13500
+    },
+    {
+     "offer": 12800,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12800,
@@ -908,8 +1487,14 @@
    "persona": "budgeted",
    "willingness": 13600,
    "rounds": [
-    { "offer": 12600, "ask": 14900 },
-    { "offer": 12900, "ask": 13500 }
+    {
+     "offer": 12600,
+     "ask": 14900
+    },
+    {
+     "offer": 12900,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -920,7 +1505,10 @@
    "persona": "impatient",
    "willingness": 15500,
    "rounds": [
-    { "offer": 13700, "ask": 14900 }
+    {
+     "offer": 13700,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -931,7 +1519,10 @@
    "persona": "impatient",
    "willingness": 15100,
    "rounds": [
-    { "offer": 12300, "ask": 14900 }
+    {
+     "offer": 12300,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -942,9 +1533,18 @@
    "persona": "bargain",
    "willingness": 13400,
    "rounds": [
-    { "offer": 8300, "ask": 14900 },
-    { "offer": 9500, "ask": 13500 },
-    { "offer": 10800, "ask": 12700 }
+    {
+     "offer": 8300,
+     "ask": 14900
+    },
+    {
+     "offer": 9600,
+     "ask": 13500
+    },
+    {
+     "offer": 10900,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -955,7 +1555,10 @@
    "persona": "impatient",
    "willingness": 15300,
    "rounds": [
-    { "offer": 13400, "ask": 14900 }
+    {
+     "offer": 13400,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -966,10 +1569,22 @@
    "persona": "bargain",
    "willingness": 11400,
    "rounds": [
-    { "offer": 10100, "ask": 14900 },
-    { "offer": 10400, "ask": 13500 },
-    { "offer": 10700, "ask": 12700 },
-    { "offer": 11000, "ask": 12000 }
+    {
+     "offer": 10100,
+     "ask": 14900
+    },
+    {
+     "offer": 10400,
+     "ask": 13500
+    },
+    {
+     "offer": 10800,
+     "ask": 12700
+    },
+    {
+     "offer": 11100,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -979,8 +1594,14 @@
    "persona": "budgeted",
    "willingness": 14400,
    "rounds": [
-    { "offer": 11900, "ask": 14900 },
-    { "offer": 12700, "ask": 13500 }
+    {
+     "offer": 11900,
+     "ask": 14900
+    },
+    {
+     "offer": 12700,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -991,9 +1612,18 @@
    "persona": "budgeted",
    "willingness": 12100,
    "rounds": [
-    { "offer": 11300, "ask": 14900 },
-    { "offer": 11500, "ask": 13500 },
-    { "offer": 11800, "ask": 12700 }
+    {
+     "offer": 11300,
+     "ask": 14900
+    },
+    {
+     "offer": 11600,
+     "ask": 13500
+    },
+    {
+     "offer": 11800,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1003,9 +1633,18 @@
    "persona": "budgeted",
    "willingness": 11800,
    "rounds": [
-    { "offer": 10700, "ask": 14900 },
-    { "offer": 11000, "ask": 13500 },
-    { "offer": 11400, "ask": 12700 }
+    {
+     "offer": 10700,
+     "ask": 14900
+    },
+    {
+     "offer": 11100,
+     "ask": 13500
+    },
+    {
+     "offer": 11400,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1015,8 +1654,14 @@
    "persona": "budgeted",
    "willingness": 13500,
    "rounds": [
-    { "offer": 11300, "ask": 14900 },
-    { "offer": 12000, "ask": 13500 }
+    {
+     "offer": 11300,
+     "ask": 14900
+    },
+    {
+     "offer": 12000,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1027,9 +1672,18 @@
    "persona": "bargain",
    "willingness": 13300,
    "rounds": [
-    { "offer": 9100, "ask": 14900 },
-    { "offer": 10100, "ask": 13500 },
-    { "offer": 11200, "ask": 12700 }
+    {
+     "offer": 9100,
+     "ask": 14900
+    },
+    {
+     "offer": 10200,
+     "ask": 13500
+    },
+    {
+     "offer": 11200,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -1040,10 +1694,22 @@
    "persona": "lowballer",
    "willingness": 10200,
    "rounds": [
-    { "offer": 4500, "ask": 14900 },
-    { "offer": 5900, "ask": 13500 },
-    { "offer": 7300, "ask": 12700 },
-    { "offer": 8700, "ask": 12000 }
+    {
+     "offer": 4500,
+     "ask": 14900
+    },
+    {
+     "offer": 5900,
+     "ask": 13500
+    },
+    {
+     "offer": 7400,
+     "ask": 12700
+    },
+    {
+     "offer": 8800,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -1052,8 +1718,14 @@
    "persona": "budgeted",
    "willingness": 14200,
    "rounds": [
-    { "offer": 11000, "ask": 14900 },
-    { "offer": 12000, "ask": 13500 }
+    {
+     "offer": 11000,
+     "ask": 14900
+    },
+    {
+     "offer": 12100,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1064,8 +1736,14 @@
    "persona": "budgeted",
    "willingness": 14300,
    "rounds": [
-    { "offer": 11500, "ask": 14900 },
-    { "offer": 12400, "ask": 13500 }
+    {
+     "offer": 11500,
+     "ask": 14900
+    },
+    {
+     "offer": 12400,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1076,7 +1754,10 @@
    "persona": "impatient",
    "willingness": 15200,
    "rounds": [
-    { "offer": 13300, "ask": 14900 }
+    {
+     "offer": 13300,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -1087,7 +1768,10 @@
    "persona": "loyal",
    "willingness": 15200,
    "rounds": [
-    { "offer": 14100, "ask": 14900 }
+    {
+     "offer": 14100,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -1098,9 +1782,18 @@
    "persona": "budgeted",
    "willingness": 12100,
    "rounds": [
-    { "offer": 11800, "ask": 14900 },
-    { "offer": 11900, "ask": 13500 },
-    { "offer": 12000, "ask": 12700 }
+    {
+     "offer": 11800,
+     "ask": 14900
+    },
+    {
+     "offer": 11900,
+     "ask": 13500
+    },
+    {
+     "offer": 12000,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1110,10 +1803,22 @@
    "persona": "bargain",
    "willingness": 12300,
    "rounds": [
-    { "offer": 10000, "ask": 14900 },
-    { "offer": 10500, "ask": 13500 },
-    { "offer": 11100, "ask": 12700 },
-    { "offer": 11700, "ask": 12000 }
+    {
+     "offer": 10000,
+     "ask": 14900
+    },
+    {
+     "offer": 10600,
+     "ask": 13500
+    },
+    {
+     "offer": 11200,
+     "ask": 12700
+    },
+    {
+     "offer": 11700,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -1124,7 +1829,10 @@
    "persona": "loyal",
    "willingness": 15500,
    "rounds": [
-    { "offer": 14600, "ask": 14900 }
+    {
+     "offer": 14600,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -1135,10 +1843,22 @@
    "persona": "lowballer",
    "willingness": 9600,
    "rounds": [
-    { "offer": 5000, "ask": 14900 },
-    { "offer": 6100, "ask": 13500 },
-    { "offer": 7300, "ask": 12700 },
-    { "offer": 8400, "ask": 12000 }
+    {
+     "offer": 5000,
+     "ask": 14900
+    },
+    {
+     "offer": 6200,
+     "ask": 13500
+    },
+    {
+     "offer": 7300,
+     "ask": 12700
+    },
+    {
+     "offer": 8500,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -1147,8 +1867,14 @@
    "persona": "loyal",
    "willingness": 14600,
    "rounds": [
-    { "offer": 14300, "ask": 14900 },
-    { "offer": 14400, "ask": 13500 }
+    {
+     "offer": 14300,
+     "ask": 14900
+    },
+    {
+     "offer": 14400,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 14400,
@@ -1159,12 +1885,21 @@
    "persona": "budgeted",
    "willingness": 13300,
    "rounds": [
-    { "offer": 11700, "ask": 14900 },
-    { "offer": 12200, "ask": 13500 },
-    { "offer": 12700, "ask": 12700 }
+    {
+     "offer": 11700,
+     "ask": 14900
+    },
+    {
+     "offer": 12200,
+     "ask": 13500
+    },
+    {
+     "offer": 12800,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
-   "agreed": 12700,
+   "agreed": 12800,
    "trade": "accepted"
   },
   {
@@ -1172,8 +1907,14 @@
    "persona": "budgeted",
    "willingness": 14300,
    "rounds": [
-    { "offer": 12200, "ask": 14900 },
-    { "offer": 12900, "ask": 13500 }
+    {
+     "offer": 12200,
+     "ask": 14900
+    },
+    {
+     "offer": 12900,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1184,9 +1925,18 @@
    "persona": "budgeted",
    "willingness": 11800,
    "rounds": [
-    { "offer": 10600, "ask": 14900 },
-    { "offer": 11000, "ask": 13500 },
-    { "offer": 11400, "ask": 12700 }
+    {
+     "offer": 10600,
+     "ask": 14900
+    },
+    {
+     "offer": 11000,
+     "ask": 13500
+    },
+    {
+     "offer": 11400,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1196,8 +1946,14 @@
    "persona": "impatient",
    "willingness": 12700,
    "rounds": [
-    { "offer": 12000, "ask": 14900 },
-    { "offer": 12300, "ask": 13500 }
+    {
+     "offer": 12000,
+     "ask": 14900
+    },
+    {
+     "offer": 12400,
+     "ask": 13500
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1207,10 +1963,22 @@
    "persona": "bargain",
    "willingness": 10600,
    "rounds": [
-    { "offer": 9900, "ask": 14900 },
-    { "offer": 10000, "ask": 13500 },
-    { "offer": 10200, "ask": 12700 },
-    { "offer": 10400, "ask": 12000 }
+    {
+     "offer": 9900,
+     "ask": 14900
+    },
+    {
+     "offer": 10100,
+     "ask": 13500
+    },
+    {
+     "offer": 10300,
+     "ask": 12700
+    },
+    {
+     "offer": 10400,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1220,9 +1988,18 @@
    "persona": "budgeted",
    "willingness": 11600,
    "rounds": [
-    { "offer": 11300, "ask": 14900 },
-    { "offer": 11400, "ask": 13500 },
-    { "offer": 11500, "ask": 12700 }
+    {
+     "offer": 11300,
+     "ask": 14900
+    },
+    {
+     "offer": 11400,
+     "ask": 13500
+    },
+    {
+     "offer": 11500,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1232,10 +2009,22 @@
    "persona": "bargain",
    "willingness": 11500,
    "rounds": [
-    { "offer": 8600, "ask": 14900 },
-    { "offer": 9300, "ask": 13500 },
-    { "offer": 10000, "ask": 12700 },
-    { "offer": 10700, "ask": 12000 }
+    {
+     "offer": 8600,
+     "ask": 14900
+    },
+    {
+     "offer": 9300,
+     "ask": 13500
+    },
+    {
+     "offer": 10100,
+     "ask": 12700
+    },
+    {
+     "offer": 10800,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1245,7 +2034,10 @@
    "persona": "loyal",
    "willingness": 15600,
    "rounds": [
-    { "offer": 13200, "ask": 14900 }
+    {
+     "offer": 13200,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -1256,10 +2048,22 @@
    "persona": "bargain",
    "willingness": 12200,
    "rounds": [
-    { "offer": 10100, "ask": 14900 },
-    { "offer": 10600, "ask": 13500 },
-    { "offer": 11100, "ask": 12700 },
-    { "offer": 11600, "ask": 12000 }
+    {
+     "offer": 10100,
+     "ask": 14900
+    },
+    {
+     "offer": 10600,
+     "ask": 13500
+    },
+    {
+     "offer": 11200,
+     "ask": 12700
+    },
+    {
+     "offer": 11700,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -1270,8 +2074,14 @@
    "persona": "budgeted",
    "willingness": 12900,
    "rounds": [
-    { "offer": 11700, "ask": 14900 },
-    { "offer": 12100, "ask": 13500 }
+    {
+     "offer": 11700,
+     "ask": 14900
+    },
+    {
+     "offer": 12100,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -1282,9 +2092,18 @@
    "persona": "bargain",
    "willingness": 12200,
    "rounds": [
-    { "offer": 8600, "ask": 14900 },
-    { "offer": 9500, "ask": 13500 },
-    { "offer": 10400, "ask": 12700 }
+    {
+     "offer": 8600,
+     "ask": 14900
+    },
+    {
+     "offer": 9500,
+     "ask": 13500
+    },
+    {
+     "offer": 10400,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 13700,
@@ -1295,9 +2114,18 @@
    "persona": "bargain",
    "willingness": 12500,
    "rounds": [
-    { "offer": 9800, "ask": 14900 },
-    { "offer": 10400, "ask": 13500 },
-    { "offer": 11100, "ask": 12700 }
+    {
+     "offer": 9800,
+     "ask": 14900
+    },
+    {
+     "offer": 10500,
+     "ask": 13500
+    },
+    {
+     "offer": 11200,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 14400,
@@ -1308,9 +2136,18 @@
    "persona": "bargain",
    "willingness": 13200,
    "rounds": [
-    { "offer": 10300, "ask": 14900 },
-    { "offer": 11000, "ask": 13500 },
-    { "offer": 11700, "ask": 12700 }
+    {
+     "offer": 10300,
+     "ask": 14900
+    },
+    {
+     "offer": 11000,
+     "ask": 13500
+    },
+    {
+     "offer": 11800,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -1321,23 +2158,44 @@
    "persona": "budgeted",
    "willingness": 13400,
    "rounds": [
-    { "offer": 11200, "ask": 14900 },
-    { "offer": 11900, "ask": 13500 },
-    { "offer": 12600, "ask": 12700 }
+    {
+     "offer": 11200,
+     "ask": 14900
+    },
+    {
+     "offer": 11900,
+     "ask": 13500
+    },
+    {
+     "offer": 12700,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
-   "trade": "held"
+   "trade": "accepted"
   },
   {
    "id": 106,
    "persona": "lowballer",
    "willingness": 11100,
    "rounds": [
-    { "offer": 7100, "ask": 14900 },
-    { "offer": 8100, "ask": 13500 },
-    { "offer": 9100, "ask": 12700 },
-    { "offer": 10100, "ask": 12000 }
+    {
+     "offer": 7100,
+     "ask": 14900
+    },
+    {
+     "offer": 8100,
+     "ask": 13500
+    },
+    {
+     "offer": 9100,
+     "ask": 12700
+    },
+    {
+     "offer": 10100,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1347,10 +2205,22 @@
    "persona": "lowballer",
    "willingness": 8700,
    "rounds": [
-    { "offer": 7200, "ask": 14900 },
-    { "offer": 7500, "ask": 13500 },
-    { "offer": 7900, "ask": 12700 },
-    { "offer": 8300, "ask": 12000 }
+    {
+     "offer": 7200,
+     "ask": 14900
+    },
+    {
+     "offer": 7600,
+     "ask": 13500
+    },
+    {
+     "offer": 8000,
+     "ask": 12700
+    },
+    {
+     "offer": 8300,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -1359,10 +2229,22 @@
    "persona": "lowballer",
    "willingness": 10900,
    "rounds": [
-    { "offer": 5200, "ask": 14900 },
-    { "offer": 6600, "ask": 13500 },
-    { "offer": 8000, "ask": 12700 },
-    { "offer": 9400, "ask": 12000 }
+    {
+     "offer": 5200,
+     "ask": 14900
+    },
+    {
+     "offer": 6600,
+     "ask": 13500
+    },
+    {
+     "offer": 8100,
+     "ask": 12700
+    },
+    {
+     "offer": 9500,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -1371,8 +2253,14 @@
    "persona": "impatient",
    "willingness": 13600,
    "rounds": [
-    { "offer": 13600, "ask": 14900 },
-    { "offer": 13600, "ask": 13500 }
+    {
+     "offer": 13600,
+     "ask": 14900
+    },
+    {
+     "offer": 13600,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13600,
@@ -1383,8 +2271,14 @@
    "persona": "budgeted",
    "willingness": 14500,
    "rounds": [
-    { "offer": 10500, "ask": 14900 },
-    { "offer": 11800, "ask": 13500 }
+    {
+     "offer": 10500,
+     "ask": 14900
+    },
+    {
+     "offer": 11800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1395,8 +2289,14 @@
    "persona": "budgeted",
    "willingness": 13400,
    "rounds": [
-    { "offer": 12600, "ask": 14900 },
-    { "offer": 12800, "ask": 13500 }
+    {
+     "offer": 12600,
+     "ask": 14900
+    },
+    {
+     "offer": 12900,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -1407,8 +2307,14 @@
    "persona": "budgeted",
    "willingness": 14500,
    "rounds": [
-    { "offer": 10900, "ask": 14900 },
-    { "offer": 12100, "ask": 13500 }
+    {
+     "offer": 10900,
+     "ask": 14900
+    },
+    {
+     "offer": 12100,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1419,9 +2325,18 @@
    "persona": "budgeted",
    "willingness": 12500,
    "rounds": [
-    { "offer": 11600, "ask": 14900 },
-    { "offer": 11900, "ask": 13500 },
-    { "offer": 12200, "ask": 12700 }
+    {
+     "offer": 11600,
+     "ask": 14900
+    },
+    {
+     "offer": 11900,
+     "ask": 13500
+    },
+    {
+     "offer": 12200,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 14400,
@@ -1432,10 +2347,22 @@
    "persona": "bargain",
    "willingness": 11100,
    "rounds": [
-    { "offer": 8800, "ask": 14900 },
-    { "offer": 9300, "ask": 13500 },
-    { "offer": 9900, "ask": 12700 },
-    { "offer": 10500, "ask": 12000 }
+    {
+     "offer": 8800,
+     "ask": 14900
+    },
+    {
+     "offer": 9400,
+     "ask": 13500
+    },
+    {
+     "offer": 10000,
+     "ask": 12700
+    },
+    {
+     "offer": 10500,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1445,10 +2372,22 @@
    "persona": "lowballer",
    "willingness": 9800,
    "rounds": [
-    { "offer": 5400, "ask": 14900 },
-    { "offer": 6500, "ask": 13500 },
-    { "offer": 7600, "ask": 12700 },
-    { "offer": 8700, "ask": 12000 }
+    {
+     "offer": 5400,
+     "ask": 14900
+    },
+    {
+     "offer": 6500,
+     "ask": 13500
+    },
+    {
+     "offer": 7600,
+     "ask": 12700
+    },
+    {
+     "offer": 8700,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -1457,8 +2396,14 @@
    "persona": "impatient",
    "willingness": 13800,
    "rounds": [
-    { "offer": 12900, "ask": 14900 },
-    { "offer": 13300, "ask": 13500 }
+    {
+     "offer": 12900,
+     "ask": 14900
+    },
+    {
+     "offer": 13400,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1469,11 +2414,17 @@
    "persona": "impatient",
    "willingness": 14400,
    "rounds": [
-    { "offer": 13900, "ask": 14900 },
-    { "offer": 14100, "ask": 13500 }
+    {
+     "offer": 13900,
+     "ask": 14900
+    },
+    {
+     "offer": 14200,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
-   "agreed": 14100,
+   "agreed": 14200,
    "trade": "accepted"
   },
   {
@@ -1481,10 +2432,22 @@
    "persona": "bargain",
    "willingness": 12000,
    "rounds": [
-    { "offer": 10200, "ask": 14900 },
-    { "offer": 10600, "ask": 13500 },
-    { "offer": 11100, "ask": 12700 },
-    { "offer": 11500, "ask": 12000 }
+    {
+     "offer": 10200,
+     "ask": 14900
+    },
+    {
+     "offer": 10700,
+     "ask": 13500
+    },
+    {
+     "offer": 11100,
+     "ask": 12700
+    },
+    {
+     "offer": 11600,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -1495,9 +2458,18 @@
    "persona": "bargain",
    "willingness": 13000,
    "rounds": [
-    { "offer": 9200, "ask": 14900 },
-    { "offer": 10100, "ask": 13500 },
-    { "offer": 11100, "ask": 12700 }
+    {
+     "offer": 9200,
+     "ask": 14900
+    },
+    {
+     "offer": 10200,
+     "ask": 13500
+    },
+    {
+     "offer": 11100,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -1508,9 +2480,18 @@
    "persona": "budgeted",
    "willingness": 13000,
    "rounds": [
-    { "offer": 11700, "ask": 14900 },
-    { "offer": 12100, "ask": 13500 },
-    { "offer": 12500, "ask": 12700 }
+    {
+     "offer": 11700,
+     "ask": 14900
+    },
+    {
+     "offer": 12100,
+     "ask": 13500
+    },
+    {
+     "offer": 12600,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -1521,8 +2502,14 @@
    "persona": "budgeted",
    "willingness": 13500,
    "rounds": [
-    { "offer": 11300, "ask": 14900 },
-    { "offer": 12000, "ask": 13500 }
+    {
+     "offer": 11300,
+     "ask": 14900
+    },
+    {
+     "offer": 12000,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1533,9 +2520,18 @@
    "persona": "budgeted",
    "willingness": 11600,
    "rounds": [
-    { "offer": 11600, "ask": 14900 },
-    { "offer": 11600, "ask": 13500 },
-    { "offer": 11600, "ask": 12700 }
+    {
+     "offer": 11600,
+     "ask": 14900
+    },
+    {
+     "offer": 11600,
+     "ask": 13500
+    },
+    {
+     "offer": 11600,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1545,9 +2541,18 @@
    "persona": "budgeted",
    "willingness": 12600,
    "rounds": [
-    { "offer": 10500, "ask": 14900 },
-    { "offer": 11200, "ask": 13500 },
-    { "offer": 11900, "ask": 12700 }
+    {
+     "offer": 10500,
+     "ask": 14900
+    },
+    {
+     "offer": 11200,
+     "ask": 13500
+    },
+    {
+     "offer": 11900,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 14400,
@@ -1558,9 +2563,18 @@
    "persona": "bargain",
    "willingness": 12400,
    "rounds": [
-    { "offer": 8800, "ask": 14900 },
-    { "offer": 9700, "ask": 13500 },
-    { "offer": 10600, "ask": 12700 }
+    {
+     "offer": 8800,
+     "ask": 14900
+    },
+    {
+     "offer": 9700,
+     "ask": 13500
+    },
+    {
+     "offer": 10600,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 14400,
@@ -1571,7 +2585,10 @@
    "persona": "loyal",
    "willingness": 15200,
    "rounds": [
-    { "offer": 14400, "ask": 14900 }
+    {
+     "offer": 14400,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -1582,8 +2599,14 @@
    "persona": "budgeted",
    "willingness": 13700,
    "rounds": [
-    { "offer": 10900, "ask": 14900 },
-    { "offer": 11800, "ask": 13500 }
+    {
+     "offer": 10900,
+     "ask": 14900
+    },
+    {
+     "offer": 11800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1594,8 +2617,14 @@
    "persona": "budgeted",
    "willingness": 13500,
    "rounds": [
-    { "offer": 11200, "ask": 14900 },
-    { "offer": 11900, "ask": 13500 }
+    {
+     "offer": 11200,
+     "ask": 14900
+    },
+    {
+     "offer": 12000,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1606,8 +2635,14 @@
    "persona": "budgeted",
    "willingness": 13500,
    "rounds": [
-    { "offer": 11500, "ask": 14900 },
-    { "offer": 12100, "ask": 13500 }
+    {
+     "offer": 11500,
+     "ask": 14900
+    },
+    {
+     "offer": 12200,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1618,10 +2653,22 @@
    "persona": "bargain",
    "willingness": 10700,
    "rounds": [
-    { "offer": 8600, "ask": 14900 },
-    { "offer": 9100, "ask": 13500 },
-    { "offer": 9600, "ask": 12700 },
-    { "offer": 10100, "ask": 12000 }
+    {
+     "offer": 8600,
+     "ask": 14900
+    },
+    {
+     "offer": 9100,
+     "ask": 13500
+    },
+    {
+     "offer": 9700,
+     "ask": 12700
+    },
+    {
+     "offer": 10200,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1631,9 +2678,18 @@
    "persona": "bargain",
    "willingness": 13100,
    "rounds": [
-    { "offer": 10100, "ask": 14900 },
-    { "offer": 10800, "ask": 13500 },
-    { "offer": 11600, "ask": 12700 }
+    {
+     "offer": 10100,
+     "ask": 14900
+    },
+    {
+     "offer": 10900,
+     "ask": 13500
+    },
+    {
+     "offer": 11600,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -1644,8 +2700,14 @@
    "persona": "impatient",
    "willingness": 14100,
    "rounds": [
-    { "offer": 12300, "ask": 14900 },
-    { "offer": 13200, "ask": 13500 }
+    {
+     "offer": 12300,
+     "ask": 14900
+    },
+    {
+     "offer": 13200,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1656,10 +2718,22 @@
    "persona": "bargain",
    "willingness": 12300,
    "rounds": [
-    { "offer": 9900, "ask": 14900 },
-    { "offer": 10500, "ask": 13500 },
-    { "offer": 11100, "ask": 12700 },
-    { "offer": 11700, "ask": 12000 }
+    {
+     "offer": 9900,
+     "ask": 14900
+    },
+    {
+     "offer": 10500,
+     "ask": 13500
+    },
+    {
+     "offer": 11100,
+     "ask": 12700
+    },
+    {
+     "offer": 11700,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -1670,10 +2744,22 @@
    "persona": "bargain",
    "willingness": 11600,
    "rounds": [
-    { "offer": 9000, "ask": 14900 },
-    { "offer": 9600, "ask": 13500 },
-    { "offer": 10300, "ask": 12700 },
-    { "offer": 10900, "ask": 12000 }
+    {
+     "offer": 9000,
+     "ask": 14900
+    },
+    {
+     "offer": 9700,
+     "ask": 13500
+    },
+    {
+     "offer": 10300,
+     "ask": 12700
+    },
+    {
+     "offer": 11000,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1683,8 +2769,14 @@
    "persona": "budgeted",
    "willingness": 14300,
    "rounds": [
-    { "offer": 11700, "ask": 14900 },
-    { "offer": 12500, "ask": 13500 }
+    {
+     "offer": 11700,
+     "ask": 14900
+    },
+    {
+     "offer": 12600,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1695,10 +2787,22 @@
    "persona": "lowballer",
    "willingness": 7600,
    "rounds": [
-    { "offer": 7000, "ask": 14900 },
-    { "offer": 7100, "ask": 13500 },
-    { "offer": 7300, "ask": 12700 },
-    { "offer": 7400, "ask": 12000 }
+    {
+     "offer": 7000,
+     "ask": 14900
+    },
+    {
+     "offer": 7200,
+     "ask": 13500
+    },
+    {
+     "offer": 7300,
+     "ask": 12700
+    },
+    {
+     "offer": 7500,
+     "ask": 12000
+    }
    ],
    "outcome": "walked"
   },
@@ -1707,20 +2811,32 @@
    "persona": "budgeted",
    "willingness": 13200,
    "rounds": [
-    { "offer": 11600, "ask": 14900 },
-    { "offer": 12100, "ask": 13500 },
-    { "offer": 12600, "ask": 12700 }
+    {
+     "offer": 11600,
+     "ask": 14900
+    },
+    {
+     "offer": 12100,
+     "ask": 13500
+    },
+    {
+     "offer": 12700,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
-   "trade": "held"
+   "trade": "accepted"
   },
   {
    "id": 137,
    "persona": "impatient",
    "willingness": 15600,
    "rounds": [
-    { "offer": 13100, "ask": 14900 }
+    {
+     "offer": 13100,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -1731,10 +2847,22 @@
    "persona": "bargain",
    "willingness": 12000,
    "rounds": [
-    { "offer": 10200, "ask": 14900 },
-    { "offer": 10600, "ask": 13500 },
-    { "offer": 11100, "ask": 12700 },
-    { "offer": 11500, "ask": 12000 }
+    {
+     "offer": 10200,
+     "ask": 14900
+    },
+    {
+     "offer": 10700,
+     "ask": 13500
+    },
+    {
+     "offer": 11100,
+     "ask": 12700
+    },
+    {
+     "offer": 11600,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -1745,10 +2873,22 @@
    "persona": "bargain",
    "willingness": 10700,
    "rounds": [
-    { "offer": 8700, "ask": 14900 },
-    { "offer": 9200, "ask": 13500 },
-    { "offer": 9700, "ask": 12700 },
-    { "offer": 10200, "ask": 12000 }
+    {
+     "offer": 8700,
+     "ask": 14900
+    },
+    {
+     "offer": 9200,
+     "ask": 13500
+    },
+    {
+     "offer": 9700,
+     "ask": 12700
+    },
+    {
+     "offer": 10200,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1758,9 +2898,18 @@
    "persona": "budgeted",
    "willingness": 12800,
    "rounds": [
-    { "offer": 12000, "ask": 14900 },
-    { "offer": 12200, "ask": 13500 },
-    { "offer": 12500, "ask": 12700 }
+    {
+     "offer": 12000,
+     "ask": 14900
+    },
+    {
+     "offer": 12300,
+     "ask": 13500
+    },
+    {
+     "offer": 12500,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -1771,8 +2920,14 @@
    "persona": "budgeted",
    "willingness": 12900,
    "rounds": [
-    { "offer": 11200, "ask": 14900 },
-    { "offer": 11700, "ask": 13500 }
+    {
+     "offer": 11200,
+     "ask": 14900
+    },
+    {
+     "offer": 11800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -1783,10 +2938,22 @@
    "persona": "bargain",
    "willingness": 11400,
    "rounds": [
-    { "offer": 9600, "ask": 14900 },
-    { "offer": 10000, "ask": 13500 },
-    { "offer": 10500, "ask": 12700 },
-    { "offer": 10900, "ask": 12000 }
+    {
+     "offer": 9600,
+     "ask": 14900
+    },
+    {
+     "offer": 10100,
+     "ask": 13500
+    },
+    {
+     "offer": 10500,
+     "ask": 12700
+    },
+    {
+     "offer": 11000,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1796,8 +2963,14 @@
    "persona": "budgeted",
    "willingness": 14200,
    "rounds": [
-    { "offer": 11000, "ask": 14900 },
-    { "offer": 12000, "ask": 13500 }
+    {
+     "offer": 11000,
+     "ask": 14900
+    },
+    {
+     "offer": 12100,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1808,7 +2981,10 @@
    "persona": "loyal",
    "willingness": 15300,
    "rounds": [
-    { "offer": 14000, "ask": 14900 }
+    {
+     "offer": 14000,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -1819,8 +2995,14 @@
    "persona": "impatient",
    "willingness": 14400,
    "rounds": [
-    { "offer": 12800, "ask": 14900 },
-    { "offer": 13600, "ask": 13500 }
+    {
+     "offer": 12800,
+     "ask": 14900
+    },
+    {
+     "offer": 13600,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13600,
@@ -1831,8 +3013,14 @@
    "persona": "impatient",
    "willingness": 13300,
    "rounds": [
-    { "offer": 12900, "ask": 14900 },
-    { "offer": 13100, "ask": 13500 }
+    {
+     "offer": 12900,
+     "ask": 14900
+    },
+    {
+     "offer": 13100,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -1843,10 +3031,22 @@
    "persona": "bargain",
    "willingness": 10900,
    "rounds": [
-    { "offer": 8300, "ask": 14900 },
-    { "offer": 8900, "ask": 13500 },
-    { "offer": 9600, "ask": 12700 },
-    { "offer": 10200, "ask": 12000 }
+    {
+     "offer": 8300,
+     "ask": 14900
+    },
+    {
+     "offer": 9000,
+     "ask": 13500
+    },
+    {
+     "offer": 9600,
+     "ask": 12700
+    },
+    {
+     "offer": 10300,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1856,7 +3056,10 @@
    "persona": "loyal",
    "willingness": 14900,
    "rounds": [
-    { "offer": 14500, "ask": 14900 }
+    {
+     "offer": 14500,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -1867,8 +3070,14 @@
    "persona": "impatient",
    "willingness": 14000,
    "rounds": [
-    { "offer": 12800, "ask": 14900 },
-    { "offer": 13400, "ask": 13500 }
+    {
+     "offer": 12800,
+     "ask": 14900
+    },
+    {
+     "offer": 13400,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1879,10 +3088,22 @@
    "persona": "lowballer",
    "willingness": 10200,
    "rounds": [
-    { "offer": 5800, "ask": 14900 },
-    { "offer": 6900, "ask": 13500 },
-    { "offer": 8000, "ask": 12700 },
-    { "offer": 9100, "ask": 12000 }
+    {
+     "offer": 5800,
+     "ask": 14900
+    },
+    {
+     "offer": 6900,
+     "ask": 13500
+    },
+    {
+     "offer": 8000,
+     "ask": 12700
+    },
+    {
+     "offer": 9100,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -1891,10 +3112,22 @@
    "persona": "lowballer",
    "willingness": 10200,
    "rounds": [
-    { "offer": 5300, "ask": 14900 },
-    { "offer": 6500, "ask": 13500 },
-    { "offer": 7700, "ask": 12700 },
-    { "offer": 8900, "ask": 12000 }
+    {
+     "offer": 5300,
+     "ask": 14900
+    },
+    {
+     "offer": 6500,
+     "ask": 13500
+    },
+    {
+     "offer": 7800,
+     "ask": 12700
+    },
+    {
+     "offer": 9000,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -1903,9 +3136,18 @@
    "persona": "budgeted",
    "willingness": 12400,
    "rounds": [
-    { "offer": 10700, "ask": 14900 },
-    { "offer": 11200, "ask": 13500 },
-    { "offer": 11800, "ask": 12700 }
+    {
+     "offer": 10700,
+     "ask": 14900
+    },
+    {
+     "offer": 11300,
+     "ask": 13500
+    },
+    {
+     "offer": 11800,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1915,7 +3157,10 @@
    "persona": "loyal",
    "willingness": 15000,
    "rounds": [
-    { "offer": 13300, "ask": 14900 }
+    {
+     "offer": 13300,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -1926,8 +3171,14 @@
    "persona": "impatient",
    "willingness": 12800,
    "rounds": [
-    { "offer": 12800, "ask": 14900 },
-    { "offer": 12800, "ask": 13500 }
+    {
+     "offer": 12800,
+     "ask": 14900
+    },
+    {
+     "offer": 12800,
+     "ask": 13500
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1937,10 +3188,22 @@
    "persona": "bargain",
    "willingness": 10600,
    "rounds": [
-    { "offer": 9600, "ask": 14900 },
-    { "offer": 9800, "ask": 13500 },
-    { "offer": 10100, "ask": 12700 },
-    { "offer": 10300, "ask": 12000 }
+    {
+     "offer": 9600,
+     "ask": 14900
+    },
+    {
+     "offer": 9900,
+     "ask": 13500
+    },
+    {
+     "offer": 10100,
+     "ask": 12700
+    },
+    {
+     "offer": 10400,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1950,8 +3213,14 @@
    "persona": "impatient",
    "willingness": 13200,
    "rounds": [
-    { "offer": 13200, "ask": 14900 },
-    { "offer": 13200, "ask": 13500 }
+    {
+     "offer": 13200,
+     "ask": 14900
+    },
+    {
+     "offer": 13200,
+     "ask": 13500
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -1961,9 +3230,18 @@
    "persona": "bargain",
    "willingness": 13300,
    "rounds": [
-    { "offer": 9200, "ask": 14900 },
-    { "offer": 10200, "ask": 13500 },
-    { "offer": 11200, "ask": 12700 }
+    {
+     "offer": 9200,
+     "ask": 14900
+    },
+    {
+     "offer": 10200,
+     "ask": 13500
+    },
+    {
+     "offer": 11300,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -1974,10 +3252,22 @@
    "persona": "lowballer",
    "willingness": 7500,
    "rounds": [
-    { "offer": 5600, "ask": 14900 },
-    { "offer": 6000, "ask": 13500 },
-    { "offer": 6500, "ask": 12700 },
-    { "offer": 7000, "ask": 12000 }
+    {
+     "offer": 5600,
+     "ask": 14900
+    },
+    {
+     "offer": 6100,
+     "ask": 13500
+    },
+    {
+     "offer": 6600,
+     "ask": 12700
+    },
+    {
+     "offer": 7000,
+     "ask": 12000
+    }
    ],
    "outcome": "walked"
   },
@@ -1986,8 +3276,14 @@
    "persona": "impatient",
    "willingness": 13800,
    "rounds": [
-    { "offer": 13000, "ask": 14900 },
-    { "offer": 13400, "ask": 13500 }
+    {
+     "offer": 13000,
+     "ask": 14900
+    },
+    {
+     "offer": 13400,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -1998,8 +3294,14 @@
    "persona": "impatient",
    "willingness": 12700,
    "rounds": [
-    { "offer": 12700, "ask": 14900 },
-    { "offer": 12700, "ask": 13500 }
+    {
+     "offer": 12700,
+     "ask": 14900
+    },
+    {
+     "offer": 12700,
+     "ask": 13500
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2009,9 +3311,18 @@
    "persona": "budgeted",
    "willingness": 12300,
    "rounds": [
-    { "offer": 10700, "ask": 14900 },
-    { "offer": 11200, "ask": 13500 },
-    { "offer": 11700, "ask": 12700 }
+    {
+     "offer": 10700,
+     "ask": 14900
+    },
+    {
+     "offer": 11200,
+     "ask": 13500
+    },
+    {
+     "offer": 11800,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 14400,
@@ -2022,8 +3333,14 @@
    "persona": "budgeted",
    "willingness": 13700,
    "rounds": [
-    { "offer": 12200, "ask": 14900 },
-    { "offer": 12700, "ask": 13500 }
+    {
+     "offer": 12200,
+     "ask": 14900
+    },
+    {
+     "offer": 12700,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2034,8 +3351,14 @@
    "persona": "budgeted",
    "willingness": 14200,
    "rounds": [
-    { "offer": 12400, "ask": 14900 },
-    { "offer": 13000, "ask": 13500 }
+    {
+     "offer": 12400,
+     "ask": 14900
+    },
+    {
+     "offer": 13000,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2046,8 +3369,14 @@
    "persona": "budgeted",
    "willingness": 13700,
    "rounds": [
-    { "offer": 11600, "ask": 14900 },
-    { "offer": 12300, "ask": 13500 }
+    {
+     "offer": 11600,
+     "ask": 14900
+    },
+    {
+     "offer": 12300,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2058,10 +3387,22 @@
    "persona": "bargain",
    "willingness": 11100,
    "rounds": [
-    { "offer": 8200, "ask": 14900 },
-    { "offer": 8900, "ask": 13500 },
-    { "offer": 9600, "ask": 12700 },
-    { "offer": 10300, "ask": 12000 }
+    {
+     "offer": 8200,
+     "ask": 14900
+    },
+    {
+     "offer": 8900,
+     "ask": 13500
+    },
+    {
+     "offer": 9700,
+     "ask": 12700
+    },
+    {
+     "offer": 10400,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2071,8 +3412,14 @@
    "persona": "bargain",
    "willingness": 13100,
    "rounds": [
-    { "offer": 10300, "ask": 14900 },
-    { "offer": 11000, "ask": 13500 }
+    {
+     "offer": 10300,
+     "ask": 14900
+    },
+    {
+     "offer": 11000,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -2083,11 +3430,17 @@
    "persona": "loyal",
    "willingness": 14500,
    "rounds": [
-    { "offer": 13100, "ask": 14900 },
-    { "offer": 13500, "ask": 13500 }
+    {
+     "offer": 13100,
+     "ask": 14900
+    },
+    {
+     "offer": 13600,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
-   "agreed": 13500,
+   "agreed": 13600,
    "trade": "accepted"
   },
   {
@@ -2095,9 +3448,18 @@
    "persona": "bargain",
    "willingness": 12400,
    "rounds": [
-    { "offer": 9600, "ask": 14900 },
-    { "offer": 10300, "ask": 13500 },
-    { "offer": 11000, "ask": 12700 }
+    {
+     "offer": 9600,
+     "ask": 14900
+    },
+    {
+     "offer": 10300,
+     "ask": 13500
+    },
+    {
+     "offer": 11000,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 14400,
@@ -2108,8 +3470,14 @@
    "persona": "budgeted",
    "willingness": 13500,
    "rounds": [
-    { "offer": 12000, "ask": 14900 },
-    { "offer": 12500, "ask": 13500 }
+    {
+     "offer": 12000,
+     "ask": 14900
+    },
+    {
+     "offer": 12500,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2120,8 +3488,14 @@
    "persona": "loyal",
    "willingness": 14200,
    "rounds": [
-    { "offer": 14200, "ask": 14900 },
-    { "offer": 14200, "ask": 13500 }
+    {
+     "offer": 14200,
+     "ask": 14900
+    },
+    {
+     "offer": 14200,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 14200,
@@ -2132,10 +3506,22 @@
    "persona": "lowballer",
    "willingness": 9400,
    "rounds": [
-    { "offer": 5600, "ask": 14900 },
-    { "offer": 6500, "ask": 13500 },
-    { "offer": 7500, "ask": 12700 },
-    { "offer": 8400, "ask": 12000 }
+    {
+     "offer": 5600,
+     "ask": 14900
+    },
+    {
+     "offer": 6600,
+     "ask": 13500
+    },
+    {
+     "offer": 7500,
+     "ask": 12700
+    },
+    {
+     "offer": 8500,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -2144,9 +3530,18 @@
    "persona": "budgeted",
    "willingness": 12400,
    "rounds": [
-    { "offer": 12400, "ask": 14900 },
-    { "offer": 12400, "ask": 13500 },
-    { "offer": 12400, "ask": 12700 }
+    {
+     "offer": 12400,
+     "ask": 14900
+    },
+    {
+     "offer": 12400,
+     "ask": 13500
+    },
+    {
+     "offer": 12400,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2156,7 +3551,10 @@
    "persona": "loyal",
    "willingness": 15400,
    "rounds": [
-    { "offer": 13500, "ask": 14900 }
+    {
+     "offer": 13500,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -2167,8 +3565,14 @@
    "persona": "budgeted",
    "willingness": 14000,
    "rounds": [
-    { "offer": 10500, "ask": 14900 },
-    { "offer": 11600, "ask": 13500 }
+    {
+     "offer": 10500,
+     "ask": 14900
+    },
+    {
+     "offer": 11700,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2179,10 +3583,22 @@
    "persona": "bargain",
    "willingness": 11400,
    "rounds": [
-    { "offer": 10300, "ask": 14900 },
-    { "offer": 10500, "ask": 13500 },
-    { "offer": 10800, "ask": 12700 },
-    { "offer": 11100, "ask": 12000 }
+    {
+     "offer": 10300,
+     "ask": 14900
+    },
+    {
+     "offer": 10600,
+     "ask": 13500
+    },
+    {
+     "offer": 10900,
+     "ask": 12700
+    },
+    {
+     "offer": 11100,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2192,8 +3608,14 @@
    "persona": "budgeted",
    "willingness": 13900,
    "rounds": [
-    { "offer": 10800, "ask": 14900 },
-    { "offer": 11800, "ask": 13500 }
+    {
+     "offer": 10800,
+     "ask": 14900
+    },
+    {
+     "offer": 11800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2204,8 +3626,14 @@
    "persona": "loyal",
    "willingness": 14800,
    "rounds": [
-    { "offer": 13200, "ask": 14900 },
-    { "offer": 13700, "ask": 13500 }
+    {
+     "offer": 13200,
+     "ask": 14900
+    },
+    {
+     "offer": 13700,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13700,
@@ -2216,8 +3644,14 @@
    "persona": "impatient",
    "willingness": 14300,
    "rounds": [
-    { "offer": 13300, "ask": 14900 },
-    { "offer": 13800, "ask": 13500 }
+    {
+     "offer": 13300,
+     "ask": 14900
+    },
+    {
+     "offer": 13800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13800,
@@ -2228,9 +3662,18 @@
    "persona": "budgeted",
    "willingness": 13400,
    "rounds": [
-    { "offer": 10600, "ask": 14900 },
-    { "offer": 11500, "ask": 13500 },
-    { "offer": 12400, "ask": 12700 }
+    {
+     "offer": 10600,
+     "ask": 14900
+    },
+    {
+     "offer": 11500,
+     "ask": 13500
+    },
+    {
+     "offer": 12500,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -2241,10 +3684,22 @@
    "persona": "lowballer",
    "willingness": 10000,
    "rounds": [
-    { "offer": 6300, "ask": 14900 },
-    { "offer": 7200, "ask": 13500 },
-    { "offer": 8100, "ask": 12700 },
-    { "offer": 9000, "ask": 12000 }
+    {
+     "offer": 6300,
+     "ask": 14900
+    },
+    {
+     "offer": 7200,
+     "ask": 13500
+    },
+    {
+     "offer": 8200,
+     "ask": 12700
+    },
+    {
+     "offer": 9100,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -2253,9 +3708,18 @@
    "persona": "bargain",
    "willingness": 12800,
    "rounds": [
-    { "offer": 8700, "ask": 14900 },
-    { "offer": 9700, "ask": 13500 },
-    { "offer": 10700, "ask": 12700 }
+    {
+     "offer": 8700,
+     "ask": 14900
+    },
+    {
+     "offer": 9700,
+     "ask": 13500
+    },
+    {
+     "offer": 10800,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -2266,9 +3730,18 @@
    "persona": "budgeted",
    "willingness": 11900,
    "rounds": [
-    { "offer": 11900, "ask": 14900 },
-    { "offer": 11900, "ask": 13500 },
-    { "offer": 11900, "ask": 12700 }
+    {
+     "offer": 11900,
+     "ask": 14900
+    },
+    {
+     "offer": 11900,
+     "ask": 13500
+    },
+    {
+     "offer": 11900,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2278,10 +3751,22 @@
    "persona": "bargain",
    "willingness": 11100,
    "rounds": [
-    { "offer": 9600, "ask": 14900 },
-    { "offer": 9900, "ask": 13500 },
-    { "offer": 10300, "ask": 12700 },
-    { "offer": 10700, "ask": 12000 }
+    {
+     "offer": 9600,
+     "ask": 14900
+    },
+    {
+     "offer": 10000,
+     "ask": 13500
+    },
+    {
+     "offer": 10400,
+     "ask": 12700
+    },
+    {
+     "offer": 10700,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2291,10 +3776,22 @@
    "persona": "lowballer",
    "willingness": 9500,
    "rounds": [
-    { "offer": 5700, "ask": 14900 },
-    { "offer": 6600, "ask": 13500 },
-    { "offer": 7600, "ask": 12700 },
-    { "offer": 8500, "ask": 12000 }
+    {
+     "offer": 5700,
+     "ask": 14900
+    },
+    {
+     "offer": 6700,
+     "ask": 13500
+    },
+    {
+     "offer": 7600,
+     "ask": 12700
+    },
+    {
+     "offer": 8600,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -2303,9 +3800,18 @@
    "persona": "budgeted",
    "willingness": 12700,
    "rounds": [
-    { "offer": 11400, "ask": 14900 },
-    { "offer": 11800, "ask": 13500 },
-    { "offer": 12200, "ask": 12700 }
+    {
+     "offer": 11400,
+     "ask": 14900
+    },
+    {
+     "offer": 11800,
+     "ask": 13500
+    },
+    {
+     "offer": 12300,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -2316,10 +3822,22 @@
    "persona": "bargain",
    "willingness": 10700,
    "rounds": [
-    { "offer": 9600, "ask": 14900 },
-    { "offer": 9800, "ask": 13500 },
-    { "offer": 10100, "ask": 12700 },
-    { "offer": 10400, "ask": 12000 }
+    {
+     "offer": 9600,
+     "ask": 14900
+    },
+    {
+     "offer": 9900,
+     "ask": 13500
+    },
+    {
+     "offer": 10200,
+     "ask": 12700
+    },
+    {
+     "offer": 10400,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2329,8 +3847,14 @@
    "persona": "budgeted",
    "willingness": 13600,
    "rounds": [
-    { "offer": 12400, "ask": 14900 },
-    { "offer": 12800, "ask": 13500 }
+    {
+     "offer": 12400,
+     "ask": 14900
+    },
+    {
+     "offer": 12800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2341,8 +3865,14 @@
    "persona": "impatient",
    "willingness": 14100,
    "rounds": [
-    { "offer": 13700, "ask": 14900 },
-    { "offer": 13900, "ask": 13500 }
+    {
+     "offer": 13700,
+     "ask": 14900
+    },
+    {
+     "offer": 13900,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13900,
@@ -2353,10 +3883,22 @@
    "persona": "bargain",
    "willingness": 11800,
    "rounds": [
-    { "offer": 9700, "ask": 14900 },
-    { "offer": 10200, "ask": 13500 },
-    { "offer": 10700, "ask": 12700 },
-    { "offer": 11200, "ask": 12000 }
+    {
+     "offer": 9700,
+     "ask": 14900
+    },
+    {
+     "offer": 10200,
+     "ask": 13500
+    },
+    {
+     "offer": 10800,
+     "ask": 12700
+    },
+    {
+     "offer": 11300,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2366,8 +3908,14 @@
    "persona": "impatient",
    "willingness": 13200,
    "rounds": [
-    { "offer": 13200, "ask": 14900 },
-    { "offer": 13200, "ask": 13500 }
+    {
+     "offer": 13200,
+     "ask": 14900
+    },
+    {
+     "offer": 13200,
+     "ask": 13500
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2377,12 +3925,21 @@
    "persona": "budgeted",
    "willingness": 12900,
    "rounds": [
-    { "offer": 12500, "ask": 14900 },
-    { "offer": 12600, "ask": 13500 },
-    { "offer": 12700, "ask": 12700 }
+    {
+     "offer": 12500,
+     "ask": 14900
+    },
+    {
+     "offer": 12600,
+     "ask": 13500
+    },
+    {
+     "offer": 12800,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
-   "agreed": 12700,
+   "agreed": 12800,
    "trade": "accepted"
   },
   {
@@ -2390,10 +3947,22 @@
    "persona": "bargain",
    "willingness": 10700,
    "rounds": [
-    { "offer": 9300, "ask": 14900 },
-    { "offer": 9600, "ask": 13500 },
-    { "offer": 10000, "ask": 12700 },
-    { "offer": 10300, "ask": 12000 }
+    {
+     "offer": 9300,
+     "ask": 14900
+    },
+    {
+     "offer": 9700,
+     "ask": 13500
+    },
+    {
+     "offer": 10000,
+     "ask": 12700
+    },
+    {
+     "offer": 10400,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2403,10 +3972,22 @@
    "persona": "bargain",
    "willingness": 11200,
    "rounds": [
-    { "offer": 9300, "ask": 14900 },
-    { "offer": 9700, "ask": 13500 },
-    { "offer": 10200, "ask": 12700 },
-    { "offer": 10700, "ask": 12000 }
+    {
+     "offer": 9300,
+     "ask": 14900
+    },
+    {
+     "offer": 9800,
+     "ask": 13500
+    },
+    {
+     "offer": 10300,
+     "ask": 12700
+    },
+    {
+     "offer": 10700,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2416,10 +3997,22 @@
    "persona": "bargain",
    "willingness": 11500,
    "rounds": [
-    { "offer": 9800, "ask": 14900 },
-    { "offer": 10200, "ask": 13500 },
-    { "offer": 10600, "ask": 12700 },
-    { "offer": 11000, "ask": 12000 }
+    {
+     "offer": 9800,
+     "ask": 14900
+    },
+    {
+     "offer": 10200,
+     "ask": 13500
+    },
+    {
+     "offer": 10700,
+     "ask": 12700
+    },
+    {
+     "offer": 11100,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2429,8 +4022,14 @@
    "persona": "budgeted",
    "willingness": 14500,
    "rounds": [
-    { "offer": 10600, "ask": 14900 },
-    { "offer": 11900, "ask": 13500 }
+    {
+     "offer": 10600,
+     "ask": 14900
+    },
+    {
+     "offer": 11900,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2441,8 +4040,14 @@
    "persona": "budgeted",
    "willingness": 13800,
    "rounds": [
-    { "offer": 11500, "ask": 14900 },
-    { "offer": 12200, "ask": 13500 }
+    {
+     "offer": 11500,
+     "ask": 14900
+    },
+    {
+     "offer": 12300,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2453,10 +4058,22 @@
    "persona": "bargain",
    "willingness": 11200,
    "rounds": [
-    { "offer": 9000, "ask": 14900 },
-    { "offer": 9500, "ask": 13500 },
-    { "offer": 10100, "ask": 12700 },
-    { "offer": 10600, "ask": 12000 }
+    {
+     "offer": 9000,
+     "ask": 14900
+    },
+    {
+     "offer": 9600,
+     "ask": 13500
+    },
+    {
+     "offer": 10100,
+     "ask": 12700
+    },
+    {
+     "offer": 10700,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2466,9 +4083,18 @@
    "persona": "budgeted",
    "willingness": 12200,
    "rounds": [
-    { "offer": 10500, "ask": 14900 },
-    { "offer": 11000, "ask": 13500 },
-    { "offer": 11600, "ask": 12700 }
+    {
+     "offer": 10500,
+     "ask": 14900
+    },
+    {
+     "offer": 11100,
+     "ask": 13500
+    },
+    {
+     "offer": 11600,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2478,10 +4104,22 @@
    "persona": "bargain",
    "willingness": 10900,
    "rounds": [
-    { "offer": 8800, "ask": 14900 },
-    { "offer": 9300, "ask": 13500 },
-    { "offer": 9800, "ask": 12700 },
-    { "offer": 10300, "ask": 12000 }
+    {
+     "offer": 8800,
+     "ask": 14900
+    },
+    {
+     "offer": 9300,
+     "ask": 13500
+    },
+    {
+     "offer": 9900,
+     "ask": 12700
+    },
+    {
+     "offer": 10400,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2491,7 +4129,10 @@
    "persona": "loyal",
    "willingness": 15900,
    "rounds": [
-    { "offer": 13300, "ask": 14900 }
+    {
+     "offer": 13300,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -2502,8 +4143,14 @@
    "persona": "budgeted",
    "willingness": 13300,
    "rounds": [
-    { "offer": 11400, "ask": 14900 },
-    { "offer": 12000, "ask": 13500 }
+    {
+     "offer": 11400,
+     "ask": 14900
+    },
+    {
+     "offer": 12000,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -2514,8 +4161,14 @@
    "persona": "impatient",
    "willingness": 14600,
    "rounds": [
-    { "offer": 13200, "ask": 14900 },
-    { "offer": 13900, "ask": 13500 }
+    {
+     "offer": 13200,
+     "ask": 14900
+    },
+    {
+     "offer": 13900,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13900,
@@ -2526,10 +4179,22 @@
    "persona": "lowballer",
    "willingness": 10400,
    "rounds": [
-    { "offer": 7100, "ask": 14900 },
-    { "offer": 7900, "ask": 13500 },
-    { "offer": 8700, "ask": 12700 },
-    { "offer": 9500, "ask": 12000 }
+    {
+     "offer": 7100,
+     "ask": 14900
+    },
+    {
+     "offer": 7900,
+     "ask": 13500
+    },
+    {
+     "offer": 8800,
+     "ask": 12700
+    },
+    {
+     "offer": 9600,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -2538,8 +4203,14 @@
    "persona": "budgeted",
    "willingness": 13600,
    "rounds": [
-    { "offer": 11500, "ask": 14900 },
-    { "offer": 12200, "ask": 13500 }
+    {
+     "offer": 11500,
+     "ask": 14900
+    },
+    {
+     "offer": 12200,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2550,7 +4221,10 @@
    "persona": "loyal",
    "willingness": 15500,
    "rounds": [
-    { "offer": 14900, "ask": 14900 }
+    {
+     "offer": 14900,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -2561,9 +4235,18 @@
    "persona": "budgeted",
    "willingness": 12800,
    "rounds": [
-    { "offer": 11300, "ask": 14900 },
-    { "offer": 11800, "ask": 13500 },
-    { "offer": 12300, "ask": 12700 }
+    {
+     "offer": 11300,
+     "ask": 14900
+    },
+    {
+     "offer": 11800,
+     "ask": 13500
+    },
+    {
+     "offer": 12300,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -2574,9 +4257,18 @@
    "persona": "bargain",
    "willingness": 12500,
    "rounds": [
-    { "offer": 9000, "ask": 14900 },
-    { "offer": 9800, "ask": 13500 },
-    { "offer": 10700, "ask": 12700 }
+    {
+     "offer": 9000,
+     "ask": 14900
+    },
+    {
+     "offer": 9900,
+     "ask": 13500
+    },
+    {
+     "offer": 10800,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 14400,
@@ -2587,10 +4279,22 @@
    "persona": "bargain",
    "willingness": 12400,
    "rounds": [
-    { "offer": 10000, "ask": 14900 },
-    { "offer": 10600, "ask": 13500 },
-    { "offer": 11200, "ask": 12700 },
-    { "offer": 11800, "ask": 12000 }
+    {
+     "offer": 10000,
+     "ask": 14900
+    },
+    {
+     "offer": 10600,
+     "ask": 13500
+    },
+    {
+     "offer": 11200,
+     "ask": 12700
+    },
+    {
+     "offer": 11800,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -2601,8 +4305,14 @@
    "persona": "budgeted",
    "willingness": 14600,
    "rounds": [
-    { "offer": 12400, "ask": 14900 },
-    { "offer": 13100, "ask": 13500 }
+    {
+     "offer": 12400,
+     "ask": 14900
+    },
+    {
+     "offer": 13100,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2613,8 +4323,14 @@
    "persona": "budgeted",
    "willingness": 13400,
    "rounds": [
-    { "offer": 11600, "ask": 14900 },
-    { "offer": 12200, "ask": 13500 }
+    {
+     "offer": 11600,
+     "ask": 14900
+    },
+    {
+     "offer": 12200,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -2625,8 +4341,14 @@
    "persona": "budgeted",
    "willingness": 14200,
    "rounds": [
-    { "offer": 11000, "ask": 14900 },
-    { "offer": 12000, "ask": 13500 }
+    {
+     "offer": 11000,
+     "ask": 14900
+    },
+    {
+     "offer": 12100,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2637,8 +4359,14 @@
    "persona": "impatient",
    "willingness": 14500,
    "rounds": [
-    { "offer": 12000, "ask": 14900 },
-    { "offer": 13200, "ask": 13500 }
+    {
+     "offer": 12000,
+     "ask": 14900
+    },
+    {
+     "offer": 13300,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2649,8 +4377,14 @@
    "persona": "budgeted",
    "willingness": 13800,
    "rounds": [
-    { "offer": 10800, "ask": 14900 },
-    { "offer": 11800, "ask": 13500 }
+    {
+     "offer": 10800,
+     "ask": 14900
+    },
+    {
+     "offer": 11800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2661,10 +4395,22 @@
    "persona": "lowballer",
    "willingness": 8100,
    "rounds": [
-    { "offer": 5600, "ask": 14900 },
-    { "offer": 6200, "ask": 13500 },
-    { "offer": 6800, "ask": 12700 },
-    { "offer": 7400, "ask": 12000 }
+    {
+     "offer": 5600,
+     "ask": 14900
+    },
+    {
+     "offer": 6200,
+     "ask": 13500
+    },
+    {
+     "offer": 6900,
+     "ask": 12700
+    },
+    {
+     "offer": 7500,
+     "ask": 12000
+    }
    ],
    "outcome": "walked"
   },
@@ -2673,8 +4419,14 @@
    "persona": "impatient",
    "willingness": 14100,
    "rounds": [
-    { "offer": 13500, "ask": 14900 },
-    { "offer": 13800, "ask": 13500 }
+    {
+     "offer": 13500,
+     "ask": 14900
+    },
+    {
+     "offer": 13800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13800,
@@ -2685,7 +4437,10 @@
    "persona": "loyal",
    "willingness": 16000,
    "rounds": [
-    { "offer": 13600, "ask": 14900 }
+    {
+     "offer": 13600,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -2696,9 +4451,18 @@
    "persona": "budgeted",
    "willingness": 12700,
    "rounds": [
-    { "offer": 11000, "ask": 14900 },
-    { "offer": 11500, "ask": 13500 },
-    { "offer": 12100, "ask": 12700 }
+    {
+     "offer": 11000,
+     "ask": 14900
+    },
+    {
+     "offer": 11600,
+     "ask": 13500
+    },
+    {
+     "offer": 12100,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -2709,10 +4473,22 @@
    "persona": "bargain",
    "willingness": 12600,
    "rounds": [
-    { "offer": 9900, "ask": 14900 },
-    { "offer": 10500, "ask": 13500 },
-    { "offer": 11200, "ask": 12700 },
-    { "offer": 11900, "ask": 12000 }
+    {
+     "offer": 9900,
+     "ask": 14900
+    },
+    {
+     "offer": 10600,
+     "ask": 13500
+    },
+    {
+     "offer": 11300,
+     "ask": 12700
+    },
+    {
+     "offer": 11900,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -2723,7 +4499,10 @@
    "persona": "loyal",
    "willingness": 15200,
    "rounds": [
-    { "offer": 13600, "ask": 14900 }
+    {
+     "offer": 13600,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -2734,10 +4513,22 @@
    "persona": "bargain",
    "willingness": 12300,
    "rounds": [
-    { "offer": 8800, "ask": 14900 },
-    { "offer": 9600, "ask": 13500 },
-    { "offer": 10500, "ask": 12700 },
-    { "offer": 11400, "ask": 12000 }
+    {
+     "offer": 8800,
+     "ask": 14900
+    },
+    {
+     "offer": 9700,
+     "ask": 13500
+    },
+    {
+     "offer": 10600,
+     "ask": 12700
+    },
+    {
+     "offer": 11400,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -2748,8 +4539,14 @@
    "persona": "budgeted",
    "willingness": 14000,
    "rounds": [
-    { "offer": 11800, "ask": 14900 },
-    { "offer": 12500, "ask": 13500 }
+    {
+     "offer": 11800,
+     "ask": 14900
+    },
+    {
+     "offer": 12500,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2760,8 +4557,14 @@
    "persona": "budgeted",
    "willingness": 13100,
    "rounds": [
-    { "offer": 12500, "ask": 14900 },
-    { "offer": 12700, "ask": 13500 }
+    {
+     "offer": 12500,
+     "ask": 14900
+    },
+    {
+     "offer": 12700,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -2772,7 +4575,10 @@
    "persona": "impatient",
    "willingness": 15500,
    "rounds": [
-    { "offer": 13800, "ask": 14900 }
+    {
+     "offer": 13800,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -2783,8 +4589,14 @@
    "persona": "budgeted",
    "willingness": 14200,
    "rounds": [
-    { "offer": 12000, "ask": 14900 },
-    { "offer": 12700, "ask": 13500 }
+    {
+     "offer": 12000,
+     "ask": 14900
+    },
+    {
+     "offer": 12700,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -2795,8 +4607,14 @@
    "persona": "impatient",
    "willingness": 13400,
    "rounds": [
-    { "offer": 12200, "ask": 14900 },
-    { "offer": 12800, "ask": 13500 }
+    {
+     "offer": 12200,
+     "ask": 14900
+    },
+    {
+     "offer": 12800,
+     "ask": 13500
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2806,10 +4624,22 @@
    "persona": "bargain",
    "willingness": 11600,
    "rounds": [
-    { "offer": 9500, "ask": 14900 },
-    { "offer": 10000, "ask": 13500 },
-    { "offer": 10500, "ask": 12700 },
-    { "offer": 11000, "ask": 12000 }
+    {
+     "offer": 9500,
+     "ask": 14900
+    },
+    {
+     "offer": 10000,
+     "ask": 13500
+    },
+    {
+     "offer": 10600,
+     "ask": 12700
+    },
+    {
+     "offer": 11100,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2819,9 +4649,18 @@
    "persona": "budgeted",
    "willingness": 12800,
    "rounds": [
-    { "offer": 11200, "ask": 14900 },
-    { "offer": 11700, "ask": 13500 },
-    { "offer": 12200, "ask": 12700 }
+    {
+     "offer": 11200,
+     "ask": 14900
+    },
+    {
+     "offer": 11700,
+     "ask": 13500
+    },
+    {
+     "offer": 12300,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -2832,9 +4671,18 @@
    "persona": "budgeted",
    "willingness": 11800,
    "rounds": [
-    { "offer": 11100, "ask": 14900 },
-    { "offer": 11300, "ask": 13500 },
-    { "offer": 11500, "ask": 12700 }
+    {
+     "offer": 11100,
+     "ask": 14900
+    },
+    {
+     "offer": 11300,
+     "ask": 13500
+    },
+    {
+     "offer": 11600,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2844,9 +4692,18 @@
    "persona": "bargain",
    "willingness": 13300,
    "rounds": [
-    { "offer": 9500, "ask": 14900 },
-    { "offer": 10400, "ask": 13500 },
-    { "offer": 11400, "ask": 12700 }
+    {
+     "offer": 9500,
+     "ask": 14900
+    },
+    {
+     "offer": 10500,
+     "ask": 13500
+    },
+    {
+     "offer": 11400,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -2857,9 +4714,18 @@
    "persona": "budgeted",
    "willingness": 12200,
    "rounds": [
-    { "offer": 10600, "ask": 14900 },
-    { "offer": 11100, "ask": 13500 },
-    { "offer": 11600, "ask": 12700 }
+    {
+     "offer": 10600,
+     "ask": 14900
+    },
+    {
+     "offer": 11100,
+     "ask": 13500
+    },
+    {
+     "offer": 11700,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2869,10 +4735,22 @@
    "persona": "bargain",
    "willingness": 11300,
    "rounds": [
-    { "offer": 8800, "ask": 14900 },
-    { "offer": 9400, "ask": 13500 },
-    { "offer": 10000, "ask": 12700 },
-    { "offer": 10600, "ask": 12000 }
+    {
+     "offer": 8800,
+     "ask": 14900
+    },
+    {
+     "offer": 9400,
+     "ask": 13500
+    },
+    {
+     "offer": 10100,
+     "ask": 12700
+    },
+    {
+     "offer": 10700,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2882,7 +4760,10 @@
    "persona": "loyal",
    "willingness": 15600,
    "rounds": [
-    { "offer": 13600, "ask": 14900 }
+    {
+     "offer": 13600,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -2893,11 +4774,17 @@
    "persona": "loyal",
    "willingness": 14600,
    "rounds": [
-    { "offer": 13500, "ask": 14900 },
-    { "offer": 13800, "ask": 13500 }
+    {
+     "offer": 13500,
+     "ask": 14900
+    },
+    {
+     "offer": 13900,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
-   "agreed": 13800,
+   "agreed": 13900,
    "trade": "accepted"
   },
   {
@@ -2905,7 +4792,10 @@
    "persona": "loyal",
    "willingness": 16400,
    "rounds": [
-    { "offer": 14300, "ask": 14900 }
+    {
+     "offer": 14300,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -2916,7 +4806,10 @@
    "persona": "impatient",
    "willingness": 14900,
    "rounds": [
-    { "offer": 12300, "ask": 14900 }
+    {
+     "offer": 12300,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -2927,10 +4820,22 @@
    "persona": "lowballer",
    "willingness": 9200,
    "rounds": [
-    { "offer": 6200, "ask": 14900 },
-    { "offer": 6900, "ask": 13500 },
-    { "offer": 7700, "ask": 12700 },
-    { "offer": 8400, "ask": 12000 }
+    {
+     "offer": 6200,
+     "ask": 14900
+    },
+    {
+     "offer": 7000,
+     "ask": 13500
+    },
+    {
+     "offer": 7700,
+     "ask": 12700
+    },
+    {
+     "offer": 8500,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -2939,8 +4844,14 @@
    "persona": "budgeted",
    "willingness": 13100,
    "rounds": [
-    { "offer": 11500, "ask": 14900 },
-    { "offer": 12000, "ask": 13500 }
+    {
+     "offer": 11500,
+     "ask": 14900
+    },
+    {
+     "offer": 12000,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -2951,10 +4862,22 @@
    "persona": "bargain",
    "willingness": 12400,
    "rounds": [
-    { "offer": 8700, "ask": 14900 },
-    { "offer": 9600, "ask": 13500 },
-    { "offer": 10500, "ask": 12700 },
-    { "offer": 11400, "ask": 12000 }
+    {
+     "offer": 8700,
+     "ask": 14900
+    },
+    {
+     "offer": 9600,
+     "ask": 13500
+    },
+    {
+     "offer": 10600,
+     "ask": 12700
+    },
+    {
+     "offer": 11500,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -2965,9 +4888,18 @@
    "persona": "bargain",
    "willingness": 12800,
    "rounds": [
-    { "offer": 9600, "ask": 14900 },
-    { "offer": 10400, "ask": 13500 },
-    { "offer": 11200, "ask": 12700 }
+    {
+     "offer": 9600,
+     "ask": 14900
+    },
+    {
+     "offer": 10400,
+     "ask": 13500
+    },
+    {
+     "offer": 11200,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -2978,10 +4910,22 @@
    "persona": "bargain",
    "willingness": 11400,
    "rounds": [
-    { "offer": 8600, "ask": 14900 },
-    { "offer": 9300, "ask": 13500 },
-    { "offer": 10000, "ask": 12700 },
-    { "offer": 10700, "ask": 12000 }
+    {
+     "offer": 8600,
+     "ask": 14900
+    },
+    {
+     "offer": 9300,
+     "ask": 13500
+    },
+    {
+     "offer": 10000,
+     "ask": 12700
+    },
+    {
+     "offer": 10700,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -2991,10 +4935,22 @@
    "persona": "bargain",
    "willingness": 10700,
    "rounds": [
-    { "offer": 9400, "ask": 14900 },
-    { "offer": 9700, "ask": 13500 },
-    { "offer": 10000, "ask": 12700 },
-    { "offer": 10300, "ask": 12000 }
+    {
+     "offer": 9400,
+     "ask": 14900
+    },
+    {
+     "offer": 9700,
+     "ask": 13500
+    },
+    {
+     "offer": 10100,
+     "ask": 12700
+    },
+    {
+     "offer": 10400,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3004,8 +4960,14 @@
    "persona": "loyal",
    "willingness": 14800,
    "rounds": [
-    { "offer": 13200, "ask": 14900 },
-    { "offer": 13700, "ask": 13500 }
+    {
+     "offer": 13200,
+     "ask": 14900
+    },
+    {
+     "offer": 13700,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13700,
@@ -3016,9 +4978,18 @@
    "persona": "budgeted",
    "willingness": 11800,
    "rounds": [
-    { "offer": 11800, "ask": 14900 },
-    { "offer": 11800, "ask": 13500 },
-    { "offer": 11800, "ask": 12700 }
+    {
+     "offer": 11800,
+     "ask": 14900
+    },
+    {
+     "offer": 11800,
+     "ask": 13500
+    },
+    {
+     "offer": 11800,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3028,8 +4999,14 @@
    "persona": "impatient",
    "willingness": 13400,
    "rounds": [
-    { "offer": 13300, "ask": 14900 },
-    { "offer": 13300, "ask": 13500 }
+    {
+     "offer": 13300,
+     "ask": 14900
+    },
+    {
+     "offer": 13400,
+     "ask": 13500
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3039,10 +5016,22 @@
    "persona": "bargain",
    "willingness": 12000,
    "rounds": [
-    { "offer": 10100, "ask": 14900 },
-    { "offer": 10500, "ask": 13500 },
-    { "offer": 11000, "ask": 12700 },
-    { "offer": 11500, "ask": 12000 }
+    {
+     "offer": 10100,
+     "ask": 14900
+    },
+    {
+     "offer": 10600,
+     "ask": 13500
+    },
+    {
+     "offer": 11100,
+     "ask": 12700
+    },
+    {
+     "offer": 11500,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -3053,8 +5042,14 @@
    "persona": "impatient",
    "willingness": 13200,
    "rounds": [
-    { "offer": 11900, "ask": 14900 },
-    { "offer": 12500, "ask": 13500 }
+    {
+     "offer": 11900,
+     "ask": 14900
+    },
+    {
+     "offer": 12600,
+     "ask": 13500
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3064,8 +5059,14 @@
    "persona": "budgeted",
    "willingness": 14000,
    "rounds": [
-    { "offer": 11600, "ask": 14900 },
-    { "offer": 12400, "ask": 13500 }
+    {
+     "offer": 11600,
+     "ask": 14900
+    },
+    {
+     "offer": 12400,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -3076,9 +5077,18 @@
    "persona": "budgeted",
    "willingness": 12400,
    "rounds": [
-    { "offer": 11000, "ask": 14900 },
-    { "offer": 11400, "ask": 13500 },
-    { "offer": 11900, "ask": 12700 }
+    {
+     "offer": 11000,
+     "ask": 14900
+    },
+    {
+     "offer": 11500,
+     "ask": 13500
+    },
+    {
+     "offer": 11900,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3088,10 +5098,22 @@
    "persona": "lowballer",
    "willingness": 9200,
    "rounds": [
-    { "offer": 4900, "ask": 14900 },
-    { "offer": 5900, "ask": 13500 },
-    { "offer": 7000, "ask": 12700 },
-    { "offer": 8100, "ask": 12000 }
+    {
+     "offer": 4900,
+     "ask": 14900
+    },
+    {
+     "offer": 6000,
+     "ask": 13500
+    },
+    {
+     "offer": 7100,
+     "ask": 12700
+    },
+    {
+     "offer": 8100,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -3100,10 +5122,22 @@
    "persona": "bargain",
    "willingness": 12300,
    "rounds": [
-    { "offer": 9800, "ask": 14900 },
-    { "offer": 10400, "ask": 13500 },
-    { "offer": 11000, "ask": 12700 },
-    { "offer": 11600, "ask": 12000 }
+    {
+     "offer": 9800,
+     "ask": 14900
+    },
+    {
+     "offer": 10400,
+     "ask": 13500
+    },
+    {
+     "offer": 11100,
+     "ask": 12700
+    },
+    {
+     "offer": 11700,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -3114,10 +5148,22 @@
    "persona": "lowballer",
    "willingness": 11000,
    "rounds": [
-    { "offer": 5900, "ask": 14900 },
-    { "offer": 7100, "ask": 13500 },
-    { "offer": 8400, "ask": 12700 },
-    { "offer": 9700, "ask": 12000 }
+    {
+     "offer": 5900,
+     "ask": 14900
+    },
+    {
+     "offer": 7200,
+     "ask": 13500
+    },
+    {
+     "offer": 8500,
+     "ask": 12700
+    },
+    {
+     "offer": 9700,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -3126,9 +5172,18 @@
    "persona": "bargain",
    "willingness": 13100,
    "rounds": [
-    { "offer": 9800, "ask": 14900 },
-    { "offer": 10600, "ask": 13500 },
-    { "offer": 11400, "ask": 12700 }
+    {
+     "offer": 9800,
+     "ask": 14900
+    },
+    {
+     "offer": 10600,
+     "ask": 13500
+    },
+    {
+     "offer": 11500,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -3139,20 +5194,38 @@
    "persona": "lowballer",
    "willingness": 8800,
    "rounds": [
-    { "offer": 5100, "ask": 14900 },
-    { "offer": 6000, "ask": 13500 },
-    { "offer": 6900, "ask": 12700 },
-    { "offer": 7800, "ask": 12000 }
+    {
+     "offer": 5100,
+     "ask": 14900
+    },
+    {
+     "offer": 6000,
+     "ask": 13500
+    },
+    {
+     "offer": 7000,
+     "ask": 12700
+    },
+    {
+     "offer": 7900,
+     "ask": 12000
+    }
    ],
-   "outcome": "walked"
+   "outcome": "would_ask_owner"
   },
   {
    "id": 254,
    "persona": "budgeted",
    "willingness": 13100,
    "rounds": [
-    { "offer": 11800, "ask": 14900 },
-    { "offer": 12200, "ask": 13500 }
+    {
+     "offer": 11800,
+     "ask": 14900
+    },
+    {
+     "offer": 12200,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -3163,7 +5236,10 @@
    "persona": "impatient",
    "willingness": 15600,
    "rounds": [
-    { "offer": 14100, "ask": 14900 }
+    {
+     "offer": 14100,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -3174,8 +5250,14 @@
    "persona": "budgeted",
    "willingness": 14500,
    "rounds": [
-    { "offer": 11000, "ask": 14900 },
-    { "offer": 12100, "ask": 13500 }
+    {
+     "offer": 11000,
+     "ask": 14900
+    },
+    {
+     "offer": 12200,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -3186,10 +5268,22 @@
    "persona": "bargain",
    "willingness": 10600,
    "rounds": [
-    { "offer": 8900, "ask": 14900 },
-    { "offer": 9300, "ask": 13500 },
-    { "offer": 9700, "ask": 12700 },
-    { "offer": 10100, "ask": 12000 }
+    {
+     "offer": 8900,
+     "ask": 14900
+    },
+    {
+     "offer": 9300,
+     "ask": 13500
+    },
+    {
+     "offer": 9800,
+     "ask": 12700
+    },
+    {
+     "offer": 10200,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3199,10 +5293,22 @@
    "persona": "bargain",
    "willingness": 12300,
    "rounds": [
-    { "offer": 10400, "ask": 14900 },
-    { "offer": 10800, "ask": 13500 },
-    { "offer": 11300, "ask": 12700 },
-    { "offer": 11800, "ask": 12000 }
+    {
+     "offer": 10400,
+     "ask": 14900
+    },
+    {
+     "offer": 10900,
+     "ask": 13500
+    },
+    {
+     "offer": 11400,
+     "ask": 12700
+    },
+    {
+     "offer": 11800,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -3213,8 +5319,14 @@
    "persona": "budgeted",
    "willingness": 13900,
    "rounds": [
-    { "offer": 12200, "ask": 14900 },
-    { "offer": 12700, "ask": 13500 }
+    {
+     "offer": 12200,
+     "ask": 14900
+    },
+    {
+     "offer": 12800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -3225,9 +5337,18 @@
    "persona": "bargain",
    "willingness": 12800,
    "rounds": [
-    { "offer": 10100, "ask": 14900 },
-    { "offer": 10700, "ask": 13500 },
-    { "offer": 11400, "ask": 12700 }
+    {
+     "offer": 10100,
+     "ask": 14900
+    },
+    {
+     "offer": 10800,
+     "ask": 13500
+    },
+    {
+     "offer": 11500,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -3238,10 +5359,22 @@
    "persona": "lowballer",
    "willingness": 10800,
    "rounds": [
-    { "offer": 5600, "ask": 14900 },
-    { "offer": 6900, "ask": 13500 },
-    { "offer": 8200, "ask": 12700 },
-    { "offer": 9500, "ask": 12000 }
+    {
+     "offer": 5600,
+     "ask": 14900
+    },
+    {
+     "offer": 6900,
+     "ask": 13500
+    },
+    {
+     "offer": 8200,
+     "ask": 12700
+    },
+    {
+     "offer": 9500,
+     "ask": 12000
+    }
    ],
    "outcome": "would_ask_owner"
   },
@@ -3250,9 +5383,18 @@
    "persona": "budgeted",
    "willingness": 11700,
    "rounds": [
-    { "offer": 11300, "ask": 14900 },
-    { "offer": 11400, "ask": 13500 },
-    { "offer": 11500, "ask": 12700 }
+    {
+     "offer": 11300,
+     "ask": 14900
+    },
+    {
+     "offer": 11400,
+     "ask": 13500
+    },
+    {
+     "offer": 11600,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3262,10 +5404,22 @@
    "persona": "bargain",
    "willingness": 12600,
    "rounds": [
-    { "offer": 8700, "ask": 14900 },
-    { "offer": 9600, "ask": 13500 },
-    { "offer": 10600, "ask": 12700 },
-    { "offer": 11600, "ask": 12000 }
+    {
+     "offer": 8700,
+     "ask": 14900
+    },
+    {
+     "offer": 9700,
+     "ask": 13500
+    },
+    {
+     "offer": 10700,
+     "ask": 12700
+    },
+    {
+     "offer": 11600,
+     "ask": 12000
+    }
    ],
    "outcome": "bought",
    "agreed": 12000,
@@ -3276,10 +5430,22 @@
    "persona": "bargain",
    "willingness": 11100,
    "rounds": [
-    { "offer": 9900, "ask": 14900 },
-    { "offer": 10200, "ask": 13500 },
-    { "offer": 10500, "ask": 12700 },
-    { "offer": 10800, "ask": 12000 }
+    {
+     "offer": 9900,
+     "ask": 14900
+    },
+    {
+     "offer": 10200,
+     "ask": 13500
+    },
+    {
+     "offer": 10500,
+     "ask": 12700
+    },
+    {
+     "offer": 10800,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3289,9 +5455,18 @@
    "persona": "budgeted",
    "willingness": 11700,
    "rounds": [
-    { "offer": 10800, "ask": 14900 },
-    { "offer": 11100, "ask": 13500 },
-    { "offer": 11400, "ask": 12700 }
+    {
+     "offer": 10800,
+     "ask": 14900
+    },
+    {
+     "offer": 11100,
+     "ask": 13500
+    },
+    {
+     "offer": 11400,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3301,9 +5476,18 @@
    "persona": "bargain",
    "willingness": 13200,
    "rounds": [
-    { "offer": 10400, "ask": 14900 },
-    { "offer": 11100, "ask": 13500 },
-    { "offer": 11800, "ask": 12700 }
+    {
+     "offer": 10400,
+     "ask": 14900
+    },
+    {
+     "offer": 11100,
+     "ask": 13500
+    },
+    {
+     "offer": 11800,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -3314,8 +5498,14 @@
    "persona": "impatient",
    "willingness": 13600,
    "rounds": [
-    { "offer": 13600, "ask": 14900 },
-    { "offer": 13600, "ask": 13500 }
+    {
+     "offer": 13600,
+     "ask": 14900
+    },
+    {
+     "offer": 13600,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13600,
@@ -3326,9 +5516,18 @@
    "persona": "budgeted",
    "willingness": 12300,
    "rounds": [
-    { "offer": 11200, "ask": 14900 },
-    { "offer": 11500, "ask": 13500 },
-    { "offer": 11900, "ask": 12700 }
+    {
+     "offer": 11200,
+     "ask": 14900
+    },
+    {
+     "offer": 11600,
+     "ask": 13500
+    },
+    {
+     "offer": 11900,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 14400,
@@ -3339,11 +5538,17 @@
    "persona": "impatient",
    "willingness": 14400,
    "rounds": [
-    { "offer": 13900, "ask": 14900 },
-    { "offer": 14100, "ask": 13500 }
+    {
+     "offer": 13900,
+     "ask": 14900
+    },
+    {
+     "offer": 14200,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
-   "agreed": 14100,
+   "agreed": 14200,
    "trade": "accepted"
   },
   {
@@ -3351,9 +5556,18 @@
    "persona": "bargain",
    "willingness": 12800,
    "rounds": [
-    { "offer": 10100, "ask": 14900 },
-    { "offer": 10700, "ask": 13500 },
-    { "offer": 11400, "ask": 12700 }
+    {
+     "offer": 10100,
+     "ask": 14900
+    },
+    {
+     "offer": 10800,
+     "ask": 13500
+    },
+    {
+     "offer": 11500,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -3364,9 +5578,18 @@
    "persona": "bargain",
    "willingness": 12600,
    "rounds": [
-    { "offer": 8700, "ask": 14900 },
-    { "offer": 9600, "ask": 13500 },
-    { "offer": 10600, "ask": 12700 }
+    {
+     "offer": 8700,
+     "ask": 14900
+    },
+    {
+     "offer": 9700,
+     "ask": 13500
+    },
+    {
+     "offer": 10700,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 14400,
@@ -3377,9 +5600,18 @@
    "persona": "budgeted",
    "willingness": 12800,
    "rounds": [
-    { "offer": 10900, "ask": 14900 },
-    { "offer": 11500, "ask": 13500 },
-    { "offer": 12100, "ask": 12700 }
+    {
+     "offer": 10900,
+     "ask": 14900
+    },
+    {
+     "offer": 11500,
+     "ask": 13500
+    },
+    {
+     "offer": 12200,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -3390,8 +5622,14 @@
    "persona": "impatient",
    "willingness": 13100,
    "rounds": [
-    { "offer": 13100, "ask": 14900 },
-    { "offer": 13100, "ask": 13500 }
+    {
+     "offer": 13100,
+     "ask": 14900
+    },
+    {
+     "offer": 13100,
+     "ask": 13500
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3401,10 +5639,22 @@
    "persona": "bargain",
    "willingness": 11400,
    "rounds": [
-    { "offer": 10200, "ask": 14900 },
-    { "offer": 10500, "ask": 13500 },
-    { "offer": 10800, "ask": 12700 },
-    { "offer": 11100, "ask": 12000 }
+    {
+     "offer": 10200,
+     "ask": 14900
+    },
+    {
+     "offer": 10500,
+     "ask": 13500
+    },
+    {
+     "offer": 10800,
+     "ask": 12700
+    },
+    {
+     "offer": 11100,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3414,9 +5664,18 @@
    "persona": "bargain",
    "willingness": 12600,
    "rounds": [
-    { "offer": 8600, "ask": 14900 },
-    { "offer": 9600, "ask": 13500 },
-    { "offer": 10600, "ask": 12700 }
+    {
+     "offer": 8600,
+     "ask": 14900
+    },
+    {
+     "offer": 9600,
+     "ask": 13500
+    },
+    {
+     "offer": 10600,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 14400,
@@ -3427,10 +5686,22 @@
    "persona": "bargain",
    "willingness": 11900,
    "rounds": [
-    { "offer": 10200, "ask": 14900 },
-    { "offer": 10600, "ask": 13500 },
-    { "offer": 11000, "ask": 12700 },
-    { "offer": 11400, "ask": 12000 }
+    {
+     "offer": 10200,
+     "ask": 14900
+    },
+    {
+     "offer": 10600,
+     "ask": 13500
+    },
+    {
+     "offer": 11100,
+     "ask": 12700
+    },
+    {
+     "offer": 11500,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3440,8 +5711,14 @@
    "persona": "bargain",
    "willingness": 12900,
    "rounds": [
-    { "offer": 8300, "ask": 14900 },
-    { "offer": 9400, "ask": 13500 }
+    {
+     "offer": 8300,
+     "ask": 14900
+    },
+    {
+     "offer": 9500,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -3452,8 +5729,14 @@
    "persona": "budgeted",
    "willingness": 13500,
    "rounds": [
-    { "offer": 11300, "ask": 14900 },
-    { "offer": 12000, "ask": 13500 }
+    {
+     "offer": 11300,
+     "ask": 14900
+    },
+    {
+     "offer": 12000,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -3464,9 +5747,18 @@
    "persona": "bargain",
    "willingness": 12300,
    "rounds": [
-    { "offer": 10100, "ask": 14900 },
-    { "offer": 10600, "ask": 13500 },
-    { "offer": 11200, "ask": 12700 }
+    {
+     "offer": 10100,
+     "ask": 14900
+    },
+    {
+     "offer": 10700,
+     "ask": 13500
+    },
+    {
+     "offer": 11200,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 14400,
@@ -3477,8 +5769,14 @@
    "persona": "impatient",
    "willingness": 12900,
    "rounds": [
-    { "offer": 12000, "ask": 14900 },
-    { "offer": 12400, "ask": 13500 }
+    {
+     "offer": 12000,
+     "ask": 14900
+    },
+    {
+     "offer": 12500,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -3489,9 +5787,18 @@
    "persona": "budgeted",
    "willingness": 12300,
    "rounds": [
-    { "offer": 12300, "ask": 14900 },
-    { "offer": 12300, "ask": 13500 },
-    { "offer": 12300, "ask": 12700 }
+    {
+     "offer": 12300,
+     "ask": 14900
+    },
+    {
+     "offer": 12300,
+     "ask": 13500
+    },
+    {
+     "offer": 12300,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3501,10 +5808,22 @@
    "persona": "bargain",
    "willingness": 11600,
    "rounds": [
-    { "offer": 9300, "ask": 14900 },
-    { "offer": 9800, "ask": 13500 },
-    { "offer": 10400, "ask": 12700 },
-    { "offer": 11000, "ask": 12000 }
+    {
+     "offer": 9300,
+     "ask": 14900
+    },
+    {
+     "offer": 9900,
+     "ask": 13500
+    },
+    {
+     "offer": 10500,
+     "ask": 12700
+    },
+    {
+     "offer": 11000,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3514,8 +5833,14 @@
    "persona": "budgeted",
    "willingness": 13100,
    "rounds": [
-    { "offer": 10900, "ask": 14900 },
-    { "offer": 11600, "ask": 13500 }
+    {
+     "offer": 10900,
+     "ask": 14900
+    },
+    {
+     "offer": 11600,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -3526,8 +5851,14 @@
    "persona": "budgeted",
    "willingness": 13700,
    "rounds": [
-    { "offer": 11500, "ask": 14900 },
-    { "offer": 12200, "ask": 13500 }
+    {
+     "offer": 11500,
+     "ask": 14900
+    },
+    {
+     "offer": 12200,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -3538,8 +5869,14 @@
    "persona": "budgeted",
    "willingness": 14500,
    "rounds": [
-    { "offer": 11600, "ask": 14900 },
-    { "offer": 12500, "ask": 13500 }
+    {
+     "offer": 11600,
+     "ask": 14900
+    },
+    {
+     "offer": 12600,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -3550,9 +5887,18 @@
    "persona": "bargain",
    "willingness": 13100,
    "rounds": [
-    { "offer": 9300, "ask": 14900 },
-    { "offer": 10200, "ask": 13500 },
-    { "offer": 11200, "ask": 12700 }
+    {
+     "offer": 9300,
+     "ask": 14900
+    },
+    {
+     "offer": 10300,
+     "ask": 13500
+    },
+    {
+     "offer": 11200,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -3563,10 +5909,22 @@
    "persona": "bargain",
    "willingness": 10800,
    "rounds": [
-    { "offer": 8500, "ask": 14900 },
-    { "offer": 9000, "ask": 13500 },
-    { "offer": 9600, "ask": 12700 },
-    { "offer": 10200, "ask": 12000 }
+    {
+     "offer": 8500,
+     "ask": 14900
+    },
+    {
+     "offer": 9100,
+     "ask": 13500
+    },
+    {
+     "offer": 9700,
+     "ask": 12700
+    },
+    {
+     "offer": 10200,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3576,7 +5934,10 @@
    "persona": "impatient",
    "willingness": 15600,
    "rounds": [
-    { "offer": 12600, "ask": 14900 }
+    {
+     "offer": 12600,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -3587,10 +5948,22 @@
    "persona": "lowballer",
    "willingness": 8300,
    "rounds": [
-    { "offer": 5900, "ask": 14900 },
-    { "offer": 6500, "ask": 13500 },
-    { "offer": 7100, "ask": 12700 },
-    { "offer": 7700, "ask": 12000 }
+    {
+     "offer": 5900,
+     "ask": 14900
+    },
+    {
+     "offer": 6500,
+     "ask": 13500
+    },
+    {
+     "offer": 7100,
+     "ask": 12700
+    },
+    {
+     "offer": 7700,
+     "ask": 12000
+    }
    ],
    "outcome": "walked"
   },
@@ -3599,10 +5972,22 @@
    "persona": "bargain",
    "willingness": 11400,
    "rounds": [
-    { "offer": 9400, "ask": 14900 },
-    { "offer": 9900, "ask": 13500 },
-    { "offer": 10400, "ask": 12700 },
-    { "offer": 10900, "ask": 12000 }
+    {
+     "offer": 9400,
+     "ask": 14900
+    },
+    {
+     "offer": 9900,
+     "ask": 13500
+    },
+    {
+     "offer": 10400,
+     "ask": 12700
+    },
+    {
+     "offer": 10900,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3612,9 +5997,18 @@
    "persona": "budgeted",
    "willingness": 11800,
    "rounds": [
-    { "offer": 11500, "ask": 14900 },
-    { "offer": 11600, "ask": 13500 },
-    { "offer": 11700, "ask": 12700 }
+    {
+     "offer": 11500,
+     "ask": 14900
+    },
+    {
+     "offer": 11600,
+     "ask": 13500
+    },
+    {
+     "offer": 11700,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3624,8 +6018,14 @@
    "persona": "loyal",
    "willingness": 14500,
    "rounds": [
-    { "offer": 13200, "ask": 14900 },
-    { "offer": 13600, "ask": 13500 }
+    {
+     "offer": 13200,
+     "ask": 14900
+    },
+    {
+     "offer": 13600,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13600,
@@ -3636,9 +6036,18 @@
    "persona": "budgeted",
    "willingness": 12300,
    "rounds": [
-    { "offer": 11400, "ask": 14900 },
-    { "offer": 11700, "ask": 13500 },
-    { "offer": 12000, "ask": 12700 }
+    {
+     "offer": 11400,
+     "ask": 14900
+    },
+    {
+     "offer": 11700,
+     "ask": 13500
+    },
+    {
+     "offer": 12000,
+     "ask": 12700
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3648,9 +6057,18 @@
    "persona": "bargain",
    "willingness": 13000,
    "rounds": [
-    { "offer": 9600, "ask": 14900 },
-    { "offer": 10400, "ask": 13500 },
-    { "offer": 11300, "ask": 12700 }
+    {
+     "offer": 9600,
+     "ask": 14900
+    },
+    {
+     "offer": 10500,
+     "ask": 13500
+    },
+    {
+     "offer": 11300,
+     "ask": 12700
+    }
    ],
    "outcome": "bought",
    "agreed": 12700,
@@ -3661,8 +6079,14 @@
    "persona": "budgeted",
    "willingness": 13500,
    "rounds": [
-    { "offer": 10900, "ask": 14900 },
-    { "offer": 11700, "ask": 13500 }
+    {
+     "offer": 10900,
+     "ask": 14900
+    },
+    {
+     "offer": 11800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 13500,
@@ -3673,10 +6097,22 @@
    "persona": "bargain",
    "willingness": 11000,
    "rounds": [
-    { "offer": 9800, "ask": 14900 },
-    { "offer": 10100, "ask": 13500 },
-    { "offer": 10400, "ask": 12700 },
-    { "offer": 10700, "ask": 12000 }
+    {
+     "offer": 9800,
+     "ask": 14900
+    },
+    {
+     "offer": 10100,
+     "ask": 13500
+    },
+    {
+     "offer": 10400,
+     "ask": 12700
+    },
+    {
+     "offer": 10700,
+     "ask": 12000
+    }
    ],
    "outcome": "walked",
    "missed": true
@@ -3686,11 +6122,17 @@
    "persona": "impatient",
    "willingness": 14200,
    "rounds": [
-    { "offer": 13300, "ask": 14900 },
-    { "offer": 13700, "ask": 13500 }
+    {
+     "offer": 13300,
+     "ask": 14900
+    },
+    {
+     "offer": 13800,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
-   "agreed": 13700,
+   "agreed": 13800,
    "trade": "accepted"
   },
   {
@@ -3698,7 +6140,10 @@
    "persona": "loyal",
    "willingness": 15600,
    "rounds": [
-    { "offer": 14100, "ask": 14900 }
+    {
+     "offer": 14100,
+     "ask": 14900
+    }
    ],
    "outcome": "bought",
    "agreed": 14900,
@@ -3709,8 +6154,14 @@
    "persona": "budgeted",
    "willingness": 13100,
    "rounds": [
-    { "offer": 10900, "ask": 14900 },
-    { "offer": 11600, "ask": 13500 }
+    {
+     "offer": 10900,
+     "ask": 14900
+    },
+    {
+     "offer": 11600,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
@@ -3721,8 +6172,14 @@
    "persona": "budgeted",
    "willingness": 13000,
    "rounds": [
-    { "offer": 10700, "ask": 14900 },
-    { "offer": 11400, "ask": 13500 }
+    {
+     "offer": 10700,
+     "ask": 14900
+    },
+    {
+     "offer": 11500,
+     "ask": 13500
+    }
    ],
    "outcome": "bought",
    "agreed": 15000,
