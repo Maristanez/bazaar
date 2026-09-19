@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}">
+  <head>
+    {% # Inlined CSS Variables %}
+    {% render 'css-variables' %}
+
+    {% comment %}
+      Font preloading:
+      1. Preconnect to font CDN for faster connection
+      2. Preload only the critical font variant (base weight)
+      3. Additional variants load on-demand via @font-face
+    {% endcomment %}
+    {% unless settings.type_primary_font.system? %}
+      <link rel="preconnect" href="https://fonts.shopifycdn.com" crossorigin>
+
+      {% comment %} Preload the base font variant for initial page render {% endcomment %}
+      {{ settings.type_primary_font | font_url | preload_tag: as: 'font', crossorigin: 'anonymous' }}
+    {% endunless %}
+
+    {% # Load and preload the critical CSS %}
+    {{ 'critical.css' | asset_url | stylesheet_tag: preload: true }}
+
+    {% # Social, title, etc. %}
+    {% render 'meta-tags' %}
+
+    {{ content_for_header }}
+  </head>
+
+  <body>
+    {% sections 'header-group' %}
+
+    {{ content_for_layout }}
+
+    <div
+      class="ai-chat"
+      data-ai-chat
+      data-ai-chat-endpoint="{{ settings.ai_chat_endpoint | escape }}"
+    >
+      <section
+        id="ai-chat-panel"
+        class="ai-chat__panel"
+        aria-labelledby="ai-chat-title"
+        hidden
+      >
+        <div class="ai-chat__header">
+          <div>
+            <p class="ai-chat__eyebrow" data-ai-chat-mode>Scripted demo</p>
+            <h2 id="ai-chat-title">Bazaar AI shopkeeper</h2>
+          </div>
+          <button class="ai-chat__close" type="button" data-ai-chat-close aria-label="Close chat">&times;</button>
+        </div>
+
+        <div class="ai-chat__messages" data-ai-chat-messages aria-live="polite">
+          <p class="ai-chat__message ai-chat__message--bot" data-ai-chat-welcome>
+            Hi, I can help you find outfits, sizes, and shipping info. Try one of the prompts below.
+          </p>
+        </div>
+
+        <div class="ai-chat__prompts" aria-label="Suggested chat prompts">
+          <button type="button" data-ai-chat-prompt="Recommend a weekend outfit">Weekend outfit</button>
+          <button type="button" data-ai-chat-prompt="What size tee should I get?">Sizing help</button>
+          <button type="button" data-ai-chat-prompt="Do you have shipping and returns?">Shipping</button>
+        </div>
+
+        <form class="ai-chat__form" data-ai-chat-form>
+          <label class="visually-hidden" for="ai-chat-input">Message the Bazaar AI shopkeeper</label>
+          <input
+            id="ai-chat-input"
+            type="text"
+            name="message"
+            autocomplete="off"
+            placeholder="Ask about outfits..."
+            data-ai-chat-input
+          >
+          <button type="submit">Send</button>
+        </form>
+
+        <p class="ai-chat__source">Uses public storefront prices. Gemini and private Shopify data must run through your server endpoint.</p>
+      </section>
+
+      <button
+        class="ai-chat__launcher"
+        type="button"
+        aria-label="Open Bazaar AI shopkeeper chat"
+        aria-expanded="false"
+        aria-controls="ai-chat-panel"
+        data-ai-chat-toggle
+      >
+        <span class="ai-chat__launcher-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M12 3.75c-4.56 0-8.25 3.13-8.25 7 0 2.19 1.19 4.14 3.04 5.42l-.59 2.57a.75.75 0 0 0 1.08.83l2.92-1.55c.58.15 1.18.23 1.8.23 4.56 0 8.25-3.13 8.25-7s-3.69-7.5-8.25-7.5Z" />
+            <path d="M16.75 3.25l.38 1.01c.08.2.23.36.43.43l1.01.38-1.01.38a.78.78 0 0 0-.43.43l-.38 1.01-.38-1.01a.78.78 0 0 0-.43-.43l-1.01-.38 1.01-.38a.78.78 0 0 0 .43-.43l.38-1.01Z" />
+            <path d="M8.5 10.5h7M8.5 13.25h4.75" />
+          </svg>
+        </span>
+        <span>{{ settings.ai_chat_label | default: 'AI chat' }}</span>
+      </button>
+    </div>
+
+    <script type="application/json" data-ai-chat-products>
+      [
+        {%- for product in collections.all.products limit: 8 -%}
+          {
+            "title": {{ product.title | json }},
+            "url": {{ product.url | json }},
+            "type": {{ product.type | json }},
+            "price": {{ product.price | money_without_trailing_zeros | json }},
+            "available": {{ product.available | json }}
+          }{%- unless forloop.last -%},{%- endunless -%}
+        {%- endfor -%}
+      ]
+    </script>
+    <script src="{{ 'chat-demo.js' | asset_url }}" defer></script>
+
+    {% sections 'footer-group' %}
+  </body>
+</html>

@@ -36,6 +36,7 @@ bazaar/
 ├── README.md                 you are here: what this is, the doc map, who reads what, status
 ├── AGENTS.md                 routing for coding agents (Claude Code and Codex): which skill, when
 ├── CLAUDE.md                 imports AGENTS.md
+├── shopify-theme/            standalone Shopify Skeleton theme starter
 ├── docs/
 │   ├── HOW-IT-WORKS.md       the plain-language explainer — shopkeeper, engine, Console, Gym; read first
 │   ├── PRODUCT.md            what and why — problem, users, value, principles, scope, prize fit
@@ -47,6 +48,18 @@ bazaar/
 │   └── codex-log.md          the Codex log OpenAI judges ask for — fill it from hour 0
 └── mockups/                  index.html — visual reference only (see note below)
 ```
+
+## Shopify theme starter
+
+`shopify-theme/` is a standalone, Shopify CLI-ready Skeleton theme. It is kept separate from the pnpm workspace so its Liquid, JSON templates, and theme configuration can be developed and previewed without coupling generated theme files to the Bazaar app packages.
+
+From that directory, authenticate and preview it against the development store:
+
+```sh
+shopify theme dev --store b8wzw0-h3.myshopify.com
+```
+
+Run `shopify theme check` before pushing theme changes. The theme is the starting point for the storefront work in `S1` and `S2`; product-specific Bazaar UI belongs in the app implementation once its shared contracts are available.
 
 | File | One line |
 |---|---|

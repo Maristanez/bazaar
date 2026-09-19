@@ -1,0 +1,449 @@
+/** Critical CSS for the theme. This file is included on every page. */
+
+/* Reset styles inspired by https://www.joshwcomeau.com/css/custom-css-reset/ */
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  min-height: 100svh;
+}
+
+html:has(dialog[scroll-lock][open], details[scroll-lock][open]) {
+  overflow: hidden;
+}
+
+html {
+  scroll-padding-bottom: 6rem;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  border-radius: var(--style-border-radius-inputs);
+}
+
+select {
+  background-color: var(--color-background);
+  color: currentcolor;
+}
+
+dialog {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+p {
+  text-wrap: pretty;
+}
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  overflow-wrap: break-word;
+}
+
+p:empty {
+  display: none;
+}
+
+:is(p, h1, h2, h3, h4, h5, h6):first-child,
+:empty:first-child + :where(p, h1, h2, h3, h4, h5, h6) {
+  margin-block-start: 0;
+}
+
+:is(p, h1, h2, h3, h4, h5, h6):last-child,
+:where(p, h1, h2, h3, h4, h5, h6) + :has(+ :empty:last-child) {
+  margin-block-end: 0;
+}
+
+/** Theme styles below */
+body {
+  font-family: var(--font-primary--family);
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid #ea580c;
+  outline-offset: 3px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ai-chat {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 30;
+  display: grid;
+  justify-items: end;
+  gap: 0.75rem;
+  width: min(24rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.ai-chat__panel,
+.ai-chat__launcher {
+  pointer-events: auto;
+}
+
+.ai-chat__panel {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid rgb(15 23 42 / 12%);
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 24px 60px rgb(15 23 42 / 24%);
+  color: #111827;
+}
+
+.ai-chat__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.ai-chat__eyebrow {
+  margin: 0 0 0.25rem;
+  color: #b45309;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.ai-chat__header h2 {
+  margin: 0;
+  color: #064e3b;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.ai-chat__close {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: #e5e7eb;
+  color: #111827;
+  cursor: pointer;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.ai-chat__messages {
+  display: grid;
+  gap: 0.75rem;
+  max-height: min(19rem, 48svh);
+  padding: 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ai-chat__message {
+  max-width: 85%;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.85rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.ai-chat__message--bot {
+  justify-self: start;
+  border-bottom-left-radius: 0.25rem;
+  background: #ecfdf5;
+  color: #064e3b;
+}
+
+.ai-chat__message--user {
+  justify-self: end;
+  border-bottom-right-radius: 0.25rem;
+  background: #111827;
+  color: #fff;
+}
+
+.ai-chat__offer-card {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.9rem;
+  border: 1px dashed #f59e0b;
+  border-radius: 0.9rem;
+  background: #fff7ed;
+  color: #2f1604;
+}
+
+.ai-chat__offer-topline,
+.ai-chat__offer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ai-chat__offer-topline {
+  color: #9a3412;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ai-chat__offer-card h3 {
+  margin: 0;
+  color: #064e3b;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.ai-chat__offer-card p {
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.ai-chat__offer-price {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.ai-chat__offer-price span {
+  color: #6b7280;
+  text-decoration: line-through;
+}
+
+.ai-chat__offer-price strong {
+  color: #111827;
+  font-size: 1.15rem;
+}
+
+.ai-chat__offer-actions a,
+.ai-chat__offer-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.ai-chat__offer-actions a {
+  background: #064e3b;
+  color: #fff;
+}
+
+.ai-chat__offer-actions button {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.ai-chat__offer-footer {
+  color: #6b7280;
+}
+
+.ai-chat__prompts {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0 1rem 1rem;
+  overflow-x: auto;
+}
+
+.ai-chat__prompts button {
+  flex: 0 0 auto;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #fff;
+  color: #064e3b;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.ai-chat__form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.ai-chat__form input {
+  min-width: 0;
+  min-height: 2.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  padding: 0 0.9rem;
+  color: #111827;
+}
+
+.ai-chat__form button {
+  min-width: 3.75rem;
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: #ea580c;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.ai-chat__form.is-loading input,
+.ai-chat__form.is-loading button {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.ai-chat__source {
+  padding: 0 1rem 1rem;
+  color: #4b5563;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.ai-chat__launcher {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 3rem;
+  min-height: 3rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 999px;
+  background: #064e3b;
+  box-shadow: 0 10px 25px rgb(6 78 59 / 28%);
+  color: #fff;
+  cursor: pointer;
+  border: 0;
+  font-size: 0.875rem;
+  font-weight: 800;
+  font-family: inherit;
+  text-decoration: none;
+  transition: background-color 180ms ease, transform 180ms ease;
+}
+
+.ai-chat__launcher-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.ai-chat__launcher:hover,
+.ai-chat__launcher[aria-expanded="true"] {
+  background: #0f766e;
+  transform: translateY(-2px);
+}
+
+.ai-chat__launcher svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-chat__launcher { transition: none; }
+  .ai-chat__launcher:hover,
+  .ai-chat__launcher[aria-expanded="true"] { transform: none; }
+}
+
+@media (max-width: 480px) {
+  .ai-chat {
+    width: calc(100vw - 2rem);
+  }
+
+  .ai-chat__launcher span + span { display: none; }
+
+  .ai-chat__panel {
+    max-height: calc(100svh - 6rem);
+  }
+}
+
+/** Section layout utilities */
+
+/**
+ * Setup a grid that enables both full-width and constrained layouts
+ * depending on the class of the child elements.
+ *
+ * By default, a minimum content margin is set on the left and right
+ * sides of the section and the content is centered in the viewport to
+ * not exceed the maximum page width.
+ *
+ * When a child element is given the `full-width` class, it will span
+ * the entire viewport.
+ */
+.shopify-section {
+  --content-width: min(
+    calc(var(--page-width) - var(--page-margin) * 2),
+    calc(100% - var(--page-margin) * 2)
+  );
+  --content-margin: minmax(var(--page-margin), 1fr);
+  --content-grid: var(--content-margin) var(--content-width) var(--content-margin);
+
+  /* This is required to make <img> elements work as background images */
+  position: relative;
+  grid-template-columns: var(--content-grid);
+  display: grid;
+  width: 100%;
+}
+
+/* Child elements, by default, are constrained to the central column of the grid. */
+.shopify-section > * {
+  grid-column: 2;
+}
+
+/* Child elements that use the full-width utility class span the entire viewport. */
+.shopify-section > .full-width {
+  grid-column: 1 / -1;
+}

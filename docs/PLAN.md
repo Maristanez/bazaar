@@ -4,7 +4,7 @@
 
 ## STATUS BOARD
 
-**Last updated:** Sat 19 Sep 03:25 EDT by Codex (B1 / B4)
+**Last updated:** Sat 19 Sep 11:03 EDT by Codex (live Gemini chat verified + main integrated)
 
 | Gate | Time (EDT) | Done when | Status |
 |---|---|---|---|
@@ -18,10 +18,21 @@
 
 | Part | Owner | Now | Next | Blocked by |
 |---|---|---|---|---|
-| 🛍️ A. Storefront + Shopify store | Ritvik | — | B0 → S1 | — |
+| 🛍️ A. Storefront + Shopify store | Ritvik | Live Shopify theme `Bazaar coded storefront` is connected to Railway `/api/chat`; Gemini answers are verified | R4 product mirror → replace preview card with server-generated OfferCard once R6/R7 exist | R6/R7 settlement code for real Deal |
 | ⚙️ B. Engine, core, Gym + Console | Bryan | B2 + B3 + B11 + B5 + B6 verified; handoff ready | S5 Console; Part D / Platform adapters | — |
-| 🔌 C. Platform | ______ | — | B0 → R1 | — |
-| 🤖 D. Agents + guardrails | ______ | — | R9 (after gate 1) | — |
+| 🔌 C. Platform | Ricardo | R14 Supabase live read verified; Railway `bazaar-chat` is online with `GEMINI_API_KEY`; `/health` and `/api/chat` verified | R2 token wrapper → R4/R5 product mirror/API → R6/R7 discount + checkout settlement | R6/R7 settlement code for real Deal |
+| 🤖 D. Agents + guardrails | ______ | Gemini answers basic shopper Q&A through the storefront; official OpenAI/Backboard path not started | R9/R10/R11 after the core/menu path exists | B5/R5 route integration |
+
+### Next work decision — Sat 11:03 EDT
+
+The fastest path to a real Shopify demo is **not more chatbot polish**. The live AI chat works; the missing prize-critical path is the money-safe offer/checkout chain:
+
+1. **R2** — implement the Shopify Admin API token wrapper in code, including re-fetch on 401.
+2. **R4/R5** — build the in-memory product mirror/API from real Shopify products, including price, cost, inventory, image, type, and `bazaar.stocked_at`.
+3. **B5 + B6 integration** — connect the verified core/check to real shopper routes.
+4. **R6/R7 + S4** — mint a constrained Shopify discount and open checkout at the agreed price.
+
+Until those land, the storefront chat can answer product questions with Gemini, but it must not claim a binding discount or checkout price.
 
 ### How to use this tracker
 
@@ -58,7 +69,7 @@ There are no tickets. **This file is the tracker.**
 |---|---|---|
 | 🛍️ **A. Storefront + Shopify store** | **Ritvik** | The offer card, storefront + chat, Deal flow, deal trail, faces, sparkles; product seed + sync; the ChatGPT widget (gate 0) and `/mcp`; demo script, offline replay, Devpost page, video |
 | ⚙️ **B. Engine, core, Gym + Owner Console** | **Bryan** | `contracts`, engine + property tests, offers, core functions, the check; Gym run, dot histogram, swarm animation, click-a-dot, red-dot wall; Console UI (`/console`): feed, policy panel, Approve card |
-| 🔌 **C. Platform** | ______________ | Shopify app, token + refresh, server shell, `db.ts`, SSE, mint, checkout link, store settings, Supabase + auth middleware, owner routes, hosting, the domain |
+| 🔌 **C. Platform** | **Ricardo** | Shopify app, token + refresh, server shell, `db.ts`, SSE, mint, checkout link, store settings, Supabase + auth middleware, owner routes, hosting, the domain |
 | 🤖 **D. Agents + guardrails** | ______________ | OpenAI client (*understand*), Backboard client (memory, documents, *choose + say*), the Auditor, PAUSE, approvals, event bus, red-team + verifier |
 
 The storefront and the Console are one web app (`apps/web`: `/` and `/console`) — two owners, two routes, one shared card component. **Gate 1 is a two-person chain:** Ritvik's Deal button (S4) on top of Platform's mint + checkout link (R6, R7).
@@ -110,9 +121,19 @@ Everything a shopper sees, plus the store's products behind it: the offer card, 
 **Before gate 1 (now → Sat 09:00)** — for gate 1, build only the **counter** state of S1; finish the other six states after 09:00. Until R4 lands, the storefront reads products from `infra/seed/products.json` plus the variant ids R3 wrote back.
 
 - [ ] **S1** The offer card — a pure component from `OfferCard`; all seven states; countdown; honesty footer [§4.1] · _needs B0_ · ~3 h · **Done when:** one page shows every state side by side and it reads in light and dark
-- [ ] **R3** Seed ~8 products with **cost per item**, size variants, `bazaar.stocked_at` metafield [§10, App. A] · _needs R2_ · ~1.5 h · **Done when:** products show in admin with costs; TR3 stocked 12 d ago, TR2 94 d ago
+- [x] **R3** Seed ~8 products with **cost per item**, size variants, `bazaar.stocked_at` metafield [§10, App. A] · _needs R2_ · ~1.5 h · **Done when:** products show in admin with costs; TR3 stocked 12 d ago, TR2 94 d ago
+
+  _Sat 10:26 Codex note:_ CSV import verified through Admin GraphQL: 8 `bazaar-seed` products are active, 17 variants have unit cost, inventory tracking is on, and `bazaar.stocked_at` is present for the five planned dated products. Add-ons intentionally leave stocked-at blank.
 - [ ] **S2** Storefront: grid, product page, sticker, chat panel, `localStorage` shopper id, `?shopper=demo`, typing effect from checked text [§4.2] · _needs S1, R5_ · ~3 h · **Done when:** opening the TR3 page greets by product and a card appears in the chat
+
+  _Sat 09:52 Codex note:_ the standalone `shopify-theme/` preview now has a storefront product grid and a bottom-right scripted shopkeeper chat that reads public Online Store product titles/prices from Liquid. Product pages pass the current product into the chat, `localStorage` stores a shopper id, and `?shopper=demo` triggers the seeded greeting. It can render a **non-binding preview** offer card. This is useful for demo feel, but it does **not** complete S2: the real server-generated offer card, checked text, private costs, and checkout flow still require the planned app/server path.
+
+  _Sat 10:30 Codex note:_ the chat launcher now uses a dedicated Bazaar chat/spark icon and exposes a theme setting for a backend chat endpoint. If the endpoint is blank, the scripted demo remains active. If set, the browser posts message, shopper id, page URL, current product, and public product cards to the server and displays `{ reply }` from that server. Gemini keys must stay in the server/proxy environment, never in Shopify theme code.
+
+  _Sat 11:03 Codex note:_ the live theme is now `Bazaar coded storefront` (`#161251000517`) at `https://b8wzw0-h3.myshopify.com/`, and its chat widget is pointed at `https://bazaar-chat-production.up.railway.app/api/chat`. Railway `/health` reports `hasGeminiKey: true`, and a deployed `/api/chat` smoke test returned a Gemini-generated product recommendation. S2 remains open because the real server-generated `OfferCard`, checked text, and checkout handoff are still not wired.
 - [ ] **S4** Deal flow on the storefront: accept → checkout opens; sparkles [§4.1] · _needs S1, R6, R7_ · ~1 h · **Done when:** **gate 1 passes**
+
+  _Sat 09:52 Codex note:_ the preview card deliberately disables Deal and says the API is required. S4 remains blocked on R6/R7 so the first real Deal button mints a constrained Shopify discount and opens checkout.
 
 **Gate 1 → Devpost (Sat 09:00 → 14:00)**
 
@@ -185,26 +206,38 @@ The maths that writes every price, the three core functions on top of it, the Gy
 
 **Handoffs:** needs **R5** (server + `db.ts`) and **R4** (mirror) before B5 · needs **B14** (event bus) and **R15** (owner routes) from the Agents / Platform owner for a live Console feed · needs **B8** before S7 and **B13** before S10 · gives **B2** to R11 and **B5 / B6** to everything in part D.
 
-### 🔌 C. Platform — **______________**
+### 🔌 C. Platform — **Ricardo**
 
 What the app runs on: the Shopify app and token, the server, the discount-code mint and checkout link, the database, hosting and the domain. **The mint (R6) and checkout link (R7) are the gate-1 critical path.**
 
 **Before gate 1 (now → Sat 09:00)**
 
-- [ ] **R1** Shopify app via **`shopify app init`**; six scopes incl. `write_products`; install on the dev store [§10] · _needs nothing_ · ~1 h · **Done when:** client id + secret are in `.env` and the app is installed. **20-minute rule:** if the CLI fights back, make a plain Dev Dashboard app and tick this anyway
+- [x] **R1** Shopify app via **`shopify app init`**; six scopes incl. `write_products`; install on the dev store [§10] · _needs nothing_ · ~1 h · **Done when:** client id + secret are in `.env` and the app is installed. **20-minute rule:** if the CLI fights back, make a plain Dev Dashboard app and tick this anyway
+
+  _Sat 10:10 Codex note:_ `.env` has the Shopify shop, API version, client id, client secret and scopes; `.env` is ignored by git. Client-credentials token fetch succeeded and Admin GraphQL returned products from `b8wzw0-h3`.
 - [ ] **R2** Token: client-credentials fetch on startup, re-fetch on any 401, one wrapper for every call [§10] · _needs R1_ · ~1 h · **Done when:** corrupting the token in memory makes the next call self-heal
+
+  _Sat 10:10 Codex note:_ manual token fetch is verified, but R2 remains open until the reusable server-side wrapper exists and the forced-401 self-heal test passes.
 - [ ] **R5** Server shell: Hono, routes, `db.ts` (memory `Map`s), SSE with a 15 s heartbeat [§5] · _needs B0_ · ~1.5 h · **Done when:** `/api/products` returns public cards and an SSE stream stays open 5 minutes
+
+  _Sat 10:45 Codex note:_ a minimal Railway-ready Node server now exists at `apps/server/src/index.js` with `GET /health` and `POST /api/chat`. `/api/chat` reads `GEMINI_API_KEY` from server env, calls Gemini (`GEMINI_MODEL` override, default `gemini-3.6-flash`), and returns `{ reply }` to the Shopify theme. This is enough to connect the storefront chat to Gemini, but R5 remains open because `/api/products`, `db.ts`, and SSE heartbeat are not implemented yet.
+
+  _Sat 11:03 Codex note:_ Railway is online at `https://bazaar-chat-production.up.railway.app`, public `/health` returns `ok: true`, and the live Shopify theme sends chat requests to this service. R5 is still open: the current server is a minimal Node HTTP server, not the planned Hono shell with `/api/products`, `db.ts`, and SSE.
 - [ ] **R6** Mint: `discountCodeBasicCreate` — amount off, `usageLimit 1`, 15 min, exact variants, **minimum subtotal = list total**, no combining; re-mint once; deactivate on expiry [§10] · _needs R2_ · ~2 h · **Done when:** a code exists in admin with every constraint set
 - [ ] **R7** Checkout permalink + store settings: **tax off, free shipping rate** [§10] · _needs R6_ · ~0.5 h · **Done when:** the checkout page total equals the agreed total to the cent
 
 **Gate 1 → Devpost (Sat 09:00 → 14:00)** — domain live before 13:00.
 
 - [ ] **R12** **Hosting: one long-lived instance** — secrets in the host, push-to-deploy, health check, instance count pinned to 1, no sleep [§5] · _needs R5, gate 1_ · ~1.5 h · **Done when:** the storefront loads from the host, SSE survives 5 minutes, and two browsers see the same PAUSE state
+
+  _Sat 11:03 Codex note:_ `bazaar-chat` is deployed on Railway in `sfo`, has a public service domain, and has `GEMINI_API_KEY` set. R12 remains open because it is larger than the chat endpoint: the hosted app still does not serve the full storefront/Console, SSE has not been proven for 5 minutes, and PAUSE/shared state are not implemented.
 - [ ] **R13** **GoDaddy Registry domain** via the MLH offer → pointed at the host; storefront at the root [§10] · _needs R12_ · ~0.5 h · **Done when:** `https://<domain>/` serves the storefront with a valid certificate — before 13:00, so it's on the Devpost page
 
 **Devpost → gate 2 (Sat 14:00 → Sun 00:00)**
 
 - [ ] **R14** Thin Supabase: `schema.sql` (3 tables, RLS on, no public policies), owner user, auth middleware, policy cache, one `deals` write per settlement [§5.2] · _needs R5, gate 1 · **start by 16:00**_ · ~1.5 h · **Done when:** a shopper route can't read owner data, Adopt inserts a row, and a restart reloads the policy
+
+  **Progress Sat 11:00:** the remote project is healthy; `schema.sql` is applied; the owner is bound; RLS is enabled; the pinned Supabase client, query adapter and smoke command are implemented; a live server-key read returned the seeded merchant and current 25% policy. Still required before checking R14: wire auth, policy and deal writes into the Hono routes; prove public denial; perform one live Adopt insert; prove restart reload.
 - [ ] **R15** `GET /api/console/state` + owner routes (`policy`, `approvals/:id`, `pause`, `stream`) [§5.3] · _needs R5, B8_ · ~1 h · **Done when:** the Console loads policy + products with costs + pending approvals + red-team result in one call, and every owner route returns 401 without a token
 
 **After gate 2 (Sun 00:00 → 08:00) — stretch is optional, see §8**
@@ -445,15 +478,16 @@ The path to gate 1 is **Platform (token → mint → checkout link) joined with 
 - [ ] First Codex prompt logged in `codex-log.md`
 
 **🔌 Platform / Agents**
-- [ ] `shopify app init` (20-minute rule)
-- [ ] Six scopes, installed, the token curl works
+- [x] `shopify app init` (20-minute rule)
+- [x] Six scopes, installed, the token curl works
 - [ ] Backboard + OpenAI keys in `.env`; **store documents uploaded now** so they're `indexed` by morning
-- [ ] Supabase project and host account created (not wired yet)
+- [x] Supabase project created; schema, owner binding and live server-key read verified
+- [ ] Host account created
 - [ ] MLH GoDaddy offer claimed
 
 **🛍️ Ritvik — storefront**
-- [ ] Vite + Tailwind + shadcn up
-- [ ] The card rendering from a hard-coded `OfferCard`
+- [x] Live Shopify theme published (`Bazaar coded storefront`)
+- [ ] The real server-rendered `OfferCard`
 - [ ] Palette, fonts, the five faces as SVG
 - [ ] Someone has a paid ChatGPT plan with Developer mode for gate 0
 
@@ -467,6 +501,7 @@ The path to gate 1 is **Platform (token → mint → checkout link) joined with 
 - [ ] Red-team run → `infra/redteam-result.json` committed → verifier says 0
 - [ ] 30-minute attack session, two people (E2)
 - [ ] Host pinned to one instance, non-sleeping; SSE survives 10 minutes
+- [x] Railway chat endpoint is live and public; `/health` sees `GEMINI_API_KEY`
 - [ ] ChatGPT connector registered against the **domain**
 - [ ] ~20 phrasings of an offer rehearsed in ChatGPT
 - [ ] Offline replay recorded; pre-minted link made

@@ -1,0 +1,71 @@
+{% assign catalog = collections.all %}
+
+<section class="storefront">
+  <div class="storefront__hero">
+    <p class="storefront__eyebrow">Built for the long way round</p>
+    <h1>Gear that earns its place.</h1>
+    <p>Thoughtful everyday layers, trail-ready essentials, and uncomplicated comfort.</p>
+    <a class="storefront__cta" href="{{ routes.all_products_collection_url }}">Shop all products</a>
+  </div>
+
+  <div class="storefront__catalog" id="products">
+    <div class="storefront__heading">
+      <div>
+        <p class="storefront__eyebrow">The current edit</p>
+        <h2>Shop the collection</h2>
+      </div>
+      <a href="{{ routes.all_products_collection_url }}">See everything</a>
+    </div>
+
+    {% if catalog.products_count > 0 %}
+      <div class="storefront__grid">
+        {% for product in catalog.products limit: 8 %}
+          {% render 'product-card', product: product %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="storefront__empty">Products will appear here when they are published to the Online Store channel.</p>
+    {% endif %}
+  </div>
+</section>
+
+{% stylesheet %}
+  .storefront { padding-bottom: 5rem; }
+  .storefront__hero {
+    min-height: min(70vh, 44rem);
+    display: grid;
+    align-content: center;
+    gap: 1.25rem;
+    padding: clamp(4rem, 10vw, 9rem) clamp(1.5rem, 7vw, 7rem);
+    background: linear-gradient(120deg, #064e3b 0%, #0f766e 60%, #d7eadf 60%);
+    color: #fff;
+  }
+  .storefront__hero > * { max-width: 42rem; }
+  .storefront__hero h1 { font-size: clamp(3rem, 8vw, 7rem); line-height: 0.94; letter-spacing: -0.06em; }
+  .storefront__hero p:not(.storefront__eyebrow) { font-size: 1.15rem; line-height: 1.55; }
+  .storefront__eyebrow { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+  .storefront__cta {
+    width: fit-content;
+    margin-top: 0.75rem;
+    padding: 0.9rem 1.25rem;
+    background: #ea580c;
+    color: #111;
+    font-weight: 800;
+    text-decoration: none;
+  }
+  .storefront__catalog { padding: clamp(3.5rem, 8vw, 7rem) var(--page-margin); }
+  .storefront__heading { display: flex; align-items: end; justify-content: space-between; gap: 1.5rem; margin-bottom: 2rem; }
+  .storefront__heading h2 { font-size: clamp(2rem, 4vw, 3.5rem); letter-spacing: -0.04em; }
+  .storefront__heading > a { color: inherit; font-weight: 700; text-underline-offset: 0.25rem; }
+  .storefront__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(1rem, 2vw, 2rem); }
+  .storefront__empty { padding: 2rem; background: #e8f1f3; }
+  @media (max-width: 750px) {
+    .storefront__hero { background: linear-gradient(150deg, #064e3b 0%, #0f766e 72%, #d7eadf 72%); }
+    .storefront__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .storefront__heading { align-items: start; flex-direction: column; }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{ "name": "Featured catalog", "settings": [], "presets": [{ "name": "Featured catalog" }] }
+{% endschema %}
