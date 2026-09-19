@@ -8,13 +8,13 @@
 
 ## Start here
 
-**[`SIMPLE.md`](SIMPLE.md) is the scope** — the one-action version ("Make an offer"): what we build and nothing more. Read it first; it's short.
+**[`SPEC.md`](SPEC.md) is the single source of truth** — the final product spec and build plan, aimed at the Shopify prize. It is self-contained; build from it.
 
-**[`PLAN.md`](PLAN.md) is the reference** — Plan v3, the detail behind each piece (engine maths, guardrails, Shopify calls, Backboard gotchas). If the two disagree about *what to build*, SIMPLE.md wins.
+`SIMPLE.md` and `PLAN.md` are **superseded** by SPEC.md and kept only for history and the deeper v3 detail. Where anything disagrees, SPEC.md wins.
 
-If you have five minutes: PLAN.md §0 (TL;DR), §2 (the product), §15 (demo script).
-If you're about to build: §11 (repo & contracts), §12 (three lanes), §13 (schedule).
-If it's still Friday night: **§14 (tonight's checklist)**.
+If you have five minutes: SPEC.md §0 (one page), §2 (flows), §14 (demo).
+If you're about to build: §5 (architecture), §6 (engine), §13 (lanes, schedule, gates), Appendix C (shared types).
+If you own Shopify setup: **§10**. If you own the ChatGPT card test (gate 0): **§4.1–4.2 and §13**.
 
 ---
 
