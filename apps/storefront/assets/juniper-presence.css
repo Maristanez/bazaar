@@ -1,6 +1,9 @@
 /* V4 mic halo, live wave, mouth follows the reply audio (docs/PLAN.md).
    juniper-presence.js publishes two 0..1 numbers on .ai-chat: --juniper-level (the shopper's mic) and
-   --juniper-mouth (Juniper's reply audio). Everything here is drawn from those two numbers. */
+   --juniper-mouth (Juniper's reply audio). Everything here is drawn from those two numbers, plus --juniper-bar
+   (0..1, per bar) which the same script sets on every [data-juniper-wave] element it can find — the chat panel's
+   own wave and, once V3 mounts it, the hands-free pill's wave too — from whichever of the mic or the reply audio
+   is actually making sound. A wave only gets `.juniper-presence--live` while one of those is really driving it. */
 
 /* ---- The halo: a die-cut coral ring round Juniper's head that breathes with the shopper's voice. ---- */
 

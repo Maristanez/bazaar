@@ -54,10 +54,12 @@
       return next < 0.004 ? 0 : Math.min(1, next);
     }
 
-    function drawBars() {
-      mic.analyser.getByteFrequencyData(mic.freq);
+    // Whoever is making sound right now (the shopper's mic, or Juniper's reply audio) drives the same bars —
+    // one mechanism, fed from either analyser, never both live figures fighting on screen at once.
+    function drawBarsFrom(analyser, freqBuffer, gainLevel) {
+      analyser.getByteFrequencyData(freqBuffer);
       // Speech lives in the low bins (about 200 Hz to 4.5 kHz at fftSize 256); above that is mostly hiss. Bin 0 is DC.
-      var usable = Math.max(1, Math.min(mic.freq.length - 1, 24));
+      var usable = Math.max(1, Math.min(freqBuffer.length - 1, 24));
       waves().forEach(function (wave) {
         var bars = wave.children;
         var count = bars.length;
@@ -65,8 +67,22 @@
           // Mirror the spectrum around the middle so the wave swells from its centre rather than leaning left.
           var distance = Math.abs(index - (count - 1) / 2) / (count / 2);
           var bin = 1 + Math.min(usable - 1, Math.floor(distance * usable));
-          var value = level > 0 ? Math.max(0, mic.freq[bin] / 255 - 0.08) / 0.92 : 0;
+          var value = gainLevel > 0 ? Math.max(0, freqBuffer[bin] / 255 - 0.08) / 0.92 : 0;
           bars[index].style.setProperty('--juniper-bar', String(Math.round(value * 100) / 100));
+        }
+      });
+    }
+
+    // Queried fresh (via waves()) so a wave marked or unmarked here always reflects whatever is on the page this
+    // frame, including one a feature mounted after presence had already started driving the others.
+    function markWaves() {
+      var active = Boolean(mic) || (Boolean(reply) && !(reply.audio.paused || reply.audio.ended));
+      waves().forEach(function (wave) {
+        if (active) {
+          wave.classList.add('juniper-presence--live');
+        } else {
+          wave.classList.remove('juniper-presence--live');
+          Array.prototype.forEach.call(wave.children, function (bar) { bar.style.removeProperty('--juniper-bar'); });
         }
       });
     }
@@ -79,13 +95,18 @@
           if (mic) {
             level = follow(level, Math.min(1, Math.max(0, rms(mic.analyser, mic.time) - NOISE_FLOOR) * MIC_GAIN));
             setNumber('--juniper-level', level);
-            drawBars();
           }
           if (reply) {
             var silent = reply.audio.paused || reply.audio.ended;
             mouth = silent ? 0 : follow(mouth, Math.min(1, rms(reply.analyser, reply.time) * MOUTH_GAIN));
             setNumber('--juniper-mouth', mouth);
           }
+          // The mic wins when both are somehow present — Juniper's own state machine keeps that from happening
+          // in practice (the mic closes once she starts speaking), but the shopper's own voice should never be
+          // preempted by a reply if it ever did.
+          if (mic) drawBarsFrom(mic.analyser, mic.freq, level);
+          else if (reply) drawBarsFrom(reply.analyser, reply.freq, mouth);
+          markWaves();
         } catch (error) { /* a dead analyser only stills the picture */ }
       }
       schedule();
@@ -116,10 +137,7 @@
       level = 0;
       setNumber('--juniper-level', 0);
       widget.classList.remove('juniper-presence--listening');
-      waves().forEach(function (wave) {
-        wave.classList.remove('juniper-presence--live');
-        Array.prototype.forEach.call(wave.children, function (bar) { bar.style.removeProperty('--juniper-bar'); });
-      });
+      markWaves();
     }
 
     function startMic() {
@@ -141,7 +159,7 @@
           source.connect(analyser); // no destination: the shopper must not hear themselves
           mic = { context: context, stream: stream, source: source, analyser: analyser, time: new window.Uint8Array(analyser.fftSize), freq: new window.Uint8Array(analyser.frequencyBinCount) };
           widget.classList.add('juniper-presence--listening');
-          waves().forEach(function (wave) { wave.classList.add('juniper-presence--live'); });
+          markWaves();
           schedule();
         } catch (error) {
           releaseStream(stream);
@@ -174,6 +192,7 @@
     function restMouth() {
       mouth = 0;
       setNumber('--juniper-mouth', 0);
+      markWaves();
     }
 
     function endReply() {
@@ -190,12 +209,13 @@
         var source = replyContext.createMediaElementSource(audio);
         source.connect(analyser);
         analyser.connect(replyContext.destination);
-        audio.__juniperPresence = { source: source, analyser: analyser, time: new window.Uint8Array(analyser.fftSize) };
+        audio.__juniperPresence = { source: source, analyser: analyser, time: new window.Uint8Array(analyser.fftSize), freq: new window.Uint8Array(analyser.frequencyBinCount) };
         audio.addEventListener('pause', restMouth);
         audio.addEventListener('ended', restMouth);
       }
       var wired = audio.__juniperPresence;
-      reply = { audio: audio, source: wired.source, analyser: wired.analyser, time: wired.time };
+      reply = { audio: audio, source: wired.source, analyser: wired.analyser, time: wired.time, freq: wired.freq };
+      markWaves();
       schedule();
     }
 
@@ -235,6 +255,16 @@
 
     document.addEventListener('visibilitychange', function () { if (!document.hidden) schedule(); });
     window.addEventListener('pagehide', stopMic);
+
+    // Hands-free's autoListen 'always' calls start() synchronously while ITS OWN script runs (theme.liquid loads
+    // it before this file), announcing bazaar-voice:state before this file has attached the listener above — the
+    // same race juniper-motion.js already accounts for. Without this, the mic (and so the wave and the halo)
+    // would stay dark on the exact page-load path the pill exists for, until the shopper's first turn produced a
+    // later, catchable state change.
+    function handsfreeIsOn() {
+      try { return Boolean(chat.handsfree && chat.handsfree.isOn && chat.handsfree.isOn()); } catch (error) { return false; }
+    }
+    if (handsfreeIsOn()) { voiceListening = true; syncMic(); }
   } catch (error) {
     if (window.console) window.console.error('[juniper-presence]', error);
   }

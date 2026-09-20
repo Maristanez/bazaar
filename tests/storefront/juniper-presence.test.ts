@@ -200,6 +200,29 @@ describe("juniper-presence — the halo, the wave and the mouth follow real audi
     expect(rig.tracks[0].stopped).toBe(true);
   });
 
+  it("picks up hands-free that was already turned on before this file loaded, without ever seeing the state event", async () => {
+    // Real page load: juniper-handsfree.js's autoListen 'always' calls start() synchronously, during its OWN
+    // script, before juniper-presence.js (later in theme.liquid) has attached its bazaar-voice:state listener.
+    // No event ever reaches this file — it must notice chat.handsfree.isOn() itself, the same way juniper-motion.js
+    // already does for the pill.
+    const rig = fakeAudio();
+    const mounted = mountWidget({
+      features: ["presence"],
+      before: (window: any) => {
+        rig.before(window);
+        window.document.addEventListener("bazaar-chat:ready", () => {
+          window.BazaarChat.handsfree = { start() {}, stop() {}, isOn: () => true };
+        });
+      }
+    });
+    const { document, chat } = mounted;
+    expect(rig.getUserMediaCalls).toBe(0);
+    document.dispatchEvent(new (mounted.window as any).Event("pointerdown", { bubbles: true }));
+    await mounted.settle();
+    expect(rig.getUserMediaCalls).toBe(1);
+    expect((chat.elements.widget as HTMLElement).classList.contains("juniper-presence--listening")).toBe(true);
+  });
+
   it("waits for a gesture before touching Web Audio when voice was restored on load", async () => {
     const rig = fakeAudio();
     const { click, voice, settle } = mount(rig);
@@ -279,6 +302,55 @@ describe("juniper-presence — the halo, the wave and the mouth follow real audi
     rig.reply = 0.8;
     rig.frame(4);
     expect(mouth()).toBeGreaterThan(0.3); // the mouth follows audio 2, not the discarded audio 1
+  });
+
+  it("drives a wave mounted after presence has already started listening, from the mic", async () => {
+    const rig = fakeAudio();
+    const { click, voice, settle, document, widget } = mount(rig);
+    click();
+    voice(true, "listening");
+    await settle();
+    rig.frame(2);
+
+    const late = document.createElement("span");
+    late.setAttribute("data-juniper-wave", "");
+    for (let index = 0; index < 12; index += 1) late.appendChild(document.createElement("i"));
+    widget.appendChild(late);
+
+    rig.mic = 0.85;
+    rig.frame(5);
+    const values = Array.from(late.querySelectorAll("i")).map((bar: any) => Number(bar.style.getPropertyValue("--juniper-bar") || 0));
+    expect(values.some((value) => value > 0.5)).toBe(true);
+    expect(late.classList.contains("juniper-presence--live")).toBe(true);
+
+    voice(false, "off");
+    const zeroed = Array.from(late.querySelectorAll("i")).map((bar: any) => Number(bar.style.getPropertyValue("--juniper-bar") || 0));
+    expect(zeroed.every((value) => value === 0)).toBe(true);
+    expect(late.classList.contains("juniper-presence--live")).toBe(false);
+  });
+
+  it("drives the same bars from Juniper's reply audio when she speaks, and zeroes them when she stops", async () => {
+    const rig = fakeAudio();
+    const { click, speak, document, widget } = mount(rig);
+    click();
+    const audio = await speak();
+
+    const late = document.createElement("span");
+    late.setAttribute("data-juniper-wave", "");
+    for (let index = 0; index < 12; index += 1) late.appendChild(document.createElement("i"));
+    widget.appendChild(late);
+
+    rig.reply = 0.8;
+    rig.frame(5);
+    const values = Array.from(late.querySelectorAll("i")).map((bar: any) => Number(bar.style.getPropertyValue("--juniper-bar") || 0));
+    expect(values.some((value) => value > 0.5)).toBe(true);
+    expect(late.classList.contains("juniper-presence--live")).toBe(true);
+
+    audio.pause();
+    rig.frame(2);
+    const zeroed = Array.from(late.querySelectorAll("i")).map((bar: any) => Number(bar.style.getPropertyValue("--juniper-bar") || 0));
+    expect(zeroed.every((value) => value === 0)).toBe(true);
+    expect(late.classList.contains("juniper-presence--live")).toBe(false);
   });
 
   it("does nothing, and breaks nothing, without Web Audio", async () => {

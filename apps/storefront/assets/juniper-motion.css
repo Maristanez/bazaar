@@ -197,7 +197,9 @@
   text-align: left;
 }
 
-/* The halo is the mic's level meter: a coral ring behind the head that swells with --juniper-level (0..1). */
+/* The halo is the mic's level meter: a coral ring behind the head that swells with --juniper-level (0..1).
+   The ring must read at a glance even in a static screenshot, so it carries a floor of its own (3px, 65% opacity)
+   rather than starting from a wash that only becomes visible once a level arrives. */
 .juniper-motion__halo {
   position: relative;
   display: grid;
@@ -211,18 +213,18 @@
   content: '';
   position: absolute;
   inset: 0.2rem;
-  border: 2px solid var(--coral);
+  border: 3px solid var(--coral);
   border-radius: 50%;
   background: rgb(243 103 90 / 24%);
-  scale: calc(1 + var(--juniper-level, 0) * 0.3);
-  opacity: calc(0.5 + var(--juniper-level, 0) * 0.5);
+  scale: calc(1 + var(--juniper-level, 0) * 0.35);
+  opacity: calc(0.65 + var(--juniper-level, 0) * 0.35);
   transition: scale 90ms linear, opacity 90ms linear;
 }
 
 /* While Juniper talks the ring follows her voice instead of the mic. */
 .juniper-motion__pill[data-state='speaking'] .juniper-motion__halo::before {
-  scale: calc(1 + var(--juniper-mouth, 0) * 0.3);
-  opacity: calc(0.5 + var(--juniper-mouth, 0) * 0.5);
+  scale: calc(1 + var(--juniper-mouth, 0) * 0.35);
+  opacity: calc(0.65 + var(--juniper-mouth, 0) * 0.35);
 }
 
 .juniper-motion__pill[data-state='thinking'] .juniper-motion__halo::before {
@@ -233,6 +235,63 @@
 @keyframes juniper-motion-think {
   from { opacity: 0.25; }
   to { opacity: 0.8; }
+}
+
+/* ── The wave: a compact live waveform that mimics whoever is making the sound, not a static dot ──────────── */
+
+/* Fixed footprint — only bar HEIGHT ever changes, never the box's width, so the pill never twitches size with
+   the sound. juniper-presence.js (V4) drives each bar's --juniper-bar (0..1) at draw time and marks the wave
+   `.juniper-presence--live`, which is also the switch that turns this file's own fallback loop off below. */
+.juniper-motion__wave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  gap: 2px;
+  width: 1.9rem;
+  height: 1.4rem;
+  margin: 0 0.1rem;
+}
+
+.juniper-motion__wave i {
+  flex: none;
+  width: 2px;
+  height: 16%;
+  border-radius: 1px;
+  background: var(--coral);
+  transition: height 90ms linear;
+}
+
+/* Juniper speaking: teal-on-cream bars would vanish on the pill's own teal, so speaking reads in sky instead —
+   still the die-cut paper palette, just the one that shows up against this background. */
+.juniper-motion__pill[data-state='speaking'] .juniper-motion__wave i {
+  background: var(--sky);
+}
+
+/* Thinking: the bars borrow the theme's existing stepping-dots feel (ai-chat-step, critical.css) instead of a
+   spinner or a glow. */
+.juniper-motion__pill[data-state='thinking'] .juniper-motion__wave i {
+  height: 34%;
+  animation: ai-chat-step 1.2s var(--ease) infinite;
+}
+
+/* Silent / off: a flat, low, resting line — it must not look like it is still listening. */
+.juniper-motion__pill:not([data-state='listening']):not([data-state='hearing']):not([data-state='speaking']):not([data-state='thinking']) .juniper-motion__wave i {
+  height: 14%;
+  animation: none;
+}
+
+/* No live levels ever arrived (V4 missing, mic refused): a gentle loop so the pill never looks dead while
+   listening. `.juniper-presence--live` — set by juniper-presence.js once it actually starts driving the bars —
+   switches this off so the CSS loop and the real levels never fight each other. */
+.juniper-motion__pill[data-state='listening'] .juniper-motion__wave:not(.juniper-presence--live) i,
+.juniper-motion__pill[data-state='hearing'] .juniper-motion__wave:not(.juniper-presence--live) i {
+  animation: juniper-motion-wave 1.1s ease-in-out infinite;
+}
+
+@keyframes juniper-motion-wave {
+  0%, 100% { height: 16%; }
+  50% { height: 62%; }
 }
 
 .juniper-motion__head {
@@ -390,5 +449,18 @@
 
   .juniper-motion__pill[data-state='thinking'] .juniper-motion__halo::before {
     opacity: 0.6;
+  }
+
+  /* Static bars, not a flat line and not a loop — the shape of a wave without any motion. */
+  .juniper-motion__wave i {
+    height: 30%;
+  }
+
+  .juniper-motion__wave i:nth-child(3n + 1) {
+    height: 55%;
+  }
+
+  .juniper-motion__wave i:nth-child(4n + 2) {
+    height: 18%;
   }
 }

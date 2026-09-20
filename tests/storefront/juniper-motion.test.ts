@@ -141,6 +141,23 @@ describe("juniper-motion — the voice pill", () => {
     expect(launcher.hidden).toBe(false);
   });
 
+  it("draws a compact live wave between the sticker and the text, sized so the pill's width stays put", () => {
+    const { pill } = mount();
+    const open = pill().querySelector("[data-juniper-pill-open]") as HTMLElement;
+    const children = Array.from(open.children) as HTMLElement[];
+    const haloIndex = children.findIndex((node) => node.classList.contains("juniper-motion__halo"));
+    const waveIndex = children.findIndex((node) => node.hasAttribute("data-juniper-wave"));
+    const textIndex = children.findIndex((node) => node.hasAttribute("data-juniper-pill-text"));
+    expect(haloIndex).toBeGreaterThanOrEqual(0);
+    expect(waveIndex).toBe(haloIndex + 1);
+    expect(textIndex).toBe(waveIndex + 1);
+
+    const wave = children[waveIndex];
+    expect(wave.getAttribute("aria-hidden")).toBe("true");
+    const bars = wave.querySelectorAll("i");
+    expect(bars.length).toBeGreaterThanOrEqual(12);
+  });
+
   it("does nothing, and breaks nothing, without the seam", () => {
     const { window } = mountWidget();
     delete window.BazaarChat;
@@ -174,5 +191,45 @@ describe("juniper-motion — the stylesheet", () => {
   it("keeps the phone panel above the launcher and pill it slides past, so a mid-transition frame never floats a launcher ghost over the panel's own footer", () => {
     const phone = css.slice(css.indexOf("@media (max-width: 480px)"));
     expect(phone).toMatch(/\.ai-chat__panel\[hidden\],\s*\n\s*\.ai-chat__panel:not\(\[hidden\]\)\s*{\s*\n\s*z-index:\s*1;/);
+  });
+
+  it("gives the pill's wave a fixed footprint — only bar height ever changes", () => {
+    const box = css.slice(css.indexOf(".juniper-motion__wave {"), css.indexOf(".juniper-motion__wave {") + 200);
+    expect(box).toMatch(/width:\s*[\d.]+rem/);
+    const bar = css.slice(css.indexOf(".juniper-motion__wave i {"), css.indexOf(".juniper-motion__wave i {") + 200);
+    expect(bar).not.toMatch(/width:\s*calc\(.*juniper-bar/);
+  });
+
+  it("colours the wave coral for the shopper's voice and switches to sky while Juniper speaks, never teal-on-teal", () => {
+    expect(css).toMatch(/\.juniper-motion__wave i\s*{[^}]*background:\s*var\(--coral\)/);
+    const speaking = css.slice(css.indexOf("[data-state='speaking'] .juniper-motion__wave"));
+    expect(speaking.slice(0, 200)).toMatch(/background:\s*var\(--sky\)/);
+  });
+
+  it("gives the thinking wave the theme's existing stepping-dots feel", () => {
+    const thinking = css.slice(css.indexOf("[data-state='thinking'] .juniper-motion__wave"));
+    expect(thinking.slice(0, 200)).toMatch(/animation:\s*ai-chat-step/);
+  });
+
+  it("rests the wave as a flat low line when neither listening, hearing, thinking nor speaking", () => {
+    const rest = css.slice(css.indexOf(":not([data-state='listening'])"));
+    expect(rest.slice(0, 400)).toMatch(/height:\s*14%;\s*\n\s*animation:\s*none;/);
+  });
+
+  it("falls back to a gentle CSS loop while listening so the pill never looks dead without live levels, and lets presence switch it off", () => {
+    expect(css).toMatch(/juniper-motion__wave:not\(\.juniper-presence--live\)/);
+    expect(css).toMatch(/juniper-motion-wave/);
+  });
+
+  it("shows static bars, not a loop, under reduced motion", () => {
+    const reduced = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(reduced).toMatch(/\.juniper-motion__wave i\s*{\s*\n\s*height:\s*30%;/);
+  });
+
+  it("makes the halo an unmistakable coral ring at least 3px wide that grows with the mic level", () => {
+    const halo = css.slice(css.indexOf(".juniper-motion__halo::before {"), css.indexOf(".juniper-motion__halo::before {") + 400);
+    expect(halo).toMatch(/border:\s*3px solid var\(--coral\)/);
+    expect(halo).toMatch(/scale:\s*calc\(1 \+ var\(--juniper-level, 0\)/);
+    expect(halo).toMatch(/opacity:\s*calc\(0\.65/);
   });
 });

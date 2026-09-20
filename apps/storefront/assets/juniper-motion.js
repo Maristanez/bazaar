@@ -18,6 +18,16 @@
     var voiceState = 'off';
     var captionText = '';
 
+    // Twelve thin bars, each carrying its own fallback-loop delay so the CSS animation (used only until presence
+    // starts driving --juniper-bar per bar) doesn't move all twelve in lockstep.
+    function waveMarkup() {
+      var bars = '';
+      for (var index = 0; index < 12; index += 1) {
+        bars += '<i style="animation-delay:-' + ((index * 97) % 1100) / 1000 + 's"></i>';
+      }
+      return '<span class="juniper-motion__wave" data-juniper-wave aria-hidden="true">' + bars + '</span>';
+    }
+
     var pill = document.createElement('div');
     pill.className = 'juniper-motion__pill';
     pill.setAttribute('data-juniper-pill', '');
@@ -29,6 +39,7 @@
         '<span class="juniper-motion__halo" aria-hidden="true">' +
           '<span class="ai-chat__sticker juniper-motion__head" data-juniper-pill-head></span>' +
         '</span>' +
+        waveMarkup() +
         '<span class="juniper-motion__text" data-juniper-pill-text aria-live="off"></span>' +
       '</button>' +
       '<button class="juniper-motion__pill-stop" type="button" data-juniper-pill-stop aria-label="Stop hands-free"><i></i></button>';
