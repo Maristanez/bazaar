@@ -19,6 +19,7 @@ function item(id: string, isAddOn: boolean): fc.Arbitrary<NegotiationItem> {
 }
 const reason: fc.Arbitrary<BuyerReason> = fc.record({
   score: fc.integer({ min: 0, max: 4 }), label: fc.constantFrom(null, "budget"), labels: fc.subarray(["budget", "quantity intent", "add-on intent", "repeat shopper", "market comparison", "real use case", "ready to buy"]),
+  spoken: fc.subarray(["budget", "quantity intent", "add-on intent", "repeat shopper", "market comparison", "real use case", "ready to buy"]),
   hasBulkIntent: fc.boolean(), hasAddOnIntent: fc.boolean(), hasMarketComparison: fc.boolean(), isReadyToBuy: fc.boolean(),
 });
 const menuInput: fc.Arbitrary<NegotiationMenuInput> = fc.record({

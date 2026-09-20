@@ -79,7 +79,7 @@ export function buildNegotiationMenu(input: NegotiationMenuInput): NegotiationMe
     : requestedName
       ? unique.filter(offer => offer.kind === "bundle" && requested && offer.items.some(item => item.productId === requested.productId))
     : unique;
-  return explicitBundles.map((offer, index) => ({ id: String.fromCharCode(65 + index), offer, facts: factsFor(offer, reason, offered) }));
+  return explicitBundles.map((offer, index) => ({ id: String.fromCharCode(65 + index), offer, facts: factsFor(offer, reason, offered, main) }));
 }
 
 /** Deterministic option-A fallback, shared by the server and synthetic rehearsals. */
@@ -100,8 +100,9 @@ const REASON_FACTS: Readonly<Record<string, string>> = {
 };
 
 /** Public-safe reasons only. Stock age, cost, floor and target never become a fact: they are leverage against the owner. */
-function factsFor(offer: NegotiationOffer, reason: BuyerReason, offered: number): string[] {
-  const included = offer.items.filter(item => item.productId !== offer.items[0]!.productId).map(item => `${item.title} included`);
+function factsFor(offer: NegotiationOffer, reason: BuyerReason, offered: number, main: NegotiationItem): string[] {
+  const included = offer.items.filter(item => item.isAddOn && item.productId !== main.productId).map(item => `${item.title} included`);
+  const units = offer.items.reduce((sum, item) => sum + (item.qty || 1), 0);
   // Only spell out the full cart when quantities make "both" ambiguous. For a
   // normal one-item-plus-add-on bundle, the individual included fact is safer
   // because it does not repeat the main product in shopper copy.
@@ -110,7 +111,9 @@ function factsFor(offer: NegotiationOffer, reason: BuyerReason, offered: number)
     ? [`cart includes ${offer.items.map(item => `${item.qty || 1} × ${item.title}`).join(" and ")}`]
     : [];
   // A reason is only credited where it bought something: an option still at list earned nothing.
-  const reasons = offer.total < offer.listTotal ? reason.labels.flatMap(label => REASON_FACTS[label] ?? []) : [];
+  const reasons = offer.total < offer.listTotal
+    ? (reason.spoken ?? []).filter(label => label !== "quantity intent" || units > 1).flatMap(label => REASON_FACTS[label] ?? [])
+    : [];
   // The one dollar figure a fact may carry is the shopper's own, and only where the option really is at or under it.
   const budget = Number.isSafeInteger(offered) && offered > 0 && offer.total <= offered ? [`meets your ${formatMoney(offered)} budget`] : [];
   return [...included, ...cartDescription, ...reasons, ...budget];

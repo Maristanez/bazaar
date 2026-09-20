@@ -15,6 +15,26 @@ function input(overrides: Partial<NegotiationMenuInput> = {}): NegotiationMenuIn
 }
 
 describe("buildNegotiationMenu", () => {
+  it("only calls an item included when it is an add-on beside the main item", () => {
+    const menu = buildNegotiationMenu(input({ main: socks, offered: 17000, reason: analyzeBuyerReason("I want both items"), quantity: 2, requestedItems: [{ variantId: tr2.variantId, quantity: 1 }], allowAlternatives: false }));
+    expect(menu[0]!.offer.items.map(item => item.productId)).toEqual(["socks", "tr2"]);
+    expect(menu[0]!.facts.join(" | ")).not.toContain("Trail Runner 2 included");
+  });
+
+  it("does not say a reason aloud when the words only looked like one", () => {
+    // Each of these trips a pricing label today; none of them is the shopper giving that reason.
+    const looksLike = analyzeBuyerReason("I'm returning these shoes and can't buy right now, saw it cheaper today, I'm local");
+    const menu = buildNegotiationMenu(input({ main: tr2, round: 3, reason: looksLike, allowAlternatives: false }));
+    expect(menu[0]!.offer.total).toBeLessThan(menu[0]!.offer.listTotal);
+    expect(menu[0]!.facts).toEqual([]);
+  });
+
+  it("credits buying more than one item only on an option that holds more than one unit", () => {
+    const menu = buildNegotiationMenu(input({ main: tr2, round: 3, quantity: 1, reason: analyzeBuyerReason("I want this pair, and I'd grab a couple of tees"), allowAlternatives: false }));
+    expect(menu[0]!.offer.items.reduce((units, item) => units + (item.qty || 1), 0)).toBe(1);
+    expect(menu[0]!.facts).not.toContain("for buying more than one item");
+  });
+
   it("says an option meets the shopper's own number only when its total is at or under it", () => {
     const menu = buildNegotiationMenu(input({ offered: 12000, reason: analyzeBuyerReason("older model budget") }));
     const ridgeLite = menu.find(candidate => candidate.offer.items[0]!.title === "Ridge Lite")!;
