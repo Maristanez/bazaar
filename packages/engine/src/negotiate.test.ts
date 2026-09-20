@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { analyzeBuyerReason, applyNegotiationContext, auditOffer, priceOffer } from "./negotiate";
+import { analyzeBuyerReason, applyNegotiationContext, auditOffer, priceOffer, type BuyerReason } from "./negotiate";
 
 const shoe = {
   variantId: "tr2-10", productId: "tr2", title: "Trail Runner 2", size: "10", productType: "shoe",
@@ -85,6 +85,86 @@ describe("live negotiation pricing", () => {
     expect(auditOffer([{ ...shoe, cost: Number.NaN }], 12000, 25, now)).toBeNull();
     expect(auditOffer([shoe], Number.NaN, 25, now)).toBeNull();
     expect(auditOffer([shoe], 12000, 61, now)).toBeNull();
+  });
+});
+
+describe("owner discount cap", () => {
+  const strong = { score: 4, label: "market comparison", labels: ["market comparison"], hasBulkIntent: true, hasAddOnIntent: false, hasMarketComparison: true, isReadyToBuy: true };
+
+  it("never prices below the capped share of list, however strong the reason", () => {
+    // 5% off $149 is $141.55, which a shopper sees as $142.
+    const offer = priceOffer(shoe, 9000, 4, { items: [shoe] }, strong, 1, { floorPct: 25, now, discountCapPct: 5 });
+    expect(offer.total).toBe(14200);
+  });
+
+  it("a zero cap holds list price", () => {
+    const offer = priceOffer(shoe, 9000, 4, { items: [shoe] }, strong, 1, { floorPct: 25, now, discountCapPct: 0 });
+    expect(offer.total).toBe(14900);
+  });
+
+  it("defaults to the 22% cap", () => {
+    const fresh = { ...shoe, stockedAt: null }; // no urgency, so the cap is what binds: 22% off $149 is $116.22 → $117
+    const withDefault = priceOffer(fresh, 9000, 4, { items: [fresh] }, strong, 1, { floorPct: 25, now });
+    const loose = priceOffer(fresh, 9000, 4, { items: [fresh] }, strong, 1, { floorPct: 25, now, discountCapPct: 40 });
+    expect(withDefault).toEqual(priceOffer(fresh, 9000, 4, { items: [fresh] }, strong, 1, { floorPct: 25, now, discountCapPct: 22 }));
+    expect(withDefault.total).toBeGreaterThanOrEqual(11700);
+    expect(loose.total).toBeLessThanOrEqual(withDefault.total);
+  });
+
+  it("a generous cap still cannot reach below the floor", () => {
+    const thin = { ...shoe, cost: 13000 }; // floor at 5% is $136.50; 40% off list would be $89.40
+    const offer = priceOffer(thin, 9000, 4, { items: [thin] }, strong, 1, { floorPct: 5, now, discountCapPct: 40 });
+    expect(offer.total).toBeGreaterThanOrEqual(13650);
+  });
+
+  it("every single-item price is at least max(floor, capped list)", () => {
+    fc.assert(fc.property(
+      fc.integer({ min: 1000, max: 50000 }), fc.integer({ min: 1, max: 99 }), fc.integer({ min: 0, max: 60 }), fc.integer({ min: 0, max: 40 }),
+      fc.integer({ min: 1, max: 4 }), fc.integer({ min: 0, max: 4 }), fc.integer({ min: 100, max: 60000 }), fc.boolean(), fc.boolean(), fc.integer({ min: 0, max: 400 }),
+      (list, costShare, floorPct, cap, round, score, offered, bulk, ready, ageDays) => {
+        const cost = Math.floor(list * costShare / 100);
+        const item = { ...shoe, list, cost, stockedAt: new Date(now.getTime() - ageDays * 86400000).toISOString() };
+        const reason = { ...strong, score, hasBulkIntent: bulk, isReadyToBuy: ready };
+        const offer = priceOffer(item, offered, round, { items: [item] }, reason, 1, { floorPct, now, discountCapPct: cap });
+        if (offer.kind === "closed") return;
+        const floor = Math.max(cost + 1, Math.ceil(cost * (1 + floorPct / 100)));
+        expect(offer.total).toBeGreaterThanOrEqual(Math.max(floor, Math.ceil(list * (1 - cap / 100))));
+      }));
+  });
+});
+
+describe("owner-set max rounds", () => {
+  const strong = { score: 4, label: "market comparison", labels: ["market comparison"], hasBulkIntent: true, hasAddOnIntent: false, hasMarketComparison: true, isReadyToBuy: true };
+  const price = (round: number, maxRounds: number | undefined, reason: BuyerReason = strong) => priceOffer(shoe, 9000, round, { items: [shoe] }, reason, 1, { floorPct: 25, now, maxRounds });
+
+  it("the last of two rounds reaches the price the fourth of four reaches today", () => {
+    expect(price(4, undefined).total).toBe(12900);
+    expect(price(2, 2).total).toBe(12900);
+    expect(price(2, 2).badges).toContain("firm counter");
+  });
+
+  it("the last of six rounds reaches the same price, and the middle rounds sit above it", () => {
+    expect(price(6, 6).total).toBe(12900);
+    expect(price(3, 6).total).toBeGreaterThan(12900);
+    expect(price(3, 6).total).toBeLessThan(14900);
+    expect(price(4, 6).badges).not.toContain("firm counter");
+  });
+
+  it("a shopper with no reason still gets the small final-round move when there are only two rounds", () => {
+    expect(price(4, undefined, emptyReasonForTest()).total).toBe(14800);
+    expect(price(2, 2, emptyReasonForTest()).total).toBe(14800);
+    expect(price(1, 2, emptyReasonForTest()).total).toBe(14900);
+  });
+
+  it("four rounds is the default", () => {
+    for (const round of [1, 2, 3, 4]) expect(price(round, 4)).toEqual(price(round, undefined));
+  });
+
+  it("prices never step up as the rounds go on", () => {
+    for (const maxRounds of [2, 3, 5, 6]) {
+      const totals = Array.from({ length: maxRounds }, (_, index) => price(index + 1, maxRounds).total);
+      expect(totals).toEqual(totals.slice().sort((a, b) => b - a));
+    }
   });
 });
 

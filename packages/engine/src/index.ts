@@ -7,3 +7,5 @@ export { buildMenu } from "./menu";
 export type { MenuInput, MenuResult } from "./menu";
 export { auditAccepted, addOnPart } from "./audit";
 export type { PriceAudit } from "./audit";
+export { DEFAULT_SETTINGS, SETTING_RANGES, resolveSettings } from "./settings";
+export type { ResolvedSettings } from "./settings";

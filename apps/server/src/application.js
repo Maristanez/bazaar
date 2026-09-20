@@ -12,6 +12,7 @@ import { analyzeBuyerReason, applyNegotiationContext, auditOffer } from "../../.
 import { selectCatalogItem } from "./catalog.ts";
 import { publicConfig } from "./public-config.ts";
 import { buildNegotiationMenu, rankNegotiationMenu } from "../../../packages/engine/src/negotiation-menu.ts";
+import { resolveSettings } from "../../../packages/engine/src/settings.ts";
 import { randomUUID } from "node:crypto";
 
 
@@ -22,7 +23,8 @@ const DEFAULT_ALLOWED_ORIGINS = [
   "http://127.0.0.1:9293",
   "http://localhost:9293",
 ];
-const MAX_ROUNDS = 4;
+/** The owner's saved settings (SPEC §4.4.1), read fresh on every turn; absent = the defaults. */
+const ownerSettings = () => resolveSettings(owner?.getPolicy().settings);
 const MAX_OFFER_QUANTITY = 10;
 const MIRROR_TTL_MS = 60_000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -746,7 +748,7 @@ function negotiationFor(payload, item, quantity) {
 async function makeOfferTurn(payload, message) {
   if (owner.getPolicy().paused) return pausedReply(payload);
   const active = state.negotiations.get(payload.negotiationId || state.shopperContexts.get(payload.shopperId)?.negotiationId);
-  const needsFreshApprovalCost = active?.round >= MAX_ROUNDS && owner.getPolicy().askOwner && !active.approvalUsed;
+  const needsFreshApprovalCost = active?.round >= ownerSettings().maxRounds && owner.getPolicy().askOwner && !active.approvalUsed;
   const mirror = await syncMirror({ force: needsFreshApprovalCost });
   const shopperContext = resolveShopperContext(payload.shopperId, mirror, payload.negotiationId);
   const understanding = await understandOffer(message, payload, mirror, shopperContext);
@@ -826,30 +828,35 @@ async function makeOfferTurn(payload, message) {
   const previousRound = negotiation.round;
   const pending = [...state.offers.values()].find(offer => offer.negotiationId === negotiationId && offer.status === "pending_owner");
   if (pending) return { reply: pending.card.line, card: currentCard(pending), negotiationId };
-  const round = Math.min(MAX_ROUNDS, previousRound + 1);
-  negotiation.round = round;
+  const { maxRounds, discountCapPct, lowballCutoffPct } = ownerSettings();
+  // A lowball earns nothing: code counters with the quote already on the table, no LLM call, and the round does not advance.
+  const lowball = lowballCutoffPct > 0 && offered * 100 < match.item.list * quantity * lowballCutoffPct;
+  const round = lowball ? Math.max(1, previousRound) : Math.min(maxRounds, previousRound + 1);
+  negotiation.round = lowball ? previousRound : round;
   rememberShopperContext(payload.shopperId, match.item, quantity, negotiationId, { reasonText, reasonTags: reason.labels, requestedItems });
   const policy = owner.getPolicy();
   const allowAlternatives = /\b(alternative|something else|anything cheaper|recommend|instead|other options)\b/i.test(message);
   const priceMenu = floorPct => {
-    const choices = buildNegotiationMenu({ main: match.item, mirror, offered, round, reason, quantity, floorPct, now: new Date(), requestedItems, allowAlternatives });
+    const choices = buildNegotiationMenu({ main: match.item, mirror, offered, round, reason, quantity, floorPct, now: new Date(), requestedItems, allowAlternatives, discountCapPct, maxRounds });
     return rankNegotiationMenu(choices, { main: match.item, offered, requestedItems, allowAlternatives });
   };
   let candidates = priceMenu(policy.floorPct);
   const shopperId = requireShopperId(payload);
   if (!candidates.length) return { reply: requestedItems.length ? "I could not price every requested item safely, so I did not create a partial offer." : "This item or quantity is not open to offers right now.", negotiationId };
   const fallback = choices => choices[0];
-  let menu = negotiationOptions(candidates, round, match.item);
-  let phrased = await phraseOfferWithBackboard({ menu, fallback: fallback(candidates), shopperId, negotiationId, message, round, main: match.item });
+  let menu = negotiationOptions(candidates, round, match.item, maxRounds);
+  let phrased = lowball
+    ? lowballCounter(candidates, menu, offered)
+    : await phraseOfferWithBackboard({ menu, fallback: fallback(candidates), shopperId, negotiationId, message, round, main: match.item });
   const latestPolicy = owner.getPolicy();
   if (latestPolicy.paused) return pausedReply(payload);
   if (latestPolicy.floorPct !== policy.floorPct) {
     const selectedItems = candidates.find(candidate => candidate.id === phrased.optionId)?.offer.items;
     candidates = priceMenu(latestPolicy.floorPct);
     if (!candidates.length) return { reply: "This item is not open to offers right now.", negotiationId };
-    menu = negotiationOptions(candidates, round, match.item);
+    menu = negotiationOptions(candidates, round, match.item, maxRounds);
     const fresh = candidates.find(candidate => sameOfferItems(candidate.offer.items, selectedItems)) || fallback(candidates);
-    phrased = { optionId: fresh.id, line: `I can hold ${formatMoney(fresh.offer.total)} for 15 minutes.`, trace: null };
+    phrased = lowball ? lowballCounter(candidates, menu, offered) : { optionId: fresh.id, line: `I can hold ${formatMoney(fresh.offer.total)} for 15 minutes.`, trace: null };
   }
   const selected = candidates.find(candidate => candidate.id === phrased.optionId) || fallback(candidates);
   const offer = selected.offer;
@@ -865,7 +872,7 @@ async function makeOfferTurn(payload, message) {
     offerId,
     status: "live",
     round,
-    maxRounds: MAX_ROUNDS,
+    maxRounds,
     option: {
       id: selected.id,
       kind: menu.find(option => option.id === selected.id).kind,
@@ -894,7 +901,7 @@ async function makeOfferTurn(payload, message) {
   const stored = { ...offer, line: replyLine, offerId, negotiationId, shopperId, expiresAt, status: "live", backboard: phrased.trace, card };
   state.offers.set(offerId, stored);
   const audit = auditOffer(offer.items, offer.total, owner.getPolicy().floorPct, new Date());
-  if (previousRound >= MAX_ROUNDS && latestPolicy.askOwner && !negotiation.approvalUsed && audit && roundToShopper(offered) > audit.cost && roundToShopper(offered) < audit.floor && roundToShopper(offered) < offer.total) {
+  if (!lowball && previousRound >= maxRounds && latestPolicy.askOwner && !negotiation.approvalUsed && audit && roundToShopper(offered) > audit.cost && roundToShopper(offered) < audit.floor && roundToShopper(offered) < offer.total) {
     const approval = owner.requestApproval({ negotiationId, shopperId, surface: "storefront", items: card.option.items, offer: roundToShopper(offered), cost: audit.cost, finalTotal: offer.total });
     negotiation.approvalUsed = true;
     stored.finalOffer = { ...offer };
@@ -910,7 +917,9 @@ async function makeOfferTurn(payload, message) {
   }
   if (audit) owner.publish({
     at: new Date().toISOString(), surface: "storefront", shopperId, negotiationId,
-    kind: "decision", reasoning: `Server-priced ${selectedMain.title}; ${reason.label || "no buyer reason"}.`,
+    kind: "decision", reasoning: lowball
+      ? `Lowball · countered at ${formatMoney(offer.total)} · no LLM call. ${formatMoney(roundToShopper(offered))} is under ${lowballCutoffPct}% of list; round ${round} stands.`
+      : `Server-priced ${selectedMain.title}; ${reason.label || "no buyer reason"}.`,
     offer: offered, round, menu, picked: card.option.id,
     ...audit, ...(phrased.trace ? { threadId: phrased.trace.threadId, memory: phrased.trace.memory, llm: { provider: phrased.trace.provider, model: phrased.trace.model, ms: phrased.trace.ms, costUsd: phrased.trace.costUsd } } : {}),
   });
@@ -1410,13 +1419,28 @@ function escapeRegExp(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function negotiationOptions(candidates, round, main) {
+function negotiationOptions(candidates, round, main, maxRounds) {
   return candidates.map(({ id, offer }, index) => ({
     id,
-    kind: offer.items[0].productId !== main.productId ? "else" : offer.kind === "bundle" ? "bundle" : round === MAX_ROUNDS ? "final" : "held",
+    kind: offer.items[0].productId !== main.productId ? "else" : offer.kind === "bundle" ? "bundle" : round === maxRounds ? "final" : "held",
     items: offer.items.map((item, position) => ({ variantId: item.variantId, title: item.title, ...(item.size ? { size: item.size } : {}), qty: item.qty || 1, ...(position > 0 ? { thrownIn: true } : {}) })),
     listTotal: offer.listTotal, total: offer.total, ownerRank: index + 1, facts: [],
   }));
+}
+
+/** Option A, or the first "something else" when the offer is below every option's total. The line is a template around one public fact. */
+function lowballCounter(candidates, menu, offered) {
+  const belowAll = candidates.every(candidate => offered < candidate.offer.total);
+  const elseOption = belowAll ? menu.find(option => option.kind === "else") : undefined;
+  const picked = candidates.find(candidate => candidate.id === elseOption?.id) || candidates[0];
+  const { offer } = picked;
+  const title = offer.items[0].title;
+  const fact = offer.items.length > 1
+    ? `that includes ${offer.items.slice(1).map(item => `${item.qty || 1} × ${item.title}`).join(" and ")}`
+    : offer.total < offer.listTotal
+      ? `that is already ${formatMoney(offer.listTotal - offer.total)} off the ${formatMoney(offer.listTotal)} list price`
+      : `that is the list price`;
+  return { optionId: picked.id, line: `I can't get near ${formatMoney(roundToShopper(offered))}. ${title} is ${formatMoney(offer.total)} — ${fact}. Send me a fairer number and a reason, and I can work with you.`, trace: null };
 }
 
 function sameOfferItems(items, other) {
