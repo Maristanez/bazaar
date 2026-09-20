@@ -89,19 +89,19 @@ describe("V8 the Jarvis keyword", () => {
     expect(window.sessionStorage.getItem("bazaar:keyword:off")).toBeNull();
   });
 
-  it("opens the agent when the shopper says Jarvis: the panel first, then hands-free, its own recogniser stopped before either", () => {
+  it("wakes the agent when the shopper says Jarvis without opening the chat: hands-free starts, its own recogniser stopped first", () => {
     const { fake, start, order, ears, chat } = mount();
     vi.advanceTimersByTime(50);
     expect(chat.isOpen()).toBe(false);
 
-    let runningAtOpen = -1;
-    chat.on("open", () => { runningAtOpen = fake.running().length; });
+    let runningAtStart = -1;
+    start.mockImplementationOnce(() => { runningAtStart = fake.running().length; order.push("handsfree.start"); });
     fake.made[0].hear("hey jarvis could you do one twenty");
     vi.advanceTimersByTime(400);
 
-    expect(order).toEqual(["open", "handsfree.start"]);
-    expect(chat.isOpen()).toBe(true);
-    expect(runningAtOpen).toBe(0);
+    expect(order).toEqual(["handsfree.start"]);
+    expect(chat.isOpen()).toBe(false);
+    expect(runningAtStart).toBe(0);
     expect(start.mock.calls[0]).toEqual([]);
     expect(fake.running()).toHaveLength(0);
     expect(ears()).toBe(0);

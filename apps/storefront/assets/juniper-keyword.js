@@ -319,16 +319,19 @@
     try { if (mine.abort) mine.abort(); else mine.stop(); } catch (error) { /* onend or the fallback finishes it */ }
   }
 
-  // The panel opens where the shopper can see it, then hands-free takes the microphone if it is there.
+  // Hands-free takes the microphone and the chat stays as the shopper left it: closed, the voice pill shows she is
+  // listening and what is said appears above it (V12), and a tap opens the chat. Only with no hands-free to hand
+  // over to does the panel open, because then there would be nothing to show for having been called.
   function finishWake() {
     if (!waking) return;
     if (wakeTimer) { window.clearTimeout(wakeTimer); wakeTimer = null; }
     quickEnds = 0;
     backoffs = 0;
-    try { chat.open(); } catch (error) { /* the chat stays as it was */ }
+    var handedOver = false;
     try {
-      if (chat.handsfree && typeof chat.handsfree.start === 'function') chat.handsfree.start();
-    } catch (error) { /* the panel is open; the shopper can type */ }
+      if (chat.handsfree && typeof chat.handsfree.start === 'function') { chat.handsfree.start(); handedOver = true; }
+    } catch (error) { handedOver = false; }
+    if (!handedOver) { try { chat.open(); } catch (error) { /* the chat stays as it was */ } }
     waking = false;
     sync(REARM_MS);
   }

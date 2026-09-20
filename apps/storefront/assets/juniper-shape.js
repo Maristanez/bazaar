@@ -30,7 +30,7 @@
     var MAX_H = 860;             // taller than this and the header drifts out of reach of the foot
     var SHAPES = {               // the forms Juniper gives herself
       deal: { w: 480, h: 820, note: 'Juniper made room for your offer' },
-      voice: { w: 404, h: 560, note: 'Juniper drew in to listen' }
+      voice: { w: 376, h: 480, note: 'Juniper drew in to listen' }
     };
     var NOTE_MS = 2600;
     var MARGIN = 40;             // critical.css keeps 2.5rem of page around the panel
@@ -106,7 +106,7 @@
     }
 
     function currentSize() {
-      return size || { w: panel.offsetWidth || 404, h: panel.offsetHeight || 720 };
+      return size || { w: panel.offsetWidth || 376, h: panel.offsetHeight || 576 };
     }
 
     var grip = document.createElement('button');
@@ -270,13 +270,16 @@
       peek.hidden = true;
     }
 
-    function showPeek(text) {
+    // who: 'juniper' (her line; leaves the unread dot) or 'you' (the shopper's own words as they are heard).
+    function showPeek(text, who) {
       var line = String(text || '').replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
       if (!line) return;
+      var mine = who === 'you';
       peek.textContent = line;
-      peek.setAttribute('aria-label', 'Juniper says: ' + line + '. Open the chat.');
+      peek.setAttribute('data-juniper-peek', mine ? 'you' : 'juniper');
+      peek.setAttribute('aria-label', (mine ? 'You said: ' : 'Juniper says: ') + line + '. Open the chat.');
       peek.hidden = false;
-      dot.hidden = false;
+      if (!mine) dot.hidden = false;
       if (peekTimer) window.clearTimeout(peekTimer);
       peekTimer = window.setTimeout(hidePeek, PEEK_MS);
     }
@@ -292,7 +295,16 @@
       // A saved size is re-clamped to the window it opens in.
       if (size) applySize(size, false); else applySize(null, false);
     });
-    chat.on('turn:start', hidePeek);
+    // Closed, the conversation is still read: the shopper's words as they are heard and sent, then her answer.
+    chat.on('turn:start', function (detail) {
+      if (chat.isOpen && chat.isOpen()) { hidePeek(); return; }
+      showPeek(detail && detail.text, 'you');
+    });
+    document.addEventListener('bazaar-voice:caption', function (event) {
+      if (chat.isOpen && chat.isOpen()) return;
+      var heard = event && event.detail && event.detail.text;
+      if (heard) showPeek(heard, 'you');
+    });
 
     // ---- the suggestion rail ----
     var row = elements.chips || panel.querySelector('[data-ai-chat-prompts]');

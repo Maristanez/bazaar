@@ -127,6 +127,22 @@ describe("V12 — the chat keeps its shape out of the conversation's way", () =>
     expect(find("[data-juniper-unread]").hidden).toBe(true);
   });
 
+  it("closed, the conversation is still read: the shopper's words as they are heard, then her answer", async () => {
+    const { chat, find, window, settle } = mount();
+    const peek = find("[data-juniper-peek]");
+    window.document.dispatchEvent(new window.CustomEvent("bazaar-voice:caption", { detail: { text: "could you do one", final: false } }));
+    expect(peek.hidden).toBe(false);
+    expect(peek.getAttribute("data-juniper-peek")).toBe("you");
+    expect(peek.textContent).toBe("could you do one");
+    expect(find("[data-juniper-unread]").hidden).toBe(true);
+    chat.send("could you do one twenty");
+    expect(peek.textContent).toBe("could you do one twenty");
+    await settle();
+    expect(peek.getAttribute("data-juniper-peek")).toBe("juniper");
+    expect(peek.textContent).toBe("I can do a little better on those.");
+    expect(chat.isOpen()).toBe(false);
+  });
+
   it("a reply while the chat is open does not peek", async () => {
     const { chat, find, settle } = mount();
     chat.open();

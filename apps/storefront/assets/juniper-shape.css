@@ -4,8 +4,9 @@
 /* ---- size: desktop only; a phone keeps critical.css's full-screen sheet ---- */
 @media (min-width: 481px) {
   .ai-chat__panel {
-    width: min(var(--juniper-shape-w, 25.25rem), calc(100vw - 2.5rem));
-    height: min(var(--juniper-shape-h, 45rem), calc(100svh - 2.5rem));
+    /* The usual size leaves the page in view: a product's picture and its form stay readable beside the chat. */
+    width: min(var(--juniper-shape-w, 23.5rem), calc(100vw - 2.5rem));
+    height: min(var(--juniper-shape-h, 36rem), calc(100svh - 2.5rem));
   }
 
   .ai-chat__panel:not([hidden]) {
@@ -45,6 +46,17 @@
     .ai-chat__panel:not([hidden]) {
       translate: 0 0;
     }
+  }
+
+  /* Three header buttons in a narrower panel: a touch smaller (a mouse is doing the pressing here; the phone sheet
+     keeps its 3rem targets), so her name and the line under it keep two tidy lines. */
+  .ai-chat__header .ai-chat__icon-button {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .ai-chat__who p {
+    text-wrap: balance;
   }
 
   .ai-chat__header[data-juniper-move] {
@@ -187,7 +199,14 @@
   100% { opacity: 0; translate: -50% -0.3rem; }
 }
 
-/* ---- a reply that lands while the chat is minimised ---- */
+/* ---- what is said while the chat is minimised: her line in white, the shopper's own words in teal ---- */
+.ai-chat .juniper-shape__peek[data-juniper-peek='you'] {
+  border-radius: 1rem 1rem 0.25rem;
+  background: var(--teal);
+  box-shadow: 0 14px 34px -12px rgb(47 22 4 / 40%);
+  color: var(--cream);
+}
+
 .ai-chat .juniper-shape__peek {
   position: absolute;
   right: 0;
