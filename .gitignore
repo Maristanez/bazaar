@@ -12,3 +12,8 @@ codex-prompt-*.txt
 codex-message-*.txt
 claude-design-*.txt
 CODEX-READ-THIS-BEFORE-*.md
+
+# graphify: keep graph.json, GRAPH_REPORT.md and graph.html; ignore working files and the extraction cache
+graphify-out/.graphify_*
+graphify-out/cache/
+graphify-out/cost.json

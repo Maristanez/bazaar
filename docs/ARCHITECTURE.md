@@ -2,9 +2,9 @@
 
 Diagram-first companion to [`SPEC.md`](SPEC.md). SPEC.md is the source of truth for how the system behaves; this file shows how the pieces fit. Where they disagree, SPEC.md wins — then fix this file. Schedule and tasks: [`PLAN.md`](PLAN.md). Demo: [`DEMO.md`](DEMO.md).
 
-**Naming used everywhere:** Surface A = the Trailhead storefront (leads the build and the demo). Surface B = the ChatGPT app (the finale). The Console is the owner's page.
+**Naming used everywhere:** three applications are the centre of the repo — `apps/storefront` (the Trailhead Shopify theme with the shopper chat and offer card), `apps/server` (the one Node server) and `apps/web` (the Console, the owner's page). The packages serve them. The ChatGPT app is a **planned surface — not built on main**; wherever it appears below it is drawn dashed and labelled so.
 
-Contents: [1 Context](#1-system-context) · [2 Containers](#2-containers-and-components) · [3 Trust boundary](#3-trust-boundary--who-sees-what) · [4 Sequences](#4-sequence-diagrams) · [5 State machines](#5-state-machines) · [6 Engine](#6-the-engine-as-a-flowchart) · [7 Guardrails](#7-guardrail-layers) · [8 Data](#8-data-model) · [9 Deployment](#9-deployment--demo-day-topology) · [10 Failures](#10-failure-and-fallback-map) · [11 API](#11-api-surface) · [12 Build order](#12-build-order-as-a-dependency-graph) · [13 Gym swarm](#13-the-gym-swarm-view) · [14 Decisions](#14-decisions-settled)
+Contents: [1 Context](#1-system-context) · [2 Containers](#2-containers-and-components) · [3 Trust boundary](#3-trust-boundary--who-sees-what) · [4 Sequences](#4-sequence-diagrams) · [5 State machines](#5-state-machines) · [6 Engine](#6-the-engine-as-a-flowchart) · [7 Guardrails](#7-guardrail-layers) · [8 Data](#8-data-model) · [9 Deployment](#9-deployment--demo-day-topology) · [10 Failures](#10-failure-and-fallback-map) · [11 API](#11-api-surface) · [12 Build order](#12-build-order-as-a-dependency-graph) · [13 Gym](#13-the-gym--the-price-race) · [14 Decisions](#14-decisions-settled)
 
 ---
 
@@ -14,100 +14,95 @@ Contents: [1 Context](#1-system-context) · [2 Containers](#2-containers-and-com
 flowchart LR
   SH["Shopper"]
   OW["Owner - Maya"]
-  GPT["ChatGPT - a surface"]
-  SRV["Our server - one hosted Hono process"]
-  SHOP["Shopify - Admin API and Checkout"]
-  BB["Backboard - choose and say, memory, store documents"]
-  OAI["OpenAI API - understand"]
+  SRV["apps/server - one hosted Node process, node:http"]
+  SHOP["Shopify - theme, Admin API and Checkout"]
+  BB["Backboard - understand, choose and say, questions, memory, store documents"]
+  EL["ElevenLabs - voice in and out"]
   SB["Supabase - owner login and 3 tables"]
+  GPT["ChatGPT app - planned, not built"]
 
   SH -->|"chat messages and offers"| SRV
   SRV -->|"public offer card only"| SH
-  SH -->|"talks to"| GPT
-  GPT -->|"MCP tool calls"| SRV
-  SRV -->|"structuredContent for the card"| GPT
   OW -->|"policy, approve or decline, pause"| SRV
   SRV -->|"live feed with costs and reasoning"| OW
   OW -->|"email and password sign-in"| SB
   SRV -->|"verify token, read and write policy and deals"| SB
   SRV -->|"read costs, stock, stocked_at and mint discount code"| SHOP
   SH -->|"opens cart link with the code"| SHOP
-  SRV -->|"shopper sentence"| OAI
-  OAI -->|"structured offer"| SRV
-  SRV -->|"menu without costs or floors"| BB
-  BB -->|"picked option id and one line"| SRV
+  SRV -->|"shopper sentence, then the menu without costs or floors"| BB
+  BB -->|"structured offer, then picked option id and one line"| SRV
+  SRV -->|"speech to text, text to speech"| EL
+  GPT -.->|"planned - not built"| SRV
+  style GPT stroke-dasharray: 5 5
 ```
 
-Who talks to whom, and what crosses each line. The thing to notice: every arrow touches our server except two — the owner signing in to Supabase, and the shopper opening Shopify Checkout. Money data (costs, floors) only ever flows between Shopify, our server and the owner.
+Who talks to whom, and what crosses each line. The thing to notice: every arrow touches our server except two — the owner signing in to Supabase, and the shopper opening Shopify Checkout. Money data (costs, floors) only ever flows between Shopify, our server and the owner. Every LLM call goes through Backboard; there is no other model client and no other model key.
 
 ---
 
 ## 2. Containers and components
 
-### 2.1 Surfaces and the server's modules
+### 2.1 The applications and the server's modules
 
 ```mermaid
 flowchart TB
-  subgraph SURF["Surfaces"]
-    SF["Surface A - storefront and chat"]
-    CG["Surface B - ChatGPT app and card widget"]
-    CON["Console - owner only"]
+  subgraph APPS["Applications"]
+    SF["apps/storefront - Shopify theme, assets/chat-demo.js is the chat and the offer card"]
+    CON["apps/web - the Console, owner only"]
+    CG["ChatGPT app - planned, not built"]
   end
 
-  subgraph SRV["apps/server - one Hono process"]
-    subgraph ADP["Surface adapters - thin"]
-      CHAT["POST /api/chat and /api/accept"]
-      MCP["ALL /mcp - three tools"]
-      OWN["Owner routes and auth middleware"]
+  subgraph SRV["apps/server - one node:http process"]
+    subgraph APP["src/application.js - the application"]
+      SHR["Shopper routes - /api/chat, /api/offers, /api/accept, /api/products, /api/stream, /api/voice"]
+      OWN["Owner routes behind the Supabase bearer token"]
+      TURN["negotiation turn - understand, validate, menu, choose and say, card"]
+      ACC["accept - audit, mint, record"]
+      MIR["Shopify mirror - token, sync, mint"]
+      STA["serves the built Console at /console"]
     end
-    subgraph CORE["Core"]
-      FP["findProducts"]
-      MO["makeOffer"]
-      AO["acceptOffer"]
-    end
-    ENG["engine - builds the menu"]
-    CHK["the check"]
-    AUD["Auditor"]
-    APR["approvals - 45 s timers"]
-    PAU["pause flag"]
-    BUS["event bus and SSE"]
-    SHC["shopify client - token refresh, sync, mint"]
-    LLM["llm clients - backboard.ts and openai.ts"]
-    DB["db.ts - memory Maps and thin Supabase"]
+    CHK["src/check.ts - the check"]
+    CAT["src/catalog.ts - which product the shopper means"]
+    RUN["src/owner/runtime.ts - policy, PAUSE, approvals with 45 s timers, feed"]
+    KPI["src/owner/kpis.ts and redteam.ts"]
+    DB["src/infra/db.ts - Supabase"]
   end
 
-  SF --> CHAT
-  CG --> MCP
+  subgraph PKG["Packages - serve the applications"]
+    ENG["packages/engine - writes and prices the menu"]
+    GYM["packages/gym - runLiveGym and raceLayout"]
+    LLM["packages/llm - Backboard client"]
+    CT["packages/contracts - shared types"]
+  end
+
+  SF --> SHR
   CON --> OWN
-  CHAT --> FP
-  CHAT --> MO
-  CHAT --> AO
-  MCP --> FP
-  MCP --> MO
-  MCP --> AO
-  OWN --> APR
-  OWN --> PAU
-  OWN --> DB
-  MO --> LLM
-  MO --> ENG
-  MO --> CHK
-  MO --> APR
-  MO --> PAU
-  AO --> AUD
-  AUD --> SHC
-  AO --> SHC
-  FP --> DB
-  MO --> DB
-  AO --> DB
-  SHC --> DB
-  MO --> BUS
-  AO --> BUS
-  APR --> BUS
-  BUS -->|"ChatEvent - public"| SF
-  BUS -->|"ConsoleEvent - everything"| CON
+  CON --> STA
+  CG -.->|"planned - not built"| TURN
+  SHR --> TURN
+  SHR --> ACC
+  TURN --> CAT
+  TURN --> LLM
+  TURN --> ENG
+  TURN --> CHK
+  TURN --> RUN
+  ACC --> ENG
+  ACC --> MIR
+  ACC --> DB
+  ACC --> RUN
+  TURN --> MIR
+  OWN --> RUN
+  OWN --> KPI
+  RUN --> DB
+  KPI --> DB
+  CON --> GYM
+  GYM --> ENG
+  RUN -->|"ConsoleEvent - everything"| CON
+  SHR -->|"public card only"| SF
+  style CG stroke-dasharray: 5 5
 ```
 
-Both surfaces call the same three core functions; an adapter only translates a request in and a card out. Notice the event bus has two outputs with two different types — that split is rule 11 made physical.
+The storefront and the Console are the two things people touch; the server sits between them and owns every figure. Notice the two outputs with two different types: the shopper's reply carries the public card, the owner's stream carries `ConsoleEvent` — that split is rule 11 made physical. The theme never makes a dollar figure: it renders the cards the server sends.
 
 ### 2.2 Monorepo package graph
 
@@ -116,33 +111,25 @@ flowchart BT
   CT["packages/contracts - types only"]
   EN["packages/engine - PURE, zero I/O"]
   GY["packages/gym - PURE, zero I/O"]
-  SP["packages/shopify - Admin API"]
-  LL["packages/llm - Backboard and OpenAI"]
-  CD["packages/card - React offer card"]
+  LL["packages/llm - Backboard client"]
   SV["apps/server - Node"]
-  WB["apps/web - storefront and Console, browser"]
-  WG["apps/widget - card as one HTML file for ChatGPT"]
+  WB["apps/web - the Console, browser"]
+  ST["apps/storefront - Shopify theme, talks to the server over HTTP only"]
 
   EN --> CT
   GY --> CT
   GY --> EN
-  SP --> CT
   LL --> CT
-  CD --> CT
   SV --> CT
   SV --> EN
-  SV --> GY
-  SV --> SP
   SV --> LL
   WB --> CT
-  WB --> CD
   WB --> EN
   WB --> GY
-  WG --> CT
-  WG --> CD
+  ST -.->|"HTTP, no imports"| SV
 ```
 
-An arrow means "imports". The thing to notice: `engine` and `gym` import nothing but types, so they have no network, no clock, no database — which is why the Console can run **the same engine** in the browser for the Gym (300 shoppers in under 50 ms) and why property tests are trivial. The server imports `gym` only for the red-team script. `card` never imports `engine`: the shopper's bundle must not contain pricing code inputs it doesn't need, and never receives costs.
+A solid arrow means "imports", always by package name (`@bazaar/engine`, `@bazaar/gym`) — never a deep relative path into a package. The thing to notice: `engine` and `gym` have no network, no clock, no database — time, seed and data arrive as arguments — which is why the Console can run **the same engine** in the browser for the Gym (300 shoppers, no network) and why property tests are trivial. `tests/purity.test.ts` guards that. The storefront imports nothing: it is theme code that calls the server and draws what comes back, so it can never receive costs.
 
 ---
 
@@ -159,27 +146,26 @@ flowchart LR
   end
 
   subgraph SRVZ["OUR SERVER - holds everything"]
-    S1["Full menu - Option with ownerRank and facts"]
-    S2["cost, floor, ask, target, profit"]
-    S3["Shopify token, Supabase service-role key, LLM keys"]
+    S1["Full menu - Option with ownerRank"]
+    S2["cost, floor, target, profit"]
+    S3["Shopify credentials, Supabase secret key, Backboard and ElevenLabs keys"]
   end
 
-  subgraph LLMZ["LLM SERVICES - partial view"]
-    L1["Backboard sees - menu ids, items, totals, owner_rank, facts, memory, store docs"]
-    L2["Backboard NEVER sees - cost, floor, margin"]
-    L3["OpenAI sees - the shopper sentence only"]
+  subgraph LLMZ["BACKBOARD - partial view"]
+    L1["Sees - the shopper sentence, public products, menu ids, items, totals, memory, store docs"]
+    L2["NEVER sees - cost, floor, margin"]
   end
 
   subgraph OWNZ["OWNER-ONLY - Supabase JWT required"]
     O1["Live feed - menu, picked, reasoning, blocked rows"]
     O2["cost, floor, profit in dollars and percent"]
     O3["Approve and Decline card"]
-    O4["Policy slider, PAUSE"]
+    O4["Policy settings, PAUSE"]
     O5["The Gym and red-team results"]
   end
 
   S1 -->|"strip to PublicOption"| P2
-  S1 -->|"strip costs and floors"| L1
+  S1 -->|"no costs, no floors"| L1
   S1 --> O1
   S2 --> O2
   S2 -.->|"never crosses"| PUB
@@ -187,18 +173,18 @@ flowchart LR
   S3 -.->|"never leaves the server"| PUB
 ```
 
-Three different views of the same negotiation. The shopper gets one picked option with no ranking, facts, cost or floor; the LLM gets the whole menu but no costs or floors, so it cannot leak what it never saw; only the owner sees everything.
+Three different views of the same negotiation. The shopper gets one picked option with no ranking, cost or floor; the LLM gets the whole menu but no costs or floors, so it cannot leak what it never saw; only the owner sees everything. Each shopper gets their own cloned Backboard assistant, so one shopper's memory never reaches another.
 
 **Auth boundary**
 
 | Boundary | Mechanism |
 |---|---|
-| Shopper endpoints (`/api/products`, `/api/chat`, `/api/accept`, `/mcp`) | No login. Can only ever return `ChatEvent` / public types. |
-| Owner endpoints (`/api/console/*`, `/api/policy`, `/api/approvals/:id`, `/api/pause`) | `Authorization: Bearer <Supabase access token>`; Hono middleware calls `supabase.auth.getUser(token)` and checks the user owns the merchant. |
-| Browser to Supabase | Anon key, used only to sign in. **RLS is ON for all three tables with no public policies**, so the anon key can read nothing. |
-| Server to Supabase | Service-role key, server-side environment variable only. Never shipped to a browser. |
-| Server to Shopify / Backboard / OpenAI | Keys in environment variables only. Never in the database, never in a bundle. |
-| Compile-time guard | `ChatEvent` is built only from `PublicOption`; `ConsoleEvent` may carry `Option`. A shopper route that tries to send an `Option` is a type error. |
+| Shopper endpoints (`/api/products`, `/api/chat`, `/api/offers`, `/api/accept`, `/api/stream`, `/api/voice/*`, `/api/public-config`) | No login. Return public types only. An offer can be read or accepted only with the shopper id and negotiation id it was issued to. |
+| Owner endpoints (`/api/console/*`, `/api/policy`, `/api/approvals/:id`, `/api/pause`) | `Authorization: Bearer <Supabase access token>`; the server verifies the token with Supabase and checks the user owns the merchant. Anything else is 401 — it fails closed, and cookies are ignored. |
+| Browser to Supabase | The publishable (anon) key, served by `/api/public-config` and used only to sign in. **RLS is ON for all three tables with no public policies**, so that key can read nothing. |
+| Server to Supabase | `SUPABASE_SECRET_KEY`, server-side environment variable only. Never shipped to a browser. |
+| Server to Shopify / Backboard / ElevenLabs | Keys in environment variables only. Never in the database, never in a bundle. |
+| Compile-time guard | `PublicOption` marks `ownerRank` and `facts` as `never`, so handing a full `Option` to a shopper shape is a type error. |
 
 ---
 
@@ -209,128 +195,132 @@ Three different views of the same negotiation. The shopper gets one picked optio
 ```mermaid
 sequenceDiagram
   autonumber
-  participant S as Shopper browser
+  participant S as Shopper browser - chat-demo.js
   participant A as Server /api/chat
-  participant O as OpenAI API
-  participant E as Engine
   participant B as Backboard
+  participant E as Engine
   participant K as The check
   participant C as Console
 
-  S->>A: POST message, productId, size, shopperId from localStorage
+  S->>A: POST message, product, quantity, shopperId from localStorage
   A->>A: PAUSE on? then reply paused and stop
-  A->>O: understand the sentence (2.5 s timeout)
-  alt reply in time
-    O-->>A: kind, amount, budget, quantity, wants
-  else timeout or error
-    A->>A: regex for dollar amount and keywords
-  end
-  A->>A: validate numbers
-  alt invalid
-    A-->>C: ConsoleEvent blocked by validate
-    A-->>S: polite text, no card
-  else valid
-    A->>E: build the menu from mirror and cached policy
-    E-->>A: accept, or options A to F, or final, or ask owner, or walk
-    A-->>S: sticker shows the thinking face
-    A->>B: menu WITHOUT costs or floors, memory, docs (4 s timeout)
+  alt a plain number under the lowball cutoff
+    A->>A: read the amount in code, no LLM call
+  else anything else
+    A->>B: understand the sentence (BACKBOARD_TIMEOUT_MS, default 6500 ms)
     alt reply in time
-      B-->>A: OPTION id and one line, buffered whole
-    else timeout or run_failed
-      A->>A: option A and template line
+      B-->>A: amount, price mode, quantity, items, currency, reason tags
+    else timeout or error
+      A->>A: parse the dollar amount and quantity in code
     end
-    A->>K: id on menu, dollars match, reasons map to facts, no cost talk
-    alt check fails
-      K-->>A: fail
-      A->>A: option A and template line
-      A-->>C: ConsoleEvent blocked by check
-    else check passes
-      K-->>A: ok
+  end
+  A->>A: validate - known product, quantity 1 to 10, positive CAD, at most 10x list
+  alt invalid
+    A-->>S: polite text, no card, no round used
+  else valid
+    A->>A: score the shopper's stated reason, read the owner's settings
+    A->>E: buildNegotiationMenu then rankNegotiationMenu - mirror, floor, cap, max rounds, round, reason
+    E-->>A: options lettered from A, the code fallback first
+    alt lowball
+      A->>A: counter with the quote already on the table, template line, round does not advance
+    else genuine offer
+      A->>B: menu WITHOUT costs or floors, memory, docs (same timeout)
+      alt reply in time
+        B-->>A: OPTION id and one line
+      else timeout or failure
+        A->>A: option A and its template line
+      end
+      A->>K: id on menu, dollars match, no private words, reasons map to facts
+      alt check fails
+        K-->>A: fail
+        A->>A: a neutral line for the same option if one fits, otherwise option A and template line
+        A-->>C: ConsoleEvent blocked by check
+      else check passes
+        K-->>A: ok
+      end
     end
-    A->>A: create live offer id, supersede the previous one
-    A-->>S: SSE card event with the PUBLIC card
-    A-->>S: SSE text deltas of the CHECKED line
-    A-->>C: ConsoleEvent decision with full menu, floor, cost, reasoning, model, ms, cost_usd
+    A->>A: create live offer id, supersede the previous one in this negotiation
+    A-->>S: JSON reply with the PUBLIC card and the CHECKED line
+    A-->>C: ConsoleEvent decision with full menu, floor, cost, target, profit, reasoning, model, ms, cost_usd
   end
 ```
 
-One turn, six steps, two LLM calls, each with a timeout and a code fallback. Notice the order at the end: the line is sent to the shopper only **after** the check passes, so an invented price is never shown — the "typing" effect is played from checked text.
+One turn, at most two LLM calls, each with a timeout and a code fallback. Notice the order at the end: the line reaches the shopper only **after** the check passes, so an invented price is never shown. `/api/chat` answers with JSON; `GET /api/stream` is a separate SSE channel. A message with no offer in it is a question: it is answered from a code template or by Backboard from the store documents, and uses no round.
 
-### 4b. The same turn from ChatGPT
+### 4b. The same turn from ChatGPT — planned, not built on main
 
 ```mermaid
 sequenceDiagram
   autonumber
   participant U as Shopper
   participant G as ChatGPT model
-  participant M as Server /mcp
-  participant X as Core makeOffer
-  participant W as Card widget in ChatGPT
+  participant M as Server - MCP adapter, planned
+  participant X as Negotiation turn
+  participant W as Card widget in ChatGPT, planned
   participant C as Console
 
   U->>G: Offer Trailhead 115 for the Trail Runner 2
   G->>G: understand - fill make_offer arguments
   G->>M: tools/call make_offer with product_id and offer_total
-  M->>M: shopper id from _meta openai/subject, demo subject mapped to the seeded shopper by env
-  M->>X: makeOffer - same validate, engine, Backboard, check as 4a
+  M->>X: same validate, engine, Backboard, check as 4a
   X-->>M: OfferCard
   X-->>C: ConsoleEvent tagged chatgpt
   M-->>G: structuredContent is the OfferCard, content is EMPTY
   G->>W: render the widget HTML resource
-  W->>W: read window.openai.toolOutput and draw the card
   W-->>U: the same offer card, inline
 ```
 
-The only differences from 4a: ChatGPT does the *understand* step, the card travels as `structuredContent`, and there is no ask-the-owner on this surface (a refused final offer walks). Notice `content` is empty, so the model has no price text to paraphrase. A ChatGPT negotiation is separate from any storefront negotiation, even for the same shopper; the Console shows both in one feed.
+**Nothing in this diagram exists on main**: there is no MCP route and no widget. It records the intended shape so the contracts stay ready for it (`surface: "storefront" | "chatgpt"` is already in the types and the `deals` table). The intended differences from 4a: ChatGPT does the *understand* step, the card travels as `structuredContent` with empty `content` so the model has no price text to paraphrase, and there is no ask-the-owner on that surface.
 
 ### 4c. Deal and settle
 
 ```mermaid
 sequenceDiagram
   autonumber
-  participant S as Card - either surface
-  participant A as Server acceptOffer
-  participant D as db.ts memory
-  participant U as Auditor
+  participant S as Offer card
+  participant A as Server /api/accept
+  participant D as Offers in memory
+  participant U as Auditor - auditOffer
   participant H as Shopify Admin API
   participant P as Supabase
   participant C as Console
   participant K as Shopify Checkout
 
-  S->>A: accept with negotiationId and offerId
-  Note over S,A: storefront uses POST /api/accept, ChatGPT widget uses callTool accept_offer. The model is not in this path.
+  S->>A: accept with shopperId, negotiationId and offerId
   A->>D: look up the offer
-  alt unknown, used, superseded or expired
-    A-->>C: ConsoleEvent blocked by auditor, reason offer id
-    A-->>S: card goes to expired - make another
+  alt unknown, another shopper's, used, superseded or expired
+    A-->>S: refused - make another offer
+  else already accepted
+    A-->>S: the same settlement again, never a second code
   else offer is live
-    A->>U: audit
-    U->>H: re-read fresh unitCost for the exact variants (1.5 s timeout)
-    Note over U,H: no answer - use the mirror only if it synced under 2 min ago, otherwise refuse to mint
-    U->>U: recompute cost and floor, need total above cost and total at or above floor or owner approved, PAUSE off
+    A->>H: force a fresh mirror sync (1.5 s timeout)
+    Note over A,H: no answer - use the mirror only if it came from Shopify under 2 min ago, otherwise refuse to mint
+    A->>U: audit the fresh items and quantities
+    U->>U: recompute cost and floor, need total above cost, at most list, and at or above floor or owner approved
     alt paused
-      U-->>S: card goes to paused - list price stands
-    else at or below cost, or below floor without approval
-      U-->>C: ConsoleEvent blocked by auditor
-      U-->>S: card goes to declined, no code minted
+      A-->>S: refused - list price stands
+    else audit fails - cost rose, stock short, below floor without approval
+      A-->>C: ConsoleEvent blocked by auditor
+      A-->>S: refused - request a fresh offer, no code minted
     else passes
-      A->>H: discountCodeBasicCreate - amount off, usageLimit 1, 15 min, exact variants, min subtotal, no combining
-      alt mint error
-        A->>H: re-mint once
-        alt still failing
-          A->>H: draft order with line price override, take invoice URL
-        end
+      A->>H: discountCodeBasicCreate - amount off, usageLimit 1, ends at the offer's expiry, exact variants, min subtotal, no combining
+      A->>A: audit again - policy or PAUSE may have changed while Shopify minted
+      alt PAUSE or policy won the race
+        A->>H: discountCodeDeactivate
+        A-->>C: ConsoleEvent blocked by auditor
+        A-->>S: refused
+      else still passes
+        A->>D: mark offer accepted, keep the settlement
+        A-->>C: ConsoleEvent settled with profit
+        A-->>S: Settlement with checkoutUrl
+        A->>P: insert one deals row, off the shopper's path, retried on failure
+        S->>K: open cart permalink with discount code
       end
-      A->>D: mark offer accepted, negotiation settled
-      A->>P: insert one deals row
-      A-->>C: ConsoleEvent settled with profit
-      A-->>S: Settlement with checkoutUrl
-      S->>K: open cart permalink with discount code
     end
   end
 ```
 
-Nothing becomes a code until the Auditor has re-checked the price against fresh Shopify cost data. Notice the one Supabase write happens after the mint, off the shopper's critical path — if it fails, the deal still stands and the write is retried.
+Nothing becomes a code until the Auditor has re-checked the price against fresh Shopify cost and stock. Notice the one Supabase write happens off the shopper's critical path — if it fails, the deal still stands and the write is retried (250 ms, 1 s, 5 s, 15 s, 30 s). An offer accepted at list price needs no code: the settlement is a plain cart link. Offers priced from the seed fallback mirror are never minted.
 
 ### 4d. Ask the owner
 
@@ -338,33 +328,37 @@ Nothing becomes a code until the Auditor has re-checked the price against fresh 
 sequenceDiagram
   autonumber
   participant S as Shopper card
-  participant A as Server makeOffer
-  participant R as Approvals
+  participant A as Server negotiation turn
+  participant R as owner/runtime.ts approvals
   participant C as Console
   participant O as Owner
 
-  S->>A: offer x after refusing the final offer
-  A->>A: storefront, cost below x below floor, ask_owner on, not asked before
+  S->>A: offer x after the last round
+  A->>A: cost below x below floor, x below the final offer, ask_owner on, not asked before, not a lowball
   A->>R: create approval with 45 s deadline
   A-->>S: card status pending_owner - Let me check with the owner
   R-->>C: ConsoleEvent approval_requested with items, offer, profit in dollars and percent over cost
+  loop every 2 s while pending
+    S->>A: GET /api/offers/id with shopperId and negotiationId
+    A-->>S: the current card
+  end
   alt Approve within 45 s
     O->>C: click Approve
     C->>R: POST /api/approvals/id approve
-    R-->>S: new live offer at x, badge owner approved
+    R-->>A: the same offer goes live at x, badge owner approved
   else Decline
     O->>C: click Decline
     C->>R: POST /api/approvals/id decline
-    R-->>S: the final offer restated as a new live offer - My best stays
+    R-->>A: the final offer restated on the same card - My best stays
   else 45 s timeout
     R->>R: timer fires
-    R-->>S: the final offer restated as a new live offer - My best stays
+    R-->>A: the final offer restated on the same card - My best stays
   end
   R-->>C: ConsoleEvent approval_resolved
   Note over A,R: once per negotiation, never at or below cost
 ```
 
-The owner's decision is the only human-in-the-loop step, and it cannot hang: the timer resolves it as a decline. Notice the shopper never sees profit or the floor — only the sentence and then a new card — and that a decline restates the shopkeeper's own final offer rather than dropping to the floor, so asking the owner is never a cheaper route than haggling. Storefront only: the card inside ChatGPT has no live stream to update itself.
+The owner's decision is the only human-in-the-loop step, and it cannot hang: the timer resolves it as a decline. Notice the shopper never sees profit or the floor — only the sentence and then the updated card, which the theme picks up by polling — and that a decline restates the shopkeeper's own final offer rather than dropping to the floor, so asking the owner is never a cheaper route than haggling. Either way the card gets a fresh 15 minutes.
 
 ### 4e. Owner login and a policy change
 
@@ -377,58 +371,62 @@ sequenceDiagram
   participant G as Gym in the browser
   participant T as Supabase tables
 
-  O->>P: signInWithPassword using the anon key
+  O->>A: GET /api/public-config
+  A-->>O: Supabase URL and publishable key
+  O->>P: signInWithPassword
   P-->>O: session with access token - JWT
   O->>A: GET /api/console/state with Bearer token
-  A->>P: auth.getUser token
+  A->>P: verify token
   P-->>A: user id
   A->>A: user owns this merchant?
-  A-->>O: policy, products with costs, pending approvals, red-team result
+  A-->>O: policy with settings, products with costs, pending approvals, red-team result, KPIs from real deals
   O->>A: open /api/console/stream with Bearer token via fetch streaming
-  loop while dragging the slider
-    O->>G: run engine over 300 seeded shoppers, saved policy vs candidate
-    G-->>O: two GymResults, redraw under 50 ms, no network
+  loop while a slider moves
+    O->>G: runLiveGym over 300 seeded shoppers, saved policy vs the draft
+    G-->>O: two results, redraw, no network
   end
-  O->>A: POST /api/policy - Adopt
+  O->>A: POST /api/policy - Adopt - floorPct, askOwner, settings
   A->>T: insert a new policies row
   A->>A: update the cached policy
-  A-->>O: the new policy, plus a ConsoleEvent
-  Note over A: the very next shopper turn uses the new floor
+  A-->>O: the new policy
+  Note over A: the very next shopper turn uses the new floor and settings
 ```
 
-The Gym never calls the server while the slider moves — it runs the real engine locally on the product costs fetched once at load. Notice the browser's native `EventSource` cannot send a Bearer header, so the Console reads its SSE stream with `fetch`.
+The Gym never calls the server while a slider moves — it runs the real engine locally on the product costs fetched once at load. Notice the browser's native `EventSource` cannot send a Bearer header, so the Console reads its SSE stream with `fetch`; the server ends each stream after 60 s and the Console reconnects with `Last-Event-ID`, so only unseen events replay.
 
 ### 4f. Shopify sync and the 24-hour token
 
 ```mermaid
 sequenceDiagram
   autonumber
-  participant V as Server startup
-  participant Y as shopify client
+  participant V as A request that needs the mirror
+  participant Y as Shopify mirror in application.js
   participant H as Shopify
   participant D as Product mirror in memory
 
-  V->>Y: start
-  Y->>H: POST /admin/oauth/access_token - client_credentials
-  H-->>Y: access token, valid 24 h, no refresh token
-  loop every 60 s
+  V->>Y: syncMirror
+  alt mirror younger than 60 s and not forced
+    Y-->>V: the mirror as it is
+  else stale, or forced at accept time
+    Y->>H: token - SHOPIFY_ADMIN_ACCESS_TOKEN, or POST /admin/oauth/access_token with client_credentials
+    H-->>Y: access token, valid 24 h, no refresh token
     Y->>H: GraphQL - variants, price, unitCost, inventory, productType, image, stocked_at metafield
     alt 200
       H-->>Y: products
-      Y->>D: replace the mirror, flag products with missing cost
+      Y->>D: replace the mirror, warn about variants with no cost
     else 401
       H-->>Y: unauthorised
       Y->>H: fetch a new token
       H-->>Y: new token
       Y->>H: retry the same request once
     else network error
-      Y->>D: keep the last mirror, record its age
+      Y->>D: keep the last mirror, or fall back to the seed catalog if there is none
     end
   end
-  Note over Y,H: the same 401 handling wraps mint and Auditor calls
+  Note over Y,H: the same 401 handling wraps the discount mint
 ```
 
-The token dies after 24 hours and our window is 32, so every Shopify call goes through one wrapper that re-fetches on 401. Test this Saturday night by deliberately corrupting the token in memory.
+The mirror refreshes on demand, at most once every 60 s, and is forced fresh at accept time. The token dies after 24 hours and our window is 32, so every Shopify call goes through one wrapper that re-fetches on 401. A seed-fallback mirror can quote but never mint.
 
 ---
 
@@ -439,43 +437,46 @@ The token dies after 24 hours and our window is 32, so every Shopify call goes t
 ```mermaid
 stateDiagram-v2
   [*] --> open
-  open --> countering : offer below ask
-  open --> settled : offer at or above ask, then Deal
-  countering --> countering : next offer, rounds 2 and 3
-  countering --> final : round 4
-  countering --> settled : Deal on a live offer
-  final --> settled : Deal on the final offer
-  final --> pending_owner : refused, storefront, offer between cost and floor, ask_owner on, not asked yet
-  final --> walked : refused, otherwise - also when the offer is between floor and the final ask
+  open --> countering : a genuine offer, round 1
+  countering --> countering : next genuine offer, the round advances
+  countering --> countering : a lowball - countered by code, the round stands
+  countering --> final : the round reaches the owner's max rounds
+  final --> final : another offer - the round stays, the final offer is priced again
+  final --> pending_owner : an offer after the last round, between cost and floor, ask_owner on, not asked yet
   pending_owner --> final : approved gives a live offer at x, declined or timed out restates the final offer
-  countering --> walked : shopper leaves or all offers expire
+  countering --> settled : Deal on a live offer
+  final --> settled : Deal on a live offer
   open --> paused : owner hits PAUSE
   countering --> paused : owner hits PAUSE
   final --> paused : owner hits PAUSE
   pending_owner --> paused : owner hits PAUSE
-  paused --> open : un-pause, shopper makes a fresh offer
+  paused --> open : resume, shopper makes a fresh offer
   settled --> [*]
-  walked --> [*]
 ```
 
-A haggle is at most four offers, with one optional detour to the owner (storefront only). Notice PAUSE can be entered from every live state and wins instantly. There is no "last call": a shopper who refuses the final offer walks even if their offer was above the floor — the Gym counts that as a deal missed. A negotiation belongs to one surface and one shopper id.
+A haggle runs for the owner's **max rounds** — 2 to 6, default 4 — with one optional detour to the owner. `OfferCard.maxRounds` carries the number; nothing hard-codes four. A lowball makes no LLM call and does not advance the round, so forty lowballs cost nothing and earn nothing. Notice PAUSE can be entered from every live state and wins instantly; it also declines any pending approval. A negotiation belongs to one shopper id, one product variant and one quantity; a different product starts its own negotiation.
 
 ### 5.2 Offer
 
 ```mermaid
 stateDiagram-v2
   [*] --> live : created with a 15 min expiry
+  live --> pending_owner : the owner is asked
+  pending_owner --> live : approved, declined or timed out - a fresh 15 min
   live --> superseded : a newer offer is created in the same negotiation
   live --> accepted : Deal passes the Auditor
   live --> expired : 15 min pass
-  live --> declined : Auditor blocks it, or PAUSE at accept time
+  live --> paused : owner hits PAUSE
+  pending_owner --> paused : owner hits PAUSE
+  live --> declined : the post-mint audit fails
   accepted --> [*]
   superseded --> [*]
   expired --> [*]
   declined --> [*]
+  paused --> [*]
 ```
 
-Only one offer per negotiation is `live` at any time, and only a `live` offer can be accepted — that is what defeats "you already offered me $80" and replay attacks. On `expired`, the server also calls `discountCodeDeactivate` if a code was minted.
+Only one offer per negotiation is `live` at any time, and only a `live` offer can be accepted — that is what defeats "you already offered me $80" and replay attacks. A paused card does not come back to life on resume. Accepting an already-accepted offer returns the same settlement, never a second code.
 
 ### 5.3 Approval
 
@@ -483,18 +484,20 @@ Only one offer per negotiation is `live` at any time, and only a `live` offer ca
 stateDiagram-v2
   [*] --> requested : pending_owner starts a 45 s timer
   requested --> approved : owner clicks Approve
-  requested --> declined : owner clicks Decline
+  requested --> declined : owner clicks Decline, or PAUSE
   requested --> timed_out : 45 s pass
   approved --> [*]
   declined --> [*]
   timed_out --> [*]
 ```
 
-At most one approval per negotiation. `timed_out` behaves exactly like `declined`.
+At most one approval per negotiation. `timed_out` behaves exactly like `declined`. A resolved approval cannot be resolved twice.
 
 ---
 
 ## 6. The engine as a flowchart
+
+One engine: `packages/engine`. `buildNegotiationMenu` writes the menu, every option on it is priced by `priceOffer`, `rankNegotiationMenu` puts the code fallback first as option A, and `auditOffer` is the settlement check. The server and the Gym both call it through the package index.
 
 ### 6.1 The three price zones
 
@@ -507,77 +510,78 @@ flowchart LR
   Z2 ---|"floor = cost x 1 + floor pct"| Z3
 ```
 
-Every price the system handles falls in exactly one zone. Example (Trail Runner 2 + socks, cost $84, floor 25%): never at or below $84 · owner decides $84–$105 · agent alone from $105.
+Every price the system handles falls in exactly one zone. Example (Trail Runner 2, cost $78, floor 25%): never at or below $78 · owner decides above $78 and below $97.50 · agent alone from $97.50.
 
-### 6.2 From an incoming offer to an outcome
+### 6.2 From an incoming offer to a menu
 
 ```mermaid
 flowchart TD
-  IN["Offer x for product p, round r"]
-  NC{"p has a cost in Shopify?"}
-  NO["Not open to offers - list price only, red flag in Console"]
-  PA{"PAUSE on?"}
-  PM["Paused - list price stands"]
-  AC{"x at or above ask of r?"}
-  ACC["ACCEPT at x - never counter below their own offer"]
-  RF{"Is this a refusal of the final offer, r beyond 4?"}
-  MENU["Build the menu - every option total at or above its cart floor"]
-  OA["A - HELD PRICE - p at ask of r, held 15 min"]
-  OB["B - BUNDLES - add-on at cost plus half its margin, shoe at next ask if profit stays at or above A"]
-  CE{"x below target of p, or r at least 3?"}
-  OC["C - SOMETHING ELSE - same type, in stock in size, oldest first, alone and bundled, price = max of target and min of ask and budget"]
-  RK["Rank by owner benefit - profit dollars, then stock age"]
-  R4{"r equals 4?"}
-  FIN["Label option A as FINAL OFFER"]
-  LLMP["To the LLM - id, items, total, owner_rank, facts - no costs, no floors"]
-  ZQ{"storefront, x above cost and below floor, ask_owner on, not asked yet?"}
-  ASK["ASK THE OWNER - pending_owner, 45 s"]
-  WALK["Let them walk, politely"]
+  IN["Offer x for item p, quantity q, round r, the shopper's reason"]
+  NC{"p has a cost, is in stock, and its floor is at or below list?"}
+  NO["Closed - never on the menu, list price only"]
+  LB{"x under the lowball cutoff share of list?"}
+  LBC["Lowball - code counters with the quote already on the table, no LLM call, round stands"]
+  AL{"x at or above list, no add-on wanted?"}
+  ACL["ACCEPTED at list price"]
+  ST["Place r on the curve - step runs 1 to 4 across the owner's max rounds"]
+  TG["Seller target - max of floor, the reason-adjusted target, list less the allowed discount"]
+  BQ{"add-on wanted and one is in stock with a cost?"}
+  OB["BUNDLE - ask plus each add-on at cost plus half its margin, never below the bundle floor or above bundle list"]
+  AX{"x at or above floor and seller target, r at least 2, convincing reason?"}
+  ACC["ACCEPTED at x - never counter below their own offer"]
+  OA["COUNTER - max of floor, capped list, ask - never above list"]
+  ALT{"shopper asked for something else?"}
+  OC["ALTERNATIVES - same type, same size, cheaper list, total below the primary"]
+  SAFE["Keep only options above cost, at or above floor, at most list, stock covers quantity"]
+  RK["Letter from A, then rank - the code fallback first"]
+  LLMP["To Backboard - id, kind, items, totals - no costs, no floors"]
 
   IN --> NC
   NC -->|"no"| NO
-  NC -->|"yes"| PA
-  PA -->|"yes"| PM
-  PA -->|"no"| AC
-  AC -->|"yes"| ACC
-  AC -->|"no"| RF
-  RF -->|"yes"| ZQ
-  ZQ -->|"yes"| ASK
-  ZQ -->|"no"| WALK
-  RF -->|"no"| MENU
-  MENU --> OA
-  MENU --> OB
-  MENU --> CE
-  CE -->|"yes"| OC
-  CE -->|"no"| RK
-  OA --> RK
-  OB --> RK
-  OC --> RK
-  RK --> R4
-  R4 -->|"yes"| FIN
-  R4 -->|"no"| LLMP
-  FIN --> LLMP
+  NC -->|"yes"| LB
+  LB -->|"yes"| LBC
+  LB -->|"no"| AL
+  AL -->|"yes"| ACL
+  AL -->|"no"| ST
+  ST --> TG
+  TG --> BQ
+  BQ -->|"yes"| OB
+  BQ -->|"no"| AX
+  AX -->|"yes"| ACC
+  AX -->|"no"| OA
+  TG --> ALT
+  ALT -->|"yes"| OC
+  ACL --> SAFE
+  OB --> SAFE
+  ACC --> SAFE
+  OA --> SAFE
+  OC --> SAFE
+  SAFE --> RK
+  RK --> LLMP
 ```
 
-The engine is a pure function: same inputs, same menu. Notice there is no path that produces a total below the floor except through ASK THE OWNER, and no path at all to a total at or below cost.
+The engine is a pure function: same inputs, same menu. Notice there is no path that puts a total below the floor on the menu — the only route below the floor is the owner's approval, which lives in the server, not the engine — and no path at all to a total at or below cost. The lowball test is one function, `isLowball`, shared by the server and the Gym; the server applies it before the LLM is ever called.
 
-Formulas (from SPEC §6): `cost = sum of unitCost x qty` · `floor = cost x (1 + floor%)` · `urgency = clamp((days since stocked_at - 60) / 60, 0, 1)`, and a bundle takes its main product's urgency · `target = list - urgency x (list - floor)` · `ask(r) = list - ((r-1)/3)^(1/(1+urgency)) x (list - target)`, so `ask(4) = target`. There is no fixed "max bend": stock age alone decides how far toward the floor a haggle may end.
+Formulas (`packages/engine/src/negotiate.ts`): `cost = sum of unitCost x qty` · `floor = max(cost + 1, ceil(cost x (1 + floor%)))`, floor% 0–60 · `urgency = clamp((days since stocked_at - 60) / 60, 0, 1)` · `base target = list - urgency x (list - floor)` · `step = min(4, 1 + (r - 1) x 3 / (maxRounds - 1))`, so the last round always lands where round 4 of 4 does · `ask = list - ((step - 1)/3)^(1/(1 + urgency)) x (list - seller target)` · single-item price `>= max(floor, ceil(list x (1 - cap%)))`, cap 0–40, default 22.
+
+Three things move a price: **stock age** (urgency), **the round**, and **the shopper's stated reason**. `analyzeBuyerReason` scores the message 0–4 from budget, quantity intent, add-on intent, repeat shopper, market comparison, real use case and ready to buy. The score sets how far the target moves from list toward the base target, and how much discount is allowed at each step; the owner's discount cap bounds that allowance, and the floor bounds everything.
 
 ```mermaid
 flowchart LR
   L["LIST - where every haggle starts"]
-  T["TARGET - where this cart's haggle may end"]
+  CAP["CAPPED LIST - list less the owner's max off"]
   F["FLOOR - cost plus the owner's percent"]
   C["COST - never"]
-  L -->|"ask steps down over rounds 1 to 4"| T
-  T -.-|"urgency 0 - target equals list, the price never moves"| L
-  T -.-|"urgency 1 - target equals floor"| F
-  F -->|"only the owner can go lower, once, storefront only"| C
+  L -->|"ask steps down over the owner's rounds, further with a stronger reason and older stock"| CAP
+  CAP -.-|"the cap never reaches below the floor"| F
+  F -->|"only the owner can go lower, once per negotiation"| C
 ```
 
-Where the target sits between list and floor depends only on stock age. New stock (urgency 0) has target = list, so any offer below list is "below anything this product could ever reach" and the shopkeeper recommends something else in round 1 — that is the demo's *"those just landed…"* line.
+With no reason given, the shopkeeper holds list for the first half of the curve and gives only a small move at the end. New stock (urgency 0) holds list unless the shopper brings a convincing reason (score 2 or more); then it bends by the allowed discount only.
 
-Worked example (seed data, floor 25%): Trail Runner 3, 12 days old → urgency 0 → target $169 = list. Trail Runner 2, 94 days old → urgency 0.57, floor $97.50 → target about $120. A shopper with "about $120" on the TR3 is offered the TR2 at `max(120, min(149, 120))` = $120 alone, or $144 with gaiters (that cart's own target). The TR2's asks run $149 → $135 → $127 → $120: round 1 holds at list by design, and the trades do the work. The engine works in cents; every shopper-facing total is a whole dollar rounded **up**, so rounding can never dip below the floor. A product with no `stocked_at` counts as new stock (amber in the Console); one with no cost is not open to offers (red). Full arithmetic in SPEC §6; figures illustrative until Saturday night.
+Worked example (seed data, floor 25%, default settings, Trail Runner 2 at 94 days, offer $115): with no reason the four rounds ask $149 → $149 → $149 → $148; with "I am buying today" (score 1) $149 → $147 → $146 → $144; with "it is last season and I am buying today" (score 3) $149 → $142 → $137 → $133. With max rounds set to 2 the same shopper sees $149 → $133. With the cap at 2% the last round cannot go below $147. Trail Runner 3, 12 days old, stays at $169 for scores 0 and 1. The engine works in cents; `toShopper` rounds every shopper-facing total **up** to a whole dollar, so rounding can never dip below the floor. A product with no `stocked_at` counts as new stock; one with no cost is not open to offers.
+
+Properties: `packages/engine/src/properties.test.ts` runs 8 properties × 1,000 seeded runs (seed 42) against `buildNegotiationMenu` through the package index — above cost, at or above floor, at most list; passes the settlement audit; the discount cap; closed items never on the menu; deterministic and lettered from A; a later round never asks more; the lowball rule; and a guard that the generated inputs are not vacuous. `pnpm test:props` runs them.
 
 ---
 
@@ -592,7 +596,6 @@ flowchart LR
   I["4 OFFER IDS"]
   A["5 AUDITOR"]
   S["6 SHOPIFY CODE"]
-  F["7 stretch - SHOPIFY FUNCTION at checkout"]
   OK["Real checkout at a safe price"]
 
   ATK --> V
@@ -601,21 +604,19 @@ flowchart LR
   K --> I
   I --> A
   A --> S
-  S --> F
-  F --> OK
+  S --> OK
 
-  V -.- V1["stops - negative, zero, absurd, yen, unknown product, 100 pairs at 1 dollar"]
-  E -.- E1["stops - anything below the floor, it is simply not on the menu"]
+  V -.- V1["stops - negative, zero, over 10x list, other currencies, unknown product, quantity over 10"]
+  E -.- E1["stops - anything below the floor or past the discount cap, it is simply not on the menu - and a lowball earns nothing"]
   K -.- K1["stops - prompt injection results - invented option id, invented dollar figure, reason with no fact, cost or floor talk"]
-  I -.- I1["stops - you already offered me 80, replays, expired offers"]
-  A -.- A1["stops - stale costs, paused store, anything that slipped through"]
+  I -.- I1["stops - you already offered me 80, replays, expired offers, another shopper's offer"]
+  A -.- A1["stops - stale costs, short stock, paused store, anything that slipped through"]
   S -.- S1["stops - coupon stacking, reuse on another cart, removing a bundle item, late use"]
-  F -.- F1["stops - any checkout line at or below cost, enforced by Shopify itself"]
 ```
 
 Left to right is the order an attack meets the layers. The thing to notice: layers 1–2 and 4–6 are plain code the LLM cannot influence; only layer 3 exists because an LLM is in the loop, and its failure mode is "fall back to option A", never "pass it through".
 
-One set of layer names everywhere (feed tags, types, the Gym's red-team wall). Console `blockedBy` values map to layers like this: `validate` = layer 1 · `engine` = layer 2 · `check` = layer 3 · `auditor` = layers 4 and 5.
+One set of layer names everywhere (feed tags, types, the red-team result). Console `blockedBy` values map to layers like this: `validate` = layer 1 · `engine` = layer 2 · `check` = layer 3 · `auditor` = layers 4 and 5. The red-team result adds `shopify_code` for layer 6.
 
 ---
 
@@ -634,44 +635,47 @@ erDiagram
     text shop_domain
   }
   policies {
+    bigint id PK
     uuid merchant_id FK
     numeric floor_pct
     boolean ask_owner
     boolean paused
+    jsonb settings "discount cap, max rounds, lowball cutoff, tone, firm-price ids"
     timestamptz updated_at "latest row is the live policy"
   }
   deals {
     uuid id PK
     uuid merchant_id FK
-    text offer_id
+    text offer_id "unique"
     text surface "storefront or chatgpt"
     jsonb items_json
     int list_total "cents"
     int agreed_total "cents"
     int cost "cents, at audit time"
     int floor "cents, at audit time"
-    int profit "cents"
+    int profit "cents, generated"
     boolean owner_approved
-    text code
+    text code "null for a list-price settlement"
     timestamptz created_at
   }
 ```
 
-Three tables, append-only. A new `policies` row is inserted on every Adopt and every PAUSE toggle, so the latest row is the live policy and the rest is history. `deals` stores cost and floor **as they were when the Auditor ran**, so the red-team verifier can recount breaches without trusting the pipeline.
+Three tables, append-only (`infra/schema.sql`, plus `infra/migrations/`). A new `policies` row is inserted on every Adopt and every PAUSE toggle, so the latest row is the live policy and the rest is history. `deals` stores cost and floor **as they were when the Auditor ran**, and the table itself checks `agreed_total > cost` and `agreed_total >= floor or owner_approved` — invariant 2 enforced by the database. The Console's Kept band is computed from these rows: real settled deals only.
 
 ### 8.2 Server memory — what does not survive a restart
 
 | Structure | Key | Holds | Written by | Lifetime |
 |---|---|---|---|---|
-| Product mirror | `variantId` | price, unitCost, inventory, productType, image, stockedAt, missingCost | shopify sync | Replaced every 60 s. Rebuilt on startup in one query. |
-| Cached policy | `merchantId` | floorPct, askOwner, paused | owner routes | Loaded from Supabase on startup. **Survives** via the `policies` table. |
-| Negotiations | `negotiationId` | surface, shopperId, productId, round, state, askedOwner, Backboard threadId, trail | core | Until settled or walked. **Lost on restart.** |
-| Offers | `offerId` | negotiationId, Option, state, expiresAt, code | core | 15 min, then expired. **Lost on restart** — a lost offer simply reads as "expired, make another". |
-| Approvals | `approvalId` | negotiationId, offer, cost, profit, deadline, state, timer handle | approvals | 45 s. **Lost on restart.** |
-| Console feed | ring buffer, last 200 | ConsoleEvent | event bus | **Lost on restart.** Settled deals can be re-read from `deals`. |
-| Red-team result | single value | RedTeamResult | red-team script (dry-run minter, in-memory deals) | `infra/redteam-result.json`, committed to the repo and loaded at boot — the host's disk does not persist. **Survives.** |
+| Product mirror | `variantId` | price, unitCost, inventory, productType, image, stockedAt, source | Shopify mirror | Refreshed on demand, at most every 60 s; forced at accept. Rebuilt in one query. |
+| Cached policy | — | floorPct, askOwner, paused, settings | `owner/runtime.ts` | Loaded from Supabase on startup. **Survives** via the `policies` table. |
+| Negotiations | `negotiationId` | shopperId, productId, variantId, quantity, round, approvalUsed | negotiation turn | **Lost on restart.** |
+| Shopper contexts | `shopperId` | the item, quantity, reason and requested add-ons the shopper was last on | negotiation turn | **Lost on restart.** |
+| Offers | `offerId` | negotiationId, shopperId, the priced offer, status, expiresAt, card, settlement | negotiation turn, accept | 15 min, then expired. **Lost on restart** — a lost offer simply reads as "make another". |
+| Approvals | `approvalId` | negotiationId, offer, cost, profit, deadline, status, timer handle | `owner/runtime.ts` | 45 s. **Lost on restart.** |
+| Console feed | ring buffer, last 500 | ConsoleEvent with an id | `owner/runtime.ts` | **Lost on restart.** Settled deals can be re-read from `deals`. |
+| Red-team result | single value | RedTeamResult | `scripts/redteam.ts` (isolated run, dry-run discounts) | `infra/redteam-result.json`, committed to the repo and loaded at boot — the host's disk does not persist. **Survives.** |
 
-All of these sit behind the same `db.ts` interface as the Supabase queries, so the fallback "skip Supabase, policy in memory" is a one-file change. **What a restart or a deploy costs:** in-flight haggles — so deploys freeze from Sun 08:00, and the host must run exactly one instance (two instances would each hold half the negotiations). **What it never costs:** the owner's policy, the record of deals, or an already-minted code (that lives in Shopify).
+**What a restart or a deploy costs:** in-flight haggles — so deploys freeze from Sun 08:00, and the host must run exactly one instance (two instances would each hold half the negotiations). **What it never costs:** the owner's policy, the record of deals, or an already-minted code (that lives in Shopify).
 
 ---
 
@@ -679,50 +683,48 @@ All of these sit behind the same `db.ts` interface as the Supabase queries, so t
 
 ```mermaid
 flowchart TB
-  subgraph HOST["Cloud host - Railway, Render non-sleeping, or Fly.io with one machine"]
-    HONO["ONE long-lived Node instance - Hono API, /mcp, sync, serves the Vite build"]
-    ENV["Host secrets - Shopify, Backboard, OpenAI, Supabase service-role"]
+  subgraph HOST["Railway - railway.json"]
+    NODE["ONE long-lived Node instance - pnpm start - the API, SSE, the mirror, serves the built Console at /console"]
+    ENV["Host secrets - Shopify, Backboard, ElevenLabs, Supabase secret key"]
   end
-  DOM["Our domain - GoDaddy Registry - storefront at the root, /console, /mcp"]
+  DOM["Our domain - GoDaddy Registry"]
   subgraph LAP["Presenting laptop"]
     BR["Demo browser - storefront left, Console right, store password already entered, owner already signed in"]
     GYM["Gym - runs in the browser, needs no network"]
     LOCAL["FALLBACK - the same server run locally, plus a tunnel"]
-    REPLAY["DEMO_OFFLINE=1 - recorded event stream, pre-minted checkout link"]
   end
   GH["GitHub main - push deploys, frozen from Sun 08:00"]
-  CGPT["ChatGPT - developer mode connector registered to our domain /mcp"]
   SUPA["Supabase cloud"]
-  SHOPI["Shopify dev store - Admin API and Checkout"]
+  SHOPI["Shopify dev store - hosts apps/storefront, Admin API and Checkout"]
   BBD["Backboard"]
-  OPEN["OpenAI API"]
+  ELV["ElevenLabs"]
 
-  GH -->|"deploy"| HONO
-  ENV --> HONO
-  DOM --> HONO
+  GH -->|"pnpm build, then pnpm start"| NODE
+  ENV --> NODE
+  DOM --> NODE
   BR -->|"HTTPS and SSE"| DOM
-  CGPT -->|"HTTPS"| DOM
   BR --> GYM
   BR -->|"sign in"| SUPA
-  BR -->|"Deal opens checkout in this same browser"| SHOPI
-  HONO --> SUPA
-  HONO --> SHOPI
-  HONO --> BBD
-  HONO --> OPEN
+  BR -->|"the theme, and Deal opens checkout in this same browser"| SHOPI
+  NODE --> SUPA
+  NODE --> SHOPI
+  NODE --> BBD
+  NODE --> ELV
   LOCAL -.->|"if the host is down"| BR
-  REPLAY -.->|"if the network is down"| BR
 ```
 
-The server is deployed, so ChatGPT, the storefront and the Console all use one stable HTTPS URL on our own domain. The thing to notice: it must be **exactly one long-lived instance** — not serverless, no autoscaling, no sleep — because haggles live in that process's memory and the chat and Console hold SSE streams open to it. The laptop keeps two safety nets: the same server run locally behind a tunnel, and a fully offline replay.
+The server is deployed, so the storefront chat and the Console use one stable HTTPS URL. Railway builds the Console (`pnpm build`), starts the server (`pnpm start`, which builds the Console again if it is missing) and health-checks `/health`. The thing to notice: it must be **exactly one long-lived instance** — not serverless, no autoscaling, no sleep — because haggles live in that process's memory and the Console holds an SSE stream open to it.
 
 | Rule | Why |
 |---|---|
 | One instance, always on | Negotiations, offers and approval timers are in-process `Map`s; SSE clients are connected to that process |
 | SSE heartbeat comment every 15 s | Host proxies drop idle connections |
-| Secrets in the host's settings; the web bundle gets only `SUPABASE_URL` and the anon key | No Shopify, Backboard, OpenAI or service-role key ever ships to a browser |
+| Secrets in the host's settings; the browser gets only the Supabase URL and the publishable (anon) key | No Shopify, Backboard, ElevenLabs or Supabase secret key ever ships to a browser |
+| `ALLOWED_ORIGINS` lists the storefront's origins | The theme calls the server cross-origin |
 | Dev loop: run locally against the same Shopify store and Supabase project; push to `main` deploys | One environment to reason about |
 | Freeze deploys from Sun 08:00 | A deploy is a restart, and a restart drops in-flight haggles |
-| Register the ChatGPT connector against the domain, not the host's default URL | Switching to the laptop fallback is then a DNS or connector change, not a rebuild |
+
+Environment variables (`.env.example` is the list): `BACKBOARD_API_KEY`, `BACKBOARD_ASSISTANT_ID`, `BACKBOARD_MEMORY_MODE`, `BACKBOARD_MODEL_PROVIDER`, `BACKBOARD_MODEL_NAME`, `BACKBOARD_TIMEOUT_MS` · `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `ELEVENLABS_STT_MODEL`, `ELEVENLABS_TTS_MODEL` · `SHOPIFY_SHOP`, `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET`, `SHOPIFY_ADMIN_ACCESS_TOKEN`, `SHOPIFY_API_VERSION` · `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_PUBLISHABLE_KEY` · `ALLOWED_ORIGINS`, `PORT`. Console build: `VITE_CONSOLE_PORT`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
 
 ---
 
@@ -730,21 +732,22 @@ The server is deployed, so ChatGPT, the storefront and the Console all use one s
 
 | Dependency | What breaks | Automatic fallback | What the presenter says |
 |---|---|---|---|
-| OpenAI API (understand) | Slow or down | 2.5 s timeout, then regex for `$amount` + keywords | Nothing — invisible |
-| Backboard (choose + say) | Slow, `run_failed`, no `run_ended` | 4 s timeout, then option A + template line | "Backboard's down, so you're seeing the engine with template lines — same prices, same floor." |
-| The check fails | LLM invented a number or reason | Option A + template, red `blocked: check` row | "That red row is the check throwing away what the model made up." |
-| Shopify Admin API at accept | Auditor cannot re-read cost within 1.5 s | Use the mirror if it synced under 2 min ago; otherwise no code minted, card says try again | "It refuses to mint a code it can't verify." |
-| Cloud host | Down, asleep, or a bad deploy | Run the same server on the laptop behind a tunnel; re-point the ChatGPT connector (or skip the finale). Deploys frozen from Sun 08:00 | "Same code, running here." |
-| Host scaled to two instances, or restarted | Haggles vanish or split between processes; SSE drops | Pin to one instance before Saturday night; clients reconnect; old cards read as expired | "Make me another offer." |
+| Backboard (understand) | Slow or down | `BACKBOARD_TIMEOUT_MS` (default 6500 ms), then code parses the dollar amount and quantity | Nothing — invisible |
+| Backboard (choose + say) | Slow, failed run, no end event | Same timeout, then option A + its template line | "Backboard's down, so you're seeing the engine with template lines — same prices, same floor." |
+| Backboard (questions) | Slow or down | A code template answer | Nothing |
+| The check fails | LLM invented a number or reason | A neutral line for the same option, or option A + template; red `blocked: check` row | "That red row is the check throwing away what the model made up." |
+| Shopify Admin API at accept | The fresh sync does not answer within 1.5 s | Use the mirror if it came from Shopify under 2 min ago; otherwise no code minted, card says try again | "It refuses to mint a code it can't verify." |
+| Cloud host | Down, asleep, or a bad deploy | Run the same server on the laptop behind a tunnel. Deploys frozen from Sun 08:00 | "Same code, running here." |
+| Host scaled to two instances, or restarted | Haggles vanish or split between processes; SSE drops | Pin to one instance; clients reconnect; old cards read as expired | "Make me another offer." |
 | Shopify token (24 h) | 401 on any call | Re-fetch token, retry once | Nothing — invisible |
-| Shopify sync | Network error | Keep the last mirror, show its age in the Console | Nothing |
-| Discount code mint | Error, or total doesn't match | Re-mint once, then draft order with price override, then pre-minted backup link | "Same price, Shopify's other route to a negotiated checkout." |
-| Supabase | Slow or unreachable | Off the hot path: policy cached in memory; the deal write is retried in the background | Nothing — invisible |
-| Supabase Auth | Cannot sign in | Be signed in before judges arrive; the env-var password build is the plan B | Nothing |
-| ChatGPT / developer mode | Card won't render or the connector fails | Run everything on the storefront; finale becomes one sentence | "The same core also speaks MCP — here's the tool list." |
-| Owner doesn't answer | Approval hangs | 45 s timer resolves as decline, offer at the floor | Nothing |
+| Shopify sync | Network error | Keep the last mirror; with no mirror at all, the seed catalog (the Console shows "Seed fallback"); seed offers never mint | Nothing |
+| Discount code mint | Shopify rejects it | No settlement; the shopper is told the offer cannot be accepted and can make another | "No code without Shopify's yes." |
+| Supabase | Slow or unreachable | Off the hot path: policy cached in memory; the deal write and a PAUSE write are retried in the background; the Console shows that PAUSE is active but still saving | Nothing — invisible |
+| Supabase not configured | No owner policy | `/health` reports 503 and the chat answers that the shopkeeper is unavailable — no offers without a policy | — |
+| Supabase Auth | Cannot sign in | Be signed in before judges arrive | Nothing |
+| Owner doesn't answer | Approval hangs | 45 s timer resolves as decline; the final offer is restated | Nothing |
 | Server restart | In-flight haggles lost | Policy reloads from Supabase, mirror re-syncs in one query; old cards read as expired | "Make me another offer." |
-| Wi-Fi | Everything external | `DEMO_OFFLINE=1` replays a recorded event stream; checkout from a pre-minted link; Gym is local | "Cached run, same code path." |
+| ElevenLabs | Voice fails or no key | `/api/voice/config` reports it disabled; the chat is typed | Nothing |
 | Store password | Cart link shows a password page | Entered once in the demo browser before judging | Nothing |
 
 ---
@@ -755,27 +758,37 @@ The server is deployed, so ChatGPT, the storefront and the Console all use one s
 
 | Method | Path | Auth | Request | Response | Used by |
 |---|---|---|---|---|---|
-| GET | `/api/products` | none | — | `ProductCard[]` | Storefront |
-| POST | `/api/chat` | none | `{ shopperId, negotiationId?, productId, size?, message }` | SSE stream of `ChatEvent` | Storefront |
-| POST | `/api/accept` | none | `{ negotiationId, offerId }` | `Settlement`, or an updated `OfferCard` on refusal | Storefront card |
-| GET | `/api/console/state` | owner | — | `{ policy, products: OwnerProduct[], pendingApprovals: Approval[], redteam: RedTeamResult }` | Console on load; feeds the Gym |
-| GET | `/api/console/stream` | owner | — | SSE stream of `ConsoleEvent` (read with `fetch`, not `EventSource`) | Console feed |
-| POST | `/api/policy` | owner | `{ floorPct, askOwner }` | `Policy` | Console — Adopt |
-| POST | `/api/approvals/:id` | owner | `{ decision: "approve" or "decline" }` | `Approval` | Console — yellow card |
-| POST | `/api/pause` | owner | `{ paused: boolean }` | `Policy` | Console — PAUSE |
-| ALL | `/mcp` | none | MCP Streamable HTTP | MCP | ChatGPT |
+| GET | `/api/products` | none | `?sync=1` forces a fresh mirror | `{ items, loadedAt, source, warnings }` — public product cards | Storefront |
+| POST | `/api/chat` | none | `{ shopperId, negotiationId?, product, quantity?, message }` | JSON `{ reply, card?, negotiationId?, products? }`, or `{ paused: true, reply }` | Storefront |
+| POST | `/api/offers` | none | the same shape, always treated as an offer | the same JSON | Storefront |
+| GET | `/api/offers/:id` | none | `?shopperId=&negotiationId=` — must match the offer | `{ card }` — the current card, polled while `pending_owner` | Storefront card |
+| POST | `/api/accept` | none | `{ shopperId, negotiationId, offerId }` | `{ settlement, reply }`, or a 400 with a reply on refusal | Storefront card |
+| GET | `/api/stream` | none | — | SSE: a hello event and a heartbeat every 15 s | Storefront |
+| GET | `/api/public-config` | none | — | the Supabase URL and publishable key, for sign-in only | Console |
+| GET | `/api/voice/config` | none | — | `{ enabled, provider, ttsModel, sttModel }` | Storefront |
+| POST | `/api/voice/speak` | none | `{ text }` (at most 600 characters) | audio | Storefront |
+| POST | `/api/voice/transcribe` | none | audio body (at most 5 MB) | `{ text }` | Storefront |
+| GET | `/health` | none | — | service, model, mirror source, warnings; 503 when no owner policy is configured | Railway |
+| GET | `/api/console/state` | owner | — | `{ policy, pausePersistence, products: OwnerProduct[], pendingApprovals: Approval[], redteam: RedTeamResult, catalog, kpis, kpisByProduct }` | Console on load; feeds the Gym |
+| GET | `/api/console/stream` | owner | `Last-Event-ID` optional | SSE stream of `ConsoleEvent` (read with `fetch`, not `EventSource`) | Console feed |
+| POST | `/api/policy` | owner | `{ floorPct, askOwner, settings? }` | `Policy` with the resolved settings | Console — Adopt |
+| POST | `/api/approvals/:id` | owner | `{ decision: "approve" or "decline" }` | `Approval` | Console — approval card |
+| POST | `/api/pause` | owner | `{ paused: boolean }` | `{ policy, persistence }` | Console — PAUSE |
+| GET | `/console`, `/assets/*`, `/fonts/*` | none | — | the built Console (`apps/web/dist`); its data still needs the owner token | Owner browser |
 
-There is **no Gym endpoint**: the Gym runs in the browser. The red-team is a server-side script run before the demo; its cached result is served inside `/api/console/state`.
+There is **no Gym endpoint**: the Gym runs in the browser. The red team is a script (`scripts/redteam.ts`) run before the demo; its saved result is served inside `/api/console/state`. `settings` in `/api/policy` is optional: omitted keeps the saved settings; given, each value is stored resolved, and anything out of range falls back to its default so a bad value can never loosen a price.
 
-### 11.2 MCP tools
+### 11.2 MCP tools — planned, not built on main
 
-| Tool | Input | `structuredContent` | `content` | Annotations |
-|---|---|---|---|---|
-| `find_products` | `{ query, budget?, size? }` | `{ products: ProductCard[] }` | empty | `readOnlyHint: true`, `destructiveHint: false`, `openWorldHint: false` |
-| `make_offer` | `{ product_id, offer_total, size?, quantity?, message?, negotiation_id? }` | `OfferCard` (includes `negotiationId`) | empty | `destructiveHint: false`, `openWorldHint: false` |
-| `accept_offer` | `{ negotiation_id, offer_id }` | `{ checkout_url, agreed_total, expires_at }` | empty | `destructiveHint: false`, `openWorldHint: false` |
+There is no MCP route on main. The intended tools, kept here so the shape is agreed before anyone builds it:
 
-Every tool description ends: *"The result is shown to the user in a card. Never state, estimate or predict a price in text."* The card resource sets both `_meta.ui.resourceUri` and `openai/outputTemplate`. Shopper identity comes from `_meta["openai/subject"]`. `accept_offer` is called by the card's button through `window.openai.callTool`, not by the model.
+| Tool | Input | `structuredContent` | `content` |
+|---|---|---|---|
+| `find_products` | `{ query, budget?, size? }` | `{ products: ProductCard[] }` | empty |
+| `make_offer` | `{ product_id, offer_total, size?, quantity?, message?, negotiation_id? }` | `OfferCard` (includes `negotiationId`) | empty |
+| `accept_offer` | `{ negotiation_id, offer_id }` | `{ checkout_url, agreed_total, expires_at }` | empty |
+
+The intent: every tool result is shown in a card with empty `content`, so the model has no price text to state, estimate or predict.
 
 ---
 
@@ -785,154 +798,140 @@ Every tool description ends: *"The result is shown to the user in a card. Never 
 flowchart LR
   CT["contracts - first 30 min, all three"]
   EN["engine and property tests"]
-  CORE["core - findProducts, makeOffer, acceptOffer"]
+  TURN["server negotiation turn and accept"]
   CHK["the check and the Auditor"]
   TOK["Shopify app, token and refresh"]
-  SEED["seed 8 products with costs"]
+  SEED["seed products with costs"]
   SYNC["sync to the mirror"]
   MINT["mint code and cart link"]
-  CARD["offer card component"]
-  SF["storefront chat"]
-  G1(["GATE 1 - Sat 09:00 - offer, fixed card, Deal, real checkout"])
-  G0(["GATE 0 - Sat 12:00 - our card renders in ChatGPT"])
+  SF["apps/storefront - chat and offer card"]
+  G1(["GATE 1 - Sat 09:00 - offer, card, Deal, real checkout"])
   DP(["DEVPOST - Sat 14:00 hard"])
-  LLMC["Backboard and OpenAI clients, documents indexed"]
-  CON["Console - feed, slider, PAUSE"]
-  SUPA["thin Supabase and owner login"]
+  LLMC["Backboard client, documents indexed"]
+  CON["Console - feed, PAUSE"]
+  SUPA["Supabase and owner login"]
   ASK["ask the owner"]
-  GYM["Gym run and static dot histogram"]
-  SWARM["swarm animation, click-a-dot, red-dot wall"]
+  SET["owner settings - discount cap, max rounds, lowball"]
+  GYM["Gym run - runLiveGym"]
+  RACE["the price race - raceLayout and Race.tsx"]
   HOSTN["deploy to one long-lived instance"]
   DOMN["GoDaddy domain pointed at the host"]
   RT["red-team and verifier"]
-  WID["widget - single HTML"]
-  MCPT["mcp tools wired to core"]
-  REP["offline replay"]
-  G2(["GATE 2 - Sun 00:00 - full demo 3 times, both surfaces"])
-  STR["stretch - Shopify Function first"]
+  G2(["GATE 2 - Sun 00:00 - full demo 3 times"])
+  GPT["ChatGPT surface - planned, not built"]
 
   CT --> EN
-  CT --> CARD
+  CT --> SF
   CT --> TOK
   TOK --> SEED
   SEED --> SYNC
   SYNC --> MINT
-  CARD --> SF
   MINT --> G1
   SF --> G1
-  CARD --> WID
-  WID --> G0
-  EN --> CORE
-  SYNC --> CORE
-  G1 --> CORE
-  CORE --> CHK
-  LLMC --> CORE
-  CORE --> CON
+  EN --> TURN
+  SYNC --> TURN
+  G1 --> TURN
+  TURN --> CHK
+  LLMC --> TURN
+  TURN --> CON
   CON --> SUPA
-  CORE --> ASK
+  TURN --> ASK
   CON --> ASK
+  EN --> SET
+  SET --> GYM
   EN --> GYM
   CON --> GYM
+  GYM --> RACE
   CHK --> RT
   MINT --> RT
-  G0 --> MCPT
-  CORE --> MCPT
-  CORE --> REP
   G1 --> DP
   G1 --> HOSTN
   HOSTN --> DOMN
-  DOMN --> MCPT
   DOMN --> DP
-  GYM --> SWARM
-  RT --> SWARM
-  SWARM --> G2
+  RACE --> G2
   ASK --> G2
-  GYM --> G2
   RT --> G2
-  MCPT --> G2
   SUPA --> G2
-  REP --> G2
-  G2 --> STR
+  TURN -.-> GPT
+  style GPT stroke-dasharray: 5 5
 ```
 
-The critical path to gate 1 is **token → seed → sync → mint** (Rails) joined with **card → storefront chat** (Stage); the engine is *not* on it — gate 1 uses a fixed counter card. Notice gate 0 depends only on the card and the widget, so one person can run it without blocking anyone, and the `/mcp` tools need both gate 0 and the core.
+The critical path to gate 1 is **token → seed → sync → mint** joined with **the storefront chat and card**; the engine is *not* on it. Notice the ChatGPT surface hangs off the finished negotiation turn and blocks nothing: it is planned, not built, and no gate depends on it.
 
 | Gate | When (EDT) | Must be true |
 |---|---|---|
-| Gate 1 | Sat 09:00 | Storefront: offer → fixed counter card → Deal → real code → real Shopify checkout at that price |
-| Gate 0 | Sat 12:00 | A hello-world tool of ours renders a custom card in ChatGPT (one person, 90 min) |
-| Devpost | Sat 14:00, hard | Submitted with team, badge IDs, public repo, and Shopify + Backboard + OpenAI + GoDaddy Registry selected |
-| Supabase decision | Sat 18:00 | If Rails is behind: env-var password and in-memory policy instead |
-| Gate 2 | Sun 00:00 | Full demo 3× untouched on both surfaces; backup video; 30-min attack session |
+| Gate 1 | Sat 09:00 | Storefront: offer → card → Deal → real code → real Shopify checkout at that price |
+| Devpost | Sat 14:00, hard | Submitted with team, badge IDs, public repo, and the sponsor tracks selected |
+| Gate 2 | Sun 00:00 | Full demo 3× untouched; backup video; 30-min attack session |
 | Final submit | Sun 08:00 | Devpost final edit; deploys frozen |
 
 The full task table, hour-by-hour schedule and cut order are in [`PLAN.md`](PLAN.md).
 
 ---
 
-## 13. The Gym swarm view
+## 13. The Gym — the price race
 
-Owner-only (rule 11): nothing here is reachable from a shopper-facing surface.
+Owner-only (rule 11): nothing here is reachable from a shopper-facing surface. The Console is three things: the **Kept band** (KPIs from real settled deals), **the price race** (this section), and the **live rail** (the feed, with an approval card first only while one is pending). "More settings" holds the policy panel, other figures and the red-team summary.
 
 ### 13.1 One run drives everything
 
 ```mermaid
 flowchart LR
   ST["GET /api/console/state - product costs and the saved policy, fetched once"]
-  PA["Policy A - saved"]
-  PB["Policy B - under the slider"]
-  RUN["gym.run - seed 42, 300 rule-based shoppers, the SAME engine as the server, under 50 ms, no network"]
-  RES["GymResult - totals plus one GymShopper record per shopper"]
-  DOTS["Dot histogram - one dot per shopper, coloured by persona"]
-  ANI["Round animation - R1 to R4, about 3 s"]
-  TR["Click a dot - mini transcript"]
-  MC["Metric cards - bought, average price, profit vs 20 percent banner, deals missed, would have asked you"]
-  RTJ["Cached RedTeamResult from the server"]
-  WALL["Red-dot wall - 20 attacks bounce off the cost line"]
+  PA["Saved policy and settings"]
+  PB["Draft - what the sliders say now"]
+  RUN["runLiveGym - seed 42, 300 rule-based shoppers, the SAME engine as the server, no network"]
+  RES["LiveGymResult - totals, lowballs, one GymShopper record per shopper"]
+  LAY["raceLayout - where every dot is at the end of a round"]
+  DOTS["Race.tsx - one dot per shopper, coloured by OUTCOME"]
+  TIP["Point at a dot - persona, would pay, offer and ask per round, what happened"]
+  FIG["Figures - customers saved, profit, vs no shopkeeper, vs a 20 percent banner, each with its change from the saved policy"]
+  RTJ["Saved RedTeamResult from the server"]
+  SUM["RedTeamSummary under More settings"]
 
   ST --> PA
   ST --> RUN
   PA --> RUN
   PB --> RUN
   RUN --> RES
-  RES --> DOTS
-  RES --> ANI
-  RES --> TR
-  RES --> MC
+  RES --> LAY
+  LAY --> DOTS
+  RES --> TIP
+  RES --> FIG
   ST --> RTJ
-  RTJ --> WALL
+  RTJ --> SUM
 ```
 
-The chart, the animation, the transcripts and the metric cards all read the same `GymResult`, so nothing is drawn that did not happen in the simulation. Notice the red-dot wall is the only part that comes from the server: it replays the cached red-team result and never re-runs attacks in the browser.
+The dots, the hover line and the figures all read the same run, so nothing is drawn that did not happen in the simulation. `raceLayout` is pure: every position comes from the Gym run, so the picture can never disagree with the figures. The Gym prices every ask with `buildNegotiationMenu` and takes the ranked option A — no LLM calls are simulated. The red-team summary is the only part that comes from the server: it shows the saved result and never re-runs attacks in the browser.
 
 ### 13.2 What happens to one dot
 
 ```mermaid
 stateDiagram-v2
-  [*] --> opening : placed at its opening offer on the price axis
-  opening --> haggling : round 1
-  haggling --> haggling : steps toward its willingness while the ask line steps down
-  haggling --> settled : meets the ask, or takes a bundle or held price
-  haggling --> thin_margin : ends between cost and floor
-  haggling --> walked : patience runs out, or refuses the final offer
-  settled --> [*] : drops into its price bin, keeps its persona colour
-  thin_margin --> [*] : turns yellow - would have asked you, counted as not closed
-  walked --> [*] : fades into the walked pile, labelled deal missed if willingness was at or above the floor
+  [*] --> deciding : waits above the axis at what this shopper would pay
+  deciding --> deciding : a lowball - countered, the round stands
+  deciding --> bought : the engine's price is within what they would pay, a bundle adds allowance
+  deciding --> owner : out of rounds, last offer between cost and floor, ask_owner on
+  deciding --> walked : patience or the owner's max rounds runs out
+  bought --> [*] : rests in its price stack - paid list, saved by your shopkeeper, or bought a bundle
+  owner --> [*] : yellow - would ask you
+  walked --> [*] : ring only - a deal missed if they would have paid the floor
 ```
 
-Each of the 300 dots lives this life during the ~3-second animation. The thing to notice: "deals missed" is a first-class outcome — it is how the Gym tells the owner her floor is too high, and the headline card turns **red** when haggling loses to a 20% banner. Personas are never tuned to hide that.
+Each of the 300 dots resolves in the round its negotiation ended, not before. The thing to notice: "a deal missed" is a first-class outcome — it is how the Gym tells the owner her floor is too high, and the comparison lines turn red when haggling earns less than no shopkeeper or a 20% banner. Personas (bargain, budgeted, impatient, loyal, lowballer) are pinned in `packages/gym/src/personas.ts` and are never tuned to hide that. "Customers saved" counts only shoppers who bought the item for less than list.
 
 ### 13.3 Interaction rules
 
 | Owner does | The view does |
 |---|---|
-| Drags the floor slider | No animation. Re-runs and re-settles instantly so the dots track the finger. Policy A stays as a grey outline histogram behind. |
-| Releases the slider, or presses **Run the Gym** | Plays rounds 1 → 4 over about 3 s. Round scrubber (R1–R4) and **Replay**. |
-| Hovers or clicks a dot | Mini-transcript: persona, willingness-to-pay, offer and ask per round, which trade closed it, outcome. |
-| Clicks a persona in the legend | Filters the dots to that persona; counts shown in the legend. |
-| Clicks **Adopt** | `POST /api/policy` → new `policies` row → server cache → governs the next shopper turn. B becomes the new A. |
+| Picks a pill — **Floor / Max off / Rounds / Lowball** | Shows that setting's one slider, its value label and one sentence on what it does. A changed pill carries a dot. |
+| Moves the slider | No animation. Re-runs instantly so the dots and figures track the finger, with the change from the saved policy beside each figure. Reads "Preview · not adopted". Nothing is live yet. |
+| Releases the slider, or presses **Play** | Plays the rounds one step at a time; the red line shows the round's typical (median) ask. Skipped under reduced motion. |
+| Points at a dot | One line: persona, what they would pay, offer and ask per round, and what happened. |
+| Chooses a product | The race re-runs on that product. Oldest stock is offered first: it has the most room to bend. |
+| Clicks **Adopt** | `POST /api/policy` with the floor and settings → new `policies` row → server cache → governs the next shopper turn. The draft becomes the saved policy. |
 
-Always on screen: *"300 synthetic shoppers — rule-based, seeded (seed 42), results might differ from actual buyer behaviour."* Rendering is Canvas 2D or SVG circles; no chart library. **Cut order if behind:** the round animation first (keep the static dot histogram and click-a-dot), then the red-dot wall animation (keep the card). The stretch "Gym voices" adds about 20 LLM-driven shoppers as larger dots with speech bubbles.
+Always on screen: "Try it on 300 shoppers · Simulated on *product* · never added to your real figures." Rendering is SVG circles; no chart library. A product needs a cost in Shopify and stock on hand to be simulated.
 
 ---
 
@@ -942,21 +941,21 @@ These were open during the audit; the team has decided. Recorded here so nobody 
 
 | # | Question | Decision |
 |---|---|---|
-| 1 | When does the card appear? | Thinking face for at most 4 s, then **one** card. At the timeout: option A + template line. |
-| 2 | When is "something else" offered? | When `x < target(p)` (covers new stock) or `r ≥ 3`. Priced at `max(target, min(ask, budget))`. |
-| 3 | Streaming vs the check | Buffer the line, check it, then play the typing effect from checked text. |
+| 1 | When does the card appear? | After the check, as **one** card in the JSON reply. At the Backboard timeout: option A + template line. |
+| 2 | When is "something else" offered? | When the shopper asks for it (an alternative, something cheaper, a recommendation). Same type, same size, cheaper than the item they are on. |
+| 3 | The line vs the check | The line is checked whole before it is sent; the shopper only ever sees checked text. |
 | 4 | Gym endpoint | None. Owner-only `GET /api/console/state` returns costs once; the Gym runs in the browser. |
-| 5 | Red-team side effects | Dry-run minter and in-memory deals; `deals` gains `floor` and `offer_id` so the verifier can recount. |
-| 6 | Removing a bundle item at checkout | Every code carries a minimum subtotal equal to the cart's list total. Verify Saturday. |
-| 7 | Ask-the-owner in ChatGPT | Storefront only. |
-| 8 | Storefront shopper identity | `localStorage` id, `?shopper=demo` override; the demo ChatGPT subject maps to the same seeded shopper by env. |
-| 9 | Auditor when Shopify is unreachable | 1.5 s timeout → mirror if under 2 min old → otherwise refuse to mint. |
-| 10 | The feed's "reasoning" | Composed in code from engine facts, the pick and recalled memory. |
-| 11 | Hosting | One long-lived cloud instance on our own domain; laptop + tunnel is the fallback. |
-| 12 | Shopify scopes | Six, including `write_products` for the stretch Function. App scaffolded with `shopify app init`. |
-| 13 | After the owner declines | The shopkeeper restates its own final offer; it does not drop to the floor. |
-| 14 | Negotiations across surfaces | Not shared. One negotiation = one surface + one shopper id; one Console feed shows both. |
-| 15 | Choose + say model | An OpenAI model routed through Backboard; measure latency Saturday morning. |
+| 5 | Red-team side effects | An isolated run with dry-run discounts; `deals` carries `floor` and `offer_id` so the verifier can recount. |
+| 6 | Removing a bundle item at checkout | Every code carries a minimum subtotal equal to the cart's list total. |
+| 7 | Ask-the-owner | Storefront only, once per negotiation, after the last round. |
+| 8 | Storefront shopper identity | `localStorage` id, `?shopper=demo` override for the seeded shopper. |
+| 9 | Auditor when Shopify is unreachable | 1.5 s timeout → mirror if it came from Shopify under 2 min ago → otherwise refuse to mint. |
+| 10 | The feed's "reasoning" | Composed in code; never the LLM explaining itself. |
+| 11 | Hosting | One long-lived Railway instance; laptop + tunnel is the fallback. |
+| 12 | After the owner declines | The shopkeeper restates its own final offer; it does not drop to the floor. |
+| 13 | Every LLM call | Through Backboard — understand, choose + say, questions. Default provider `openai`, model from `BACKBOARD_MODEL_NAME`. One cloned assistant per shopper. |
+| 14 | Rounds | Owner-set, 2–6, default 4. The curve stretches so the last round lands where round 4 of 4 does. |
+| 15 | Lowballs | Below the owner's cutoff share of list (default 40%, 0 = off): countered by code, no LLM call, the round does not advance. |
+| 16 | ChatGPT surface | Planned — not built on main. |
 
 ---
-
