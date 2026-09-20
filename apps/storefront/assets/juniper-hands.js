@@ -207,6 +207,7 @@
       done: function (after, undo) {
         line.setAttribute('data-juniper-step', 'done');
         line.querySelector('.juniper-hands__text').textContent = after;
+        lastDone = after;
         if (undo) {
           var button = document.createElement('button');
           button.type = 'button';
@@ -302,7 +303,11 @@
   chat.on('speak:end', function () { speaking = false; flush(); });
 
   // ---- the chores ----
+  // Her line would be left behind on the old page; the new page opens with it, so the shopper sees what she did.
+  var SAID_KEY = 'bazaar:hands:said';
+  var lastDone = '';
   function go(href) {
+    try { if (lastDone) window.sessionStorage.setItem(SAID_KEY, JSON.stringify({ at: Date.now(), text: lastDone })); } catch (error) { /* the page still changes */ }
     // A link inside the widget, clicked: V2 carries the conversation (and the ?shopper= of a demo) across the page.
     var link = document.createElement('a');
     link.href = href;
@@ -474,9 +479,13 @@
     if (action.kind === 'back') {
       line = step('Juniper is taking you back');
       var from = '';
-      try { from = document.referrer && new URL(document.referrer).origin === window.location.origin ? document.referrer : ''; } catch (error) { from = ''; }
+      try {
+        var came = document.referrer ? new URL(document.referrer) : null;
+        // A page she reloaded (the cart after an edit) names itself as where it came from; that is not "back".
+        from = came && came.origin === window.location.origin && came.pathname !== window.location.pathname ? document.referrer : '';
+      } catch (error) { from = ''; }
       line.done('Going back');
-      afterTurn(function () { go(from || '/collections/all'); });
+      afterTurn(function () { go(from || (/\/collections\//.test(window.location.pathname) ? '/' : '/collections/all')); });
       return;
     }
     if (action.kind === 'home') {
@@ -601,6 +610,15 @@
       }
     });
   }
+
+  try {
+    var said = JSON.parse(window.sessionStorage.getItem(SAID_KEY) || 'null');
+    window.sessionStorage.removeItem(SAID_KEY);
+    if (said && said.text && Date.now() - said.at < 20000) {
+      var arrived = String(said.text).replace(/^(Opening|Heading to|Heading back to|Going) /, function (word) { return { 'Opening ': 'Opened ', 'Heading to ': 'Went to ', 'Heading back to ': 'Went back to ', 'Going ': 'Went ' }[word]; });
+      window.setTimeout(function () { step('').done(arrived); lastDone = ''; }, 600);
+    }
+  } catch (error) { /* a fresh page says nothing */ }
 
   resumePlan();
 })();
