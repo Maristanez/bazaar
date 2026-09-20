@@ -47,12 +47,13 @@ const W = 980, COLUMNS = 10, DOT_DX = 13, DOT_DY = 11, ZONE_GAP = 16, ZONE_TOP =
 
 export function Race({ products, policy, draft, saving, onDraft, onAdopt }: { products: OwnerProduct[]; policy: Policy; draft?: Draft; saving?: boolean; onDraft(next: Draft): void; onAdopt(): void }) {
   const catalog = useMemo(() => items(products), [products]);
-  // One entry per product, not per size: a shoe's three sizes all haggle the same way. Oldest stock
-  // first — it has the most room to bend, so the visualization opens where haggling actually happens.
+  // Every open-to-offers product, add-ons included: one entry per product, not per size, since a
+  // shoe's three sizes all haggle the same way. Oldest stock first — it has the most room to bend,
+  // so the visualization opens where haggling actually happens.
   const mains = useMemo(() => {
     const byProduct = new Map<string, (typeof catalog)[number]>();
     for (const item of catalog) {
-      if (item.isAddOn || invalidReason(item) || byProduct.has(item.productId)) continue;
+      if (invalidReason(item) || byProduct.has(item.productId)) continue;
       byProduct.set(item.productId, item);
     }
     return [...byProduct.values()].sort((a, b) => Date.parse(a.stockedAt ?? "9999") - Date.parse(b.stockedAt ?? "9999"));
