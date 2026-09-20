@@ -114,17 +114,24 @@
   }
   .site-header .header__owner-menu summary {
     list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     min-height: 2.75rem;
     padding: 0.35rem 0.75rem;
     border-radius: 999px;
     font-size: 0.78rem;
     font-weight: 700;
+    line-height: 1;
     color: var(--th-cream);
     border: 1px solid color-mix(in srgb, var(--th-cream) 40%, transparent);
   }
   .site-header .header__owner-menu summary::-webkit-details-marker {
     display: none;
+  }
+  .site-header .header__owner-menu summary::marker {
+    content: "";
   }
   .site-header .header__owner-menu summary:hover {
     border-color: var(--th-sun);
