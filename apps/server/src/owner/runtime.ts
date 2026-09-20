@@ -1,5 +1,7 @@
-import type { Approval, ConsoleEvent, PausePersistence, PauseResult, Policy, RedTeamResult } from "@bazaar/contracts";
+import type { Approval, ConsoleEvent, PausePersistence, PauseResult, Policy, PolicySettings, RedTeamResult } from "@bazaar/contracts";
 import type { SupabaseDb } from "../infra/db";
+// @ts-expect-error Node's strip-types runtime requires the explicit extension.
+import { resolveSettings } from "../../../../packages/engine/src/settings.ts";
 
 export type OwnerRuntimeDb = Pick<SupabaseDb, "loadLatestPolicy" | "appendPolicy">;
 
@@ -22,7 +24,8 @@ export type OwnerRuntime = {
   getPolicy(): Policy;
   getPausePersistence(): PausePersistence;
   getRedTeamResult(): RedTeamResult;
-  setPolicy(input: Pick<Policy, "floorPct" | "askOwner">): Promise<Policy>;
+  /** settings: omitted keeps the saved settings; given, it is stored resolved (bad values fall back to the defaults). */
+  setPolicy(input: Pick<Policy, "floorPct" | "askOwner"> & { settings?: PolicySettings }): Promise<Policy>;
   setPaused(paused: boolean): Promise<PauseResult>;
   publish(event: ConsoleEvent): PublishedConsoleEvent;
   eventsAfter(lastId?: number): PublishedConsoleEvent[];
@@ -78,8 +81,12 @@ export async function createOwnerRuntime(options: {
   onPaused?: () => void;
   redteam?: RedTeamResult;
 }): Promise<OwnerRuntime> {
-  let policy = { ...await options.db.loadLatestPolicy() };
+  let policy: Policy = { ...await options.db.loadLatestPolicy() };
   assertPolicy(policy);
+  // Settings live here as well as in the row, so they survive a database that has no settings column yet.
+  // Until the owner saves some, the policy carries none and every reader falls back to the defaults.
+  if (policy.settings !== undefined) policy.settings = resolveSettings(policy.settings);
+  const withSettings = () => (policy.settings === undefined ? {} : { settings: policy.settings });
   let mutationTail: Promise<void> = Promise.resolve();
   let pauseGeneration = 0;
   let pausePersistence: PausePersistence = "saved";
@@ -156,7 +163,7 @@ export async function createOwnerRuntime(options: {
       pauseRetryTimers.delete(timer);
       void serializeMutation(async () => {
         if (generation !== pauseGeneration || pausePersistence === "saved") return;
-        const snapshot = { floorPct: policy.floorPct, askOwner: policy.askOwner, paused: policy.paused };
+        const snapshot = { floorPct: policy.floorPct, askOwner: policy.askOwner, paused: policy.paused, ...withSettings() };
         try {
           const saved = await options.db.appendPolicy(snapshot);
           assertPolicy(saved);
@@ -182,16 +189,20 @@ export async function createOwnerRuntime(options: {
         return Promise.reject(new TypeError("floorPct must be an integer from 0 to 60"));
       }
       if (typeof input.askOwner !== "boolean") return Promise.reject(new TypeError("askOwner must be a boolean"));
+      if (input.settings !== undefined && (input.settings === null || typeof input.settings !== "object" || Array.isArray(input.settings))) {
+        return Promise.reject(new TypeError("settings must be an object"));
+      }
       return serializeMutation(async () => {
         const generation = pauseGeneration;
         const paused = policy.paused;
-        const saved = await options.db.appendPolicy({ ...input, paused });
+        const settings = input.settings === undefined ? withSettings() : { settings: resolveSettings(input.settings) };
+        const saved = await options.db.appendPolicy({ floorPct: input.floorPct, askOwner: input.askOwner, paused, ...settings });
         assertPolicy(saved);
         if (generation === pauseGeneration) {
-          policy = { ...saved };
+          policy = { ...saved, ...settings };
           pausePersistence = "saved";
         } else {
-          policy = { ...saved, paused: policy.paused };
+          policy = { ...saved, paused: policy.paused, ...settings };
         }
         return { ...policy };
       });
@@ -210,7 +221,7 @@ export async function createOwnerRuntime(options: {
       }
       return serializeMutation(async () => {
         if (generation !== pauseGeneration) return pauseResult();
-        const snapshot = { floorPct: policy.floorPct, askOwner: policy.askOwner, paused };
+        const snapshot = { floorPct: policy.floorPct, askOwner: policy.askOwner, paused, ...withSettings() };
         try {
           const saved = await options.db.appendPolicy(snapshot);
           assertPolicy(saved);

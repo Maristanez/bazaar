@@ -731,9 +731,11 @@ async function makeOfferTurn(payload, message) {
   const previousRound = negotiation.round;
   const pending = [...state.offers.values()].find(offer => offer.negotiationId === negotiationId && offer.status === "pending_owner");
   if (pending) return { reply: pending.card.line, card: currentCard(pending), negotiationId };
-  const { maxRounds, discountCapPct } = ownerSettings();
-  const round = Math.min(maxRounds, previousRound + 1);
-  negotiation.round = round;
+  const { maxRounds, discountCapPct, lowballCutoffPct } = ownerSettings();
+  // A lowball earns nothing: code counters with the quote already on the table, no LLM call, and the round does not advance.
+  const lowball = lowballCutoffPct > 0 && offered * 100 < match.item.list * quantity * lowballCutoffPct;
+  const round = lowball ? Math.max(1, previousRound) : Math.min(maxRounds, previousRound + 1);
+  negotiation.round = lowball ? previousRound : round;
   rememberShopperContext(payload.shopperId, match.item, quantity, negotiationId, { reasonText, reasonTags: reason.labels, requestedItems });
   const policy = owner.getPolicy();
   const allowAlternatives = /\b(alternative|something else|anything cheaper|recommend|instead|other options)\b/i.test(message);
@@ -746,7 +748,9 @@ async function makeOfferTurn(payload, message) {
   if (!candidates.length) return { reply: requestedItems.length ? "I could not price every requested item safely, so I did not create a partial offer." : "This item or quantity is not open to offers right now.", negotiationId };
   const fallback = choices => choices[0];
   let menu = negotiationOptions(candidates, round, match.item, maxRounds);
-  let phrased = await phraseOfferWithBackboard({ menu, fallback: fallback(candidates), shopperId, negotiationId, message, round, main: match.item });
+  let phrased = lowball
+    ? lowballCounter(candidates, menu, offered)
+    : await phraseOfferWithBackboard({ menu, fallback: fallback(candidates), shopperId, negotiationId, message, round, main: match.item });
   const latestPolicy = owner.getPolicy();
   if (latestPolicy.paused) return pausedReply(payload);
   if (latestPolicy.floorPct !== policy.floorPct) {
@@ -755,7 +759,7 @@ async function makeOfferTurn(payload, message) {
     if (!candidates.length) return { reply: "This item is not open to offers right now.", negotiationId };
     menu = negotiationOptions(candidates, round, match.item, maxRounds);
     const fresh = candidates.find(candidate => sameOfferItems(candidate.offer.items, selectedItems)) || fallback(candidates);
-    phrased = { optionId: fresh.id, line: `I can hold ${formatMoney(fresh.offer.total)} for 15 minutes.`, trace: null };
+    phrased = lowball ? lowballCounter(candidates, menu, offered) : { optionId: fresh.id, line: `I can hold ${formatMoney(fresh.offer.total)} for 15 minutes.`, trace: null };
   }
   const selected = candidates.find(candidate => candidate.id === phrased.optionId) || fallback(candidates);
   const offer = selected.offer;
@@ -800,7 +804,7 @@ async function makeOfferTurn(payload, message) {
   const stored = { ...offer, line: replyLine, offerId, negotiationId, shopperId, expiresAt, status: "live", backboard: phrased.trace, card };
   state.offers.set(offerId, stored);
   const audit = auditOffer(offer.items, offer.total, owner.getPolicy().floorPct, new Date());
-  if (previousRound >= maxRounds && latestPolicy.askOwner && !negotiation.approvalUsed && audit && roundToShopper(offered) > audit.cost && roundToShopper(offered) < audit.floor && roundToShopper(offered) < offer.total) {
+  if (!lowball && previousRound >= maxRounds && latestPolicy.askOwner && !negotiation.approvalUsed && audit && roundToShopper(offered) > audit.cost && roundToShopper(offered) < audit.floor && roundToShopper(offered) < offer.total) {
     const approval = owner.requestApproval({ negotiationId, shopperId, surface: "storefront", items: card.option.items, offer: roundToShopper(offered), cost: audit.cost, finalTotal: offer.total });
     negotiation.approvalUsed = true;
     stored.finalOffer = { ...offer };
@@ -816,7 +820,9 @@ async function makeOfferTurn(payload, message) {
   }
   if (audit) owner.publish({
     at: new Date().toISOString(), surface: "storefront", shopperId, negotiationId,
-    kind: "decision", reasoning: `Server-priced ${selectedMain.title}; ${reason.label || "no buyer reason"}.`,
+    kind: "decision", reasoning: lowball
+      ? `Lowball · countered at ${formatMoney(offer.total)} · no LLM call. ${formatMoney(roundToShopper(offered))} is under ${lowballCutoffPct}% of list; round ${round} stands.`
+      : `Server-priced ${selectedMain.title}; ${reason.label || "no buyer reason"}.`,
     offer: offered, round, menu, picked: card.option.id,
     ...audit, ...(phrased.trace ? { threadId: phrased.trace.threadId, memory: phrased.trace.memory, llm: { provider: phrased.trace.provider, model: phrased.trace.model, ms: phrased.trace.ms, costUsd: phrased.trace.costUsd } } : {}),
   });
@@ -1239,6 +1245,21 @@ function negotiationOptions(candidates, round, main, maxRounds) {
     items: offer.items.map((item, position) => ({ variantId: item.variantId, title: item.title, ...(item.size ? { size: item.size } : {}), qty: item.qty || 1, ...(position > 0 ? { thrownIn: true } : {}) })),
     listTotal: offer.listTotal, total: offer.total, ownerRank: index + 1, facts: [],
   }));
+}
+
+/** Option A, or the first "something else" when the offer is below every option's total. The line is a template around one public fact. */
+function lowballCounter(candidates, menu, offered) {
+  const belowAll = candidates.every(candidate => offered < candidate.offer.total);
+  const elseOption = belowAll ? menu.find(option => option.kind === "else") : undefined;
+  const picked = candidates.find(candidate => candidate.id === elseOption?.id) || candidates[0];
+  const { offer } = picked;
+  const title = offer.items[0].title;
+  const fact = offer.items.length > 1
+    ? `that includes ${offer.items.slice(1).map(item => `${item.qty || 1} × ${item.title}`).join(" and ")}`
+    : offer.total < offer.listTotal
+      ? `that is already ${formatMoney(offer.listTotal - offer.total)} off the ${formatMoney(offer.listTotal)} list price`
+      : `that is the list price`;
+  return { optionId: picked.id, line: `I can't get near ${formatMoney(roundToShopper(offered))}. ${title} is ${formatMoney(offer.total)} — ${fact}. Send me a fairer number and a reason, and I can work with you.`, trace: null };
 }
 
 function sameOfferItems(items, other) {

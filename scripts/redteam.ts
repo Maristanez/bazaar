@@ -426,7 +426,8 @@ function cardSafety(card: JsonObject): { safe: boolean; evidence: string[] } {
 }
 
 function memoryDatabase(now: string): MemoryDatabase {
-  let policy: Policy = { floorPct: FLOOR_PCT, askOwner: false, paused: false, updatedAt: now };
+  // The lowball cutoff is off here so the $1 attacks still reach the LLM and exercise the check layer; with it on, code counters them before any LLM call.
+  let policy: Policy = { floorPct: FLOOR_PCT, askOwner: false, paused: false, updatedAt: now, settings: { lowballCutoffPct: 0 } };
   const rows: Deal[] = [];
   const db: OwnerDatabase = {
     merchantId: "00000000-0000-4000-8000-000000000001",
