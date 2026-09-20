@@ -3,6 +3,9 @@
 // travels from the chat to the control, the control is worked, and a line in the chat says what was done, with Undo
 // where undoing means something. A turn that is only a chore is answered here and never reaches the server.
 //   chores — open a product, pick a size, set a quantity, add to cart, open the cart, back to all products, undo.
+//            A chore for a product on another page takes her there first and is finished on arrival.
+//   on her own — asked to find something, she answers, then takes the shopper to the product she named ("Stay
+//            here" stops her).
 //   never  — Deal, checkout, payment, removing what the shopper did not ask to remove. A deal is binding: it takes
 //            the shopper's own hand. Nothing here reads, writes or says a price.
 (function () {
@@ -42,6 +45,31 @@
     return best;
   }
 
+  // "the runners", "those socks", "a vest": one telling word is enough when only one product answers to it.
+  var COMMON = { trail: 1, the: 1, and: 1, for: 1, with: 1, lite: 1, everyday: 1, size: 1, cart: 1, shop: 1, store: 1, page: 1, product: 1, products: 1 };
+  function singular(word) { return word.length > 3 && word.charAt(word.length - 1) === 's' ? word.slice(0, -1) : word; }
+  function looselyNamed(said, products) {
+    var heard = {};
+    said.split(' ').forEach(function (word) { if (word.length >= 3 && !COMMON[word]) heard[singular(word)] = true; });
+    var matches = (products || []).filter(function (product) {
+      var words = plain([product && product.title, product && product.type, product && product.handle].join(' ')).split(' ');
+      return words.some(function (word) { return word.length >= 3 && !COMMON[word] && !/^\d+$/.test(word) && heard[singular(word)]; });
+    });
+    return matches.length === 1 ? matches[0] : null;
+  }
+
+  // The product a reply names first, reading left to right.
+  function firstNamed(said, products) {
+    var best = null;
+    var bestAt = -1;
+    (products || []).forEach(function (product) {
+      var title = plain(product && product.title);
+      var at = title ? said.indexOf(title) : -1;
+      if (at > -1 && (bestAt < 0 || at < bestAt)) { best = product; bestAt = at; }
+    });
+    return best;
+  }
+
   function sizeIn(said) {
     var match = /\bsize\s+(\d{1,2}(?:\.5)?|xs|s|m|l|xl|xxl|extra small|small|medium|large|extra large)\b/.exec(said)
       || /\bin (?:a |an )?(extra small|small|medium|large|extra large)\b/.exec(said);
@@ -63,17 +91,27 @@
     if (!said) return null;
     context = context || {};
     var product = namedProduct(said, context.products);
+    var going = /\b(show|open|take me|bring me|go to|head to|jump to|navigate|pull up|bring up|let me see|let s see|look at|see the|find|search for|where is|where are|want to see|like to see|check out the)\b/.test(said);
+    if (!product && (going || /\b(add|put|throw|toss|pop|drop)\b/.test(said))) product = looselyNamed(said, context.products);
     if (/\b(undo|take (?:that|it) (?:back )?out|remove (?:that|the last (?:one|thing)))\b/.test(said)) return { kind: 'undo' };
     if (/\b(add|put|throw|toss|pop|drop)\b.*\b(cart|bag|basket)\b/.test(said) || /\badd (?:it|them|this|that|those|these)\b/.test(said)) {
       return { kind: 'add', product: product || context.currentProduct || null, size: sizeIn(said), quantity: quantityIn(said, true) || 0 };
     }
-    if (/\b(open|show|view|see|check|go to|take me to|what s in|whats in)\b.*\b(cart|bag|basket)\b/.test(said)) return { kind: 'cart' };
-    if (/\b(all products|everything you (?:have|ve got|sell)|back to (?:the )?(?:shop|store|products)|keep shopping|browse (?:the )?(?:shop|store))\b/.test(said)) return { kind: 'browse' };
-    if (product && /\b(show|open|take me|go to|pull up|bring up|let me see|let s see|look at|see the)\b/.test(said)) return { kind: 'show', product: product };
+    if (/\b(open|show|view|see|check|go to|take me to|navigate to|head to|bring up|pull up|what s in|whats in)\b.*\b(cart|bag|basket)\b/.test(said)) return { kind: 'cart' };
+    if (/\b(all products|everything you (?:have|ve got|sell)|back to (?:the )?(?:shop|store|products)|keep shopping|browse (?:the )?(?:shop|store)|(?:show|see|open|go to|navigate to|take me to) (?:me )?(?:the )?(?:shop|store|catalog|catalogue|collection|shelves))\b/.test(said)) return { kind: 'browse' };
+    if (/\b(go|take me|bring me|head|navigate|back) (?:to (?:the )?)?home(?: ?page)?\b/.test(said)) return { kind: 'home' };
+    if (product && going) return { kind: 'show', product: product };
     var size = sizeIn(said);
     var quantity = quantityIn(said, false);
     if (size || quantity) return { kind: 'fit', size: size, quantity: quantity };
     return null;
+  }
+
+  // Minimised, the chat cannot show her line; V12's peek above the launcher or the voice pill says it instead.
+  function isOpen() { try { return Boolean(chat.isOpen && chat.isOpen()); } catch (error) { return false; } }
+  function tellMinimised(text) {
+    if (isOpen() || !text) return;
+    try { if (chat.shape && chat.shape.peek) chat.shape.peek(text); } catch (error) { /* the line is still in the chat */ }
   }
 
   // ---- the line in the chat that says what she is doing ----
@@ -99,8 +137,10 @@
           line.appendChild(button);
         }
         messages.scrollTop = messages.scrollHeight;
+        tellMinimised(after);
       },
       fail: function (why) {
+        tellMinimised(why);
         line.setAttribute('data-juniper-step', 'failed');
         line.querySelector('.juniper-hands__text').textContent = why;
       }
@@ -109,12 +149,29 @@
 
   // ---- the hand: it leaves Juniper, crosses the page, and presses ----
   var hand = null;
+  function overlaps(a, b) {
+    return Boolean(a && b && a.width && b.width) && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+  }
+  // Where the hand sets out from: her face in the open chat; minimised, the voice pill or the launcher.
+  function origin() {
+    var pill = widget.querySelector('[data-juniper-pill]');
+    if (isOpen()) return widget.querySelector('[data-ai-chat-sticker="head"]') || widget;
+    if (pill && !pill.hidden) return pill;
+    return elements.launcher || widget;
+  }
   function travel(target, then) {
     if (!target || !target.getBoundingClientRect) { then(); return; }
     try { if (target.scrollIntoView) target.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (error) { /* stays put */ }
     window.setTimeout(function () {
-      var from = (widget.querySelector('[data-ai-chat-sticker="head"]') || elements.launcher || widget).getBoundingClientRect();
       var to = target.getBoundingClientRect();
+      // Her own panel is in the way of what she is reaching for: she folds herself down to her resting corner,
+      // does the job where the shopper can watch it, and unfolds again.
+      var steppedAside = false;
+      if (isOpen() && elements.panel && overlaps(elements.panel.getBoundingClientRect(), to)) {
+        steppedAside = true;
+        chat.close();
+      }
+      var from = origin().getBoundingClientRect();
       if (!hand) {
         hand = document.createElement('span');
         hand.className = 'juniper-hands__hand';
@@ -135,6 +192,7 @@
         window.setTimeout(function () {
           target.classList.remove('juniper-hands__pressed');
           hand.setAttribute('data-juniper-hand', 'away');
+          if (steppedAside && chat.open) chat.open();
           then();
         }, PRESS_MS);
       }, TRAVEL_MS);
@@ -166,6 +224,23 @@
   // A chore with no haggling in it is answered here, on the page, and never sent: the server reads every turn as
   // bargaining ("make it two" came back as a two-dollar offer). A sentence that does both gets both.
   var HAGGLING = /\$|\b\d+\s*(?:dollars|bucks)\b|\b(?:offer|discount|deal|price|cheaper|budget|best you can|how about|could you do|would you take|knock|off)\b/i;
+
+  // ---- a chore that needs another page: she goes there herself and finishes the job on arrival ----
+  var PLAN_KEY = 'bazaar:hands:plan';
+  var PLAN_FRESH_MS = 60000;
+  function planAhead(action) {
+    try { window.sessionStorage.setItem(PLAN_KEY, JSON.stringify({ at: Date.now(), kind: action.kind, handle: action.product.handle, size: action.size || '', quantity: action.quantity || 0 })); } catch (error) { /* she still gets there */ }
+  }
+  function resumePlan() {
+    var plan = null;
+    try { plan = JSON.parse(window.sessionStorage.getItem(PLAN_KEY) || 'null'); window.sessionStorage.removeItem(PLAN_KEY); } catch (error) { plan = null; }
+    var current = state().currentProduct;
+    if (!plan || !current || Date.now() - plan.at > PLAN_FRESH_MS || lower(plan.handle) !== lower(current.handle)) return;
+    window.setTimeout(function () {
+      // Open or minimised is as the shopper left it (V2 carries that over); minimised, the peek reports.
+      run({ kind: plan.kind, product: current, size: plan.size, quantity: plan.quantity });
+    }, 1100);
+  }
 
   // ---- the chores ----
   function go(href) {
@@ -268,6 +343,12 @@
       travel(document.querySelector('header a[href$="/cart"], a[href="/cart"], a[aria-label="Cart"]'), function () { line.done('Opening your cart'); afterTurn(function () { go('/cart'); }); });
       return;
     }
+    if (action.kind === 'home') {
+      line = step('Juniper is taking you home');
+      line.done('Heading to the front of the shop');
+      afterTurn(function () { go('/'); });
+      return;
+    }
     if (action.kind === 'browse') {
       line = step('Juniper is taking you back to the shelves');
       line.done('Heading back to all products');
@@ -321,13 +402,49 @@
           if (problem) { line.fail(problem); return; }
           travel(document.querySelector('.product-form [type="submit"], form[action*="/cart/add"] [type="submit"]'), add);
         });
+      } else if (action.product.url || action.product.handle) {
+        // Not on its page: she walks there first, so the shopper watches the size go in and the button get pressed.
+        line.done('Opening the ' + title + ' first');
+        planAhead(action);
+        var card2 = document.querySelector('a[href*="/products/' + action.product.handle + '"]');
+        travel(card2, function () { afterTurn(function () { go(action.product.url || '/products/' + action.product.handle); }); });
       } else add();
     }
   }
 
+  // ---- on her own: when her answer names a product the shopper asked her to find, she takes them to it ----
+  var ASKED_TO_FIND = /\b(recommend|suggest|what s good|whats good|what do you have|which|find me|looking for|i need|i want|something for|best for|good for|anything for|help me (?:pick|choose|find)|your pick)\b/;
+  var FOLLOW_MS = 2600;
+  var lastSaid = '';
+  function followThrough(replyText) {
+    var current = state();
+    if (!ASKED_TO_FIND.test(lastSaid)) return;
+    var product = firstNamed(plain(replyText), current.products);
+    if (!product || (current.currentProduct && lower(current.currentProduct.handle) === lower(product.handle))) return;
+    var cancelled = false;
+    var line = step('Juniper is taking you to the ' + product.title);
+    var stay = document.createElement('button');
+    stay.type = 'button';
+    stay.className = 'juniper-hands__undo';
+    stay.setAttribute('data-juniper-stay', '');
+    stay.textContent = 'Stay here';
+    stay.addEventListener('click', function () { cancelled = true; line.fail('Staying put'); stay.disabled = true; });
+    messages.lastChild.appendChild(stay);
+    window.setTimeout(function () {
+      afterTurn(function () {
+        if (cancelled) return;
+        var card = document.querySelector('a[href*="/products/' + product.handle + '"]');
+        travel(card, function () { if (cancelled) return; stay.disabled = true; line.done('Opening the ' + product.title); go(product.url || '/products/' + product.handle); });
+      });
+    }, FOLLOW_MS);
+  }
+  chat.on('reply', function (detail) {
+    try { followThrough(detail && detail.text); } catch (error) { if (window.console) window.console.error('[juniper-hands]', error); }
+  });
+
   chat.hands = { understand: understand, run: run };
 
-  chat.on('turn:start', function () { turnOpen = true; });
+  chat.on('turn:start', function (detail) { turnOpen = true; lastSaid = plain(detail && detail.text); });
   chat.on('turn:local', function () { turnOpen = false; flush(); });
 
   if (typeof chat.answerLocally === 'function') {
@@ -344,4 +461,6 @@
       }
     });
   }
+
+  resumePlan();
 })();

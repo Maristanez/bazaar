@@ -343,6 +343,8 @@
     window.addEventListener('resize', function () { if (size) applySize(size, false); else { applyPlace(place, false); measureRail(); } });
 
     chat.shape = {
+      // Other features say a line above the launcher or pill while the chat is minimised (V13's chores do).
+      peek: function (text) { if (!(chat.isOpen && chat.isOpen())) showPeek(text); },
       size: function () { return size; },
       shapedBy: function () { return size ? (selfShaped ? 'juniper' : 'shopper') : 'default'; },
       place: function () { return { x: place.x, y: place.y }; },

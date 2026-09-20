@@ -6,15 +6,23 @@ const SOCKS = { productId: 2, title: "Trail Socks", handle: "trail-socks", url: 
 
 async function wait(settle: () => Promise<unknown>) { for (let turn = 0; turn < 40; turn += 1) await settle(); }
 
-function mount(options: { onProduct?: boolean } = {}) {
+function mount(options: { onProduct?: boolean; features?: string[]; reply?: string; plan?: object } = {}) {
   const calls: { url: string; body: any }[] = [];
+  const went: string[] = [];
   const mounted = mountWidget({
-    features: ["hands"],
+    features: options.features || ["hands"],
+    chat: () => ({ reply: options.reply || "Noted." }),
     products: [RUNNER, SOCKS],
     currentProduct: options.onProduct ? RUNNER : null,
     before: (window) => {
       // The hand's travel is theatre; the test does not sit through it.
-      window.setTimeout = (run: () => void) => setTimeout(run, 0); window.clearTimeout = clearTimeout;
+      window.setTimeout = (run: () => void, ms?: number) => setTimeout(run, (ms || 0) > 3000 ? ms : 0); window.clearTimeout = clearTimeout;
+      if (options.plan) window.sessionStorage.setItem("bazaar:hands:plan", JSON.stringify(options.plan));
+      // Where she takes the shopper: jsdom does not navigate, so the link she clicks is caught and written down.
+      window.document.addEventListener("click", (event: any) => {
+        const link = event.target && event.target.closest && event.target.closest("a[href]");
+        if (link) { went.push(link.getAttribute("href")); event.preventDefault(); }
+      });
       if (options.onProduct) {
         const form = window.document.createElement("form");
         form.className = "product-form";
@@ -32,7 +40,7 @@ function mount(options: { onProduct?: boolean } = {}) {
   });
   const understand = (text: string) => mounted.chat.hands.understand(text, { products: [RUNNER, SOCKS], currentProduct: options.onProduct ? RUNNER : null });
   const steps = () => Array.from(mounted.document.querySelectorAll("[data-juniper-step]")) as HTMLElement[];
-  return { ...mounted, calls, understand, steps };
+  return { ...mounted, calls, went, understand, steps };
 }
 
 describe("V13 — Juniper's hands", () => {
@@ -47,6 +55,77 @@ describe("V13 — Juniper's hands", () => {
     expect(understand("what's in my cart?")).toEqual({ kind: "cart" });
     expect(understand("take me back to the shop")).toEqual({ kind: "browse" });
     expect(understand("undo")).toEqual({ kind: "undo" });
+  });
+
+  it("hears looser phrasing: one telling word, and the many ways to say go", () => {
+    const { understand } = mount();
+    expect(understand("navigate to the socks")).toMatchObject({ kind: "show", product: { handle: "trail-socks" } });
+    expect(understand("can you find the runners for me")).toMatchObject({ kind: "show", product: { handle: "trail-runner-3" } });
+    expect(understand("navigate to my cart")).toEqual({ kind: "cart" });
+    expect(understand("take me to the home page")).toEqual({ kind: "home" });
+    expect(understand("show me the shop")).toEqual({ kind: "browse" });
+  });
+
+  it("goes where she is asked, by herself", async () => {
+    const { chat, went, settle } = mount();
+    chat.open();
+    chat.send("take me to the trail socks");
+    await wait(settle);
+    expect(went).toEqual(["/products/trail-socks"]);
+  });
+
+  it("a chore for a product on another page: she goes there first and leaves herself the rest of the job", async () => {
+    const { chat, went, calls, window, settle } = mount();
+    chat.open();
+    chat.send("add the trail runner 3 in size 10 to my cart");
+    await wait(settle);
+    expect(went).toEqual(["/products/trail-runner-3"]);
+    expect(calls).toEqual([]);
+    expect(JSON.parse(window.sessionStorage.getItem("bazaar:hands:plan"))).toMatchObject({ kind: "add", handle: "trail-runner-3", size: "10" });
+  });
+
+  it("on arrival she finishes the job she came for", async () => {
+    const { calls, document, window, settle } = mount({ onProduct: true, plan: { at: Date.now(), kind: "add", handle: "trail-runner-3", size: "10", quantity: 0 } });
+    await wait(settle);
+    expect((must(document.querySelector('select[name="id"]')) as HTMLSelectElement).value).toBe("910");
+    expect(calls[0]).toEqual({ url: "/cart/add.js", body: { items: [{ id: 910, quantity: 1 }] } });
+    expect(window.sessionStorage.getItem("bazaar:hands:plan")).toBeNull();
+  });
+
+  it("asked to find something, she takes the shopper to the product she names; Stay here stops her", async () => {
+    const going = mount({ reply: "For muddy trails I'd reach for the Trail Runner 3. Grippy and tough." });
+    going.chat.open();
+    going.chat.send("what's good for muddy trails?");
+    await wait(going.settle);
+    expect(going.went).toEqual(["/products/trail-runner-3"]);
+
+    const staying = mount({ reply: "For muddy trails I'd reach for the Trail Runner 3." });
+    staying.chat.open();
+    staying.chat.send("what's good for muddy trails?");
+    await staying.settle();
+    await staying.settle();
+    const stay = staying.document.querySelector("[data-juniper-stay]") as HTMLElement | null;
+    if (stay) stay.click();
+    await wait(staying.settle);
+    expect(stay).not.toBeNull();
+    expect(staying.went).toEqual([]);
+
+    const chatting = mount({ reply: "The Trail Runner 3 is a fine shoe, but that number is too low." });
+    chatting.chat.open();
+    chatting.chat.send("would you take a hundred?");
+    await wait(chatting.settle);
+    expect(chatting.went).toEqual([]);
+  });
+
+  it("minimised, she still works, and the peek above the launcher says what she did", async () => {
+    const { chat, document, calls, settle } = mount({ onProduct: true, features: ["shape", "hands"] });
+    chat.send("add it to my cart");
+    await wait(settle);
+    expect(chat.isOpen()).toBe(false);
+    expect(calls.length).toBe(1);
+    const peek = must(document.querySelector("[data-juniper-peek]")) as HTMLElement;
+    expect(peek.hidden).toBe(false);
+    expect(peek.textContent).toContain("In your cart: Trail Runner 3");
   });
 
   it("leaves haggling, deals and checkout alone", () => {
@@ -101,14 +180,6 @@ describe("V13 — Juniper's hands", () => {
     await wait(settle);
     expect(calls).toEqual([]);
     expect(must(steps()[0]).getAttribute("data-juniper-step")).toBe("failed");
-  });
-
-  it("adds a product from another page by looking its sizes up", async () => {
-    const { chat, calls, settle } = mount();
-    chat.open();
-    chat.send("put the trail runner 3 in size 10 in my cart");
-    await wait(settle);
-    expect(calls[0]).toEqual({ url: "/cart/add.js", body: { items: [{ id: 910, quantity: 1 }] } });
   });
 
   it("never presses Deal, whatever is said", async () => {
