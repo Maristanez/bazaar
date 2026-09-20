@@ -30,3 +30,12 @@ test("no toggle appears when there are three rows or fewer", () => {
   render(<Feed events={FIVE.slice(0, 3)} />);
   expect(screen.queryByRole("button", { name: /Show all/ })).toBeNull();
 });
+
+test("shows event time and owner-only shopper and negotiation identities", () => {
+  render(<Feed events={[{ ...event("neg-long-id", "2026-09-19T10:00:00.000Z"), shopperId: "shopper-long-id" }]} />);
+  const row = screen.getByRole("article");
+
+  expect(row.querySelector("time")?.getAttribute("datetime")).toBe("2026-09-19T10:00:00.000Z");
+  expect(row.textContent).toContain("shopper-long-id");
+  expect(row.textContent).toContain("neg-long-id");
+});

@@ -123,7 +123,7 @@ export function Race({ products, policy, draft, saving, onDraft, onAdopt }: { pr
   return <section className="paper race" aria-labelledby="race-title">
     <div className="race-head">
       <div><h2 id="race-title">Try it on 300 shoppers</h2>
-        <label className="muted">Simulated on <select aria-label="Product" value={main.variantId} onChange={event => { setSelectedId(event.target.value); setRound(99); }}>{mains.map(item => <option key={item.variantId} value={item.variantId}>{item.title} · {money(item.list)}</option>)}</select> · never added to your real figures</label></div>
+        <label className="muted">Simulated on <select aria-label="Product" value={main.variantId} onChange={event => { setSelectedId(event.target.value); setRound(99); }}>{mains.map(item => <option key={item.variantId} value={item.variantId}>{item.title}{item.size ? ` · ${item.size}` : ""} · {money(item.list)}</option>)}</select> · never added to your real figures</label></div>
       <div className="race-figures">
         <p><b>{settled ? final.customersSaved : race.customersSaved}</b><span>customers saved {change(final.customersSaved, before.customersSaved, String)}</span></p>
         <p><b className={now.profit < 0 ? "down" : undefined}>{money(now.profit)}</b><span>profit {change(now.profit, was.profit, money)}</span></p>

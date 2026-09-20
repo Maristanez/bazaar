@@ -312,12 +312,12 @@
 **Boundary:** The hosted Console stayed on Owner sign in; authenticated monitoring was requested but not available. Live cost/floor compliance, feed rendering, owner decisions, tax/shipping totals, and paid settlement are not certified. The live model-identity response reported openai/gpt-4.1-mini, which needs reconciliation with the local tracker. No application code, policy, or deployment was changed by this task.
 
 
-### #18 · `Sun 01:30` · `Bryan / Codex` · `Live stress-test fixes and replay`
+### #18 · `Sun 01:45` · `Bryan / Codex` · `Live stress-test fixes and replay`
 
 **Prompt:** Implement the stress-test report's suggestions in order and fix the bugs.
 
 **What changed:** Fixed explicit size corrections and persistence, malformed quantities, percentage/negated/explicit-total parsing, omitted cart lines, held-price regression on lowballs, text acceptance and policy-question routing. Kept existing per-shopper memory isolation and stripped raw citations from shopper prose while preserving owner telemetry. Polished price/card labels and avoided treating a model number or one pair as a bigger cart. Exact buyer cents now remain visible; binding seller prices still come from the engine.
 
-**Verification:** 359 tests / 40 files passed at the full-suite checkpoint, including 22 new API transcript regressions; workspace typecheck and production web build passed. Separate standards/spec review findings were addressed. A local browser preview using real Shopify and Backboard confirmed that a fresh shopper had no seeded size/race memory and that a typed size reached the correct variant. The visual replay found and led to fixes for fractional-bid display and size persistence on follow-ups.
+**Verification:** 371 tests / 42 files passed at the full-suite checkpoint, including 25 new API transcript regressions; workspace typecheck and production web build passed. Separate standards/spec review findings were addressed. A local browser preview using real Shopify and Backboard confirmed that a fresh shopper had no seeded size/race memory and that a typed size reached the correct variant. The visual replay found and led to fixes for fractional-bid display and size persistence on follow-ups.
 
 **Boundary:** Existing dirty work was preserved while another process advanced HEAD. The hosted Console remained behind sign-in; production publishing, Shopify copy/branding, and shipping/tax verification remain open in PLAN. No paid order or production policy change was made by this follow-up.

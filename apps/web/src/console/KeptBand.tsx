@@ -8,6 +8,7 @@ export function KeptBand({ kpis }: { kpis?: DealKpis }) {
   const none = !kpis || kpis.deals === 0;
   const kept = kpis ? kpis.profitRecovered - Math.round(kpis.agentCostUsd * 100) : 0;
   return <section className="paper kept-band" aria-label="Real deals">
+    <p className="kept-source">Based on checkout links created. Payment is not confirmed.</p>
     <p className="kept-hero"><b>{none ? "—" : dollars(kept)}</b><span>{none ? "No deals yet" : `you kept · on ${kpis.deals} real ${kpis.deals === 1 ? "deal" : "deals"}`}</span></p>
     <p><b>{none ? "—" : kpis.customersSaved}</b><span>customers saved</span></p>
     <p><b>{none ? "—" : dollars(kpis.revenueRecovered)}</b><span>revenue recovered</span></p>

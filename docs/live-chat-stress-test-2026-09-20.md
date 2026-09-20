@@ -1,12 +1,12 @@
 # Live chatbot stress test — 20 September 2026
 
-**Status: original live test complete; code fixes implemented and locally verified. Hosted rollout and authenticated Console verification remain open.**
+**Status: original live test complete; code fixes implemented and locally verified. Authenticated Console/feed inspected in a follow-up; production still exhibits the old parsing bugs. Hosted rollout and owner-control verification remain open.**
 
 Tested in Chrome around 00:38–00:51 EDT against the [published Shopify store](https://b8wzw0-h3.myshopify.com/) and opened the [hosted Console](https://bazaar-chat-production.up.railway.app/console). This report covers **62 input attempts: 61 submitted chat prompts and one whitespace-only attempt**, plus two negotiated Shopify checkout flows and a bundle-removal/reapplication check. It is representative adversarial coverage, not an exhaustive proof over every possible input.
 
 The strongest demo material is real: a $149 shoe negotiated to $130, a three-product $143 basket negotiated to $125, and Shopify rejecting that bundle code after an item was removed. The main weaknesses are interpreting the shopper's requested cart/price, preserving an already-held deal, and inappropriate memory claims to fresh shoppers.
 
-## Implementation follow-up — 20 September, 01:30 EDT
+## Implementation follow-up — 20 September, 01:45 EDT
 
 The original observations and transcripts below are preserved. The follow-up fixes were made in the existing server, engine, Backboard client, and theme seams, with the pre-existing dirty work preserved. Other work also advanced `HEAD` during this session; these results describe the combined working tree, not a new production deployment.
 
@@ -24,11 +24,40 @@ The original observations and transcripts below are preserved. The follow-up fix
 | BUG-10 | Existing corrected seed descriptions preserved. Actual local Backboard traces verified `openai/gpt-5.6-terra`. | Shopify product-copy publication, production model configuration and Checkout branding remain deployment/admin work. |
 | VERIFY-11 | The bot no longer promises free shipping or no tax. The card explicitly labels its subtotal. | Address-dependent Shopify rates/taxes and final total still require store/admin verification. |
 
-**Validation:** 359 tests across 40 files passed at the full-suite checkpoint; workspace typecheck and the production web build passed. The HTTP tests required localhost permission; the earlier sandbox `listen EPERM` failures were environmental. There are 22 dedicated API regression cases in `apps/server/src/application-live-qa.test.ts`, plus catalog, theme and engine regressions. Tests include unavailable/misleading model responses. No paid order or production policy change was made.
+**Validation:** 371 tests across 42 files passed at the full-suite checkpoint; workspace typecheck and the production web build passed. The HTTP tests required localhost permission; the earlier sandbox `listen EPERM` failures were environmental. There are 25 dedicated API regression cases in `apps/server/src/application-live-qa.test.ts`, plus catalog, theme and engine regressions. Tests include unavailable/misleading model responses. No paid order or production policy change was made.
+
+**Final browser replay against local code + real services:** With the page selector still on size 9, a typed size 10 / 20% request produced a size-10 card showing `You $119.20`. A student/race follow-up reached $130 at round 2, kept size 10, and collapsed the old card. The $1 owner-spoof follow-up retained $130 and the original countdown. “Okay, I accept. Deal.” retained round 2 and directed to the Deal button. No checkout was minted in this replay.
 
 **Review:** Separate standards and report/spec reviews were run. Their concrete findings on unknown conjunctions, negated sizes, mixed shipping/tax offers, explicit quantities and citation provenance were addressed. Citations remain enabled in owner telemetry; only shopper prose is sanitized. Exact buyer cents are deliberately preserved rather than displaying a different offer than the shopper submitted.
 
+**Rollout access check:** The live Shopify JS/CSS were downloaded to `/tmp/bazaar-live-theme-before-fixes` for comparison; no theme push was made. Railway CLI authentication returned `Unauthorized. Please login with railway login`, so no backend deployment was submitted. Core fixes are committed in `2457ea2`; concurrent greeting/session integration advanced the checkout to `3c280bb`, which passed the final 371-test run. Final report/checkpoint amendments remain local.
+
 **Remaining boundary:** These are code fixes, not certification of all possible language inputs or of the deployed service. The hosted Console still required owner sign-in when revisited. The Railway UI showed active CLI deployment `28a747fa-a03a-4618-8c03-d239473c6ecf` (“Update ElevenLabs voice ID”); it does not contain proof of this follow-up's changes. Publish the tested server and theme, update Shopify description/branding fields, then replay the live and Console checklist below before presenting those gates as complete.
+
+## Authenticated hosted follow-up — 20 September, 01:50–01:55 EDT
+
+Owner sign-in succeeded in the original Console tab. The Console showed **Live from Shopify · 9 products**, **Deals live**, a saved **36% floor** (TR2 floor **$106.08**, cost shown as **$78**) and **Ask the owner on**. These are observed settings; this pass did not change them.
+
+The feed updated automatically from zero to one event when fresh shopper `qa-console-0920-b` asked: `Could you take 20% off one Trail Runner 2, size 10? I am buying today because it is last season.` The shopper card still showed **size 9**, **You $20**, and **$149**. The matching owner row showed **Offer $20.00 / Floor $106.08**, menu A and picked A at $149, and `Lowball · countered at $149 · no LLM call. $20 is under 40% of list; round 1 stands.` This confirms BUG-01/03 remain in production despite the local fixes. It establishes feed delivery and this offer's floor compliance, not compliance of every offer or proof of which extraction calls ran.
+
+The same shopper then sent, in order:
+
+| Prompt | Visible result |
+|---|---|
+| `Could you do $120? It is last season and I am buying today for a race.` | $149, round 1, size 9; `I can offer $149.` |
+| `I can do $130 because I am a student training for a race and I can buy today.` | $141, round 2, size 9; `I can offer $141.` |
+| `Could we agree on $132? I am buying today and this is the older model.` | $132, round 3, size 9; `I can do $132.` |
+| `My final budget is $127 for the same pair. I can buy today and I am a student.` | $132, final round 4, size 9; `My best is $132.` |
+
+Additional owner observations:
+
+- **Catalog demo blocker:** Trail Cap is **missing cost — not open to offers**. The original cap-bundle demo below is historical; correct the actual merchant cost or use a rehearsed available alternative. Do not invent a cost to enable it. The tee has no stock date and is treated as new stock.
+- **Variant-label issue:** the Gym selector contains three indistinguishable `Trail Runner 2 · $149` options, with similar repeated product names for other sizes. Include the variant label so the owner knows which stock/cost is being simulated.
+- **Feed detail gap:** the first visible event showed amount, floor, explanation, menu and selection, but no timestamp, shopper/negotiation identifier, size or quantity. These details would make simultaneous test runs and approval audits easier to correlate.
+- **Metric wording risk:** the headline showed `$368.00 you kept · on 6 real deals`, `$851 revenue recovered`, and `6 customers saved`. This test did not verify payment for those six records. Minted checkout links must not be presented as paid revenue without an order-completion source.
+- **Gym honesty held up:** the synthetic result openly showed haggling behind the 20% banner. The red-team panel clearly described its isolated test and lack of production writes. The desktop Console and first feed row were visually readable.
+
+The original Console tab subsequently became unavailable. The reopened Console returned to Owner sign in, so sign-in was requested again. This observation alone does not establish an authentication persistence bug. Approve, Decline, PAUSE/resume, feed reconnection, and a model trace are still pending. No checkout was minted, paid order submitted, or policy changed in this follow-up.
 
 ## Original live pass: scope and evidence
 
@@ -347,7 +376,7 @@ F03–F06 produced **$169 → $164 → $155 → $150** for one TR3. This is a us
 
 ## Console handoff and remaining coverage
 
-The hosted sign-in screen loaded and correctly withheld owner information. This is an access boundary, not itself a bug. Authentication is the concrete blocker for the requested monitoring.
+The original pass was blocked at sign-in. The authenticated follow-up above verified a live feed event and current owner settings; the remaining controls still need verification. A reopened tab required sign-in again.
 
 Once signed in, replay a short subset and verify:
 
@@ -370,4 +399,4 @@ Other outstanding categories: real phone/responsive layout, keyboard/screen-read
 4. Repair follow-up routing and shopper copy (BUG-08/09/10).
 5. Complete authenticated Console and shipping verification, then rehearse Demo 1 and Demo 2 three times on the hosted URLs.
 
-No implementation fixes are included in this report. Existing unit-test counts and old red-team results are not substituted for this live evidence.
+The original pass included no implementation changes; the implementation and authenticated follow-ups above record subsequent work. Unit-test counts and old red-team results are not substituted for live evidence.

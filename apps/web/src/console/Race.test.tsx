@@ -37,6 +37,14 @@ test("the Floor, Rounds and Lowball pills each show their own slider and value l
   expect(screen.getByRole("slider", { name: "Lowball cutoff: 40% of list" })).toBeTruthy();
 });
 
+test("the Gym product selector distinguishes size variants", async () => {
+  render(<Console port={createFixturePort({ stream: [] })} />);
+  await screen.findByRole("heading", { name: "Try it on 300 shoppers" });
+
+  const options = screen.getAllByRole("option").map(option => option.textContent);
+  expect(options).toEqual(expect.arrayContaining(["Trail Runner 2 · 9 · $149", "Trail Runner 2 · 10 · $149", "Trail Runner 2 · 11 · $149"]));
+});
+
 test("a setting reaches the real engine: a tighter Max off changes what the 300 shoppers do", async () => {
   render(<Console port={createFixturePort({ stream: [] })} />);
   await screen.findByRole("heading", { name: "Try it on 300 shoppers" });

@@ -21,6 +21,7 @@ export function Feed({ events }: { events: ConsoleEvent[] }) {
 function FeedRow({ event }: { event: ConsoleEvent }) {
   const picked = event.menu?.find(option => option.id === event.picked);
   const blocked = event.kind === "blocked";
+  const at = new Date(event.at);
   return <article className="feed-row" aria-label={blocked ? `blocked · ${event.blockedBy}` : event.kind}
     style={blocked ? { backgroundColor: "#f3675a" } : undefined}>
     <div className="row-prices">{event.offer !== undefined && <span>Offer <b>{money(event.offer)}</b></span>}
@@ -33,6 +34,7 @@ function FeedRow({ event }: { event: ConsoleEvent }) {
     {event.picked && <p className="pick">Picked {event.picked}{picked && <> · {picked.items.map(item => item.title).join(" + ")} <b>{money(picked.total)}</b></>}</p>}
     {event.memory && <p className="memory">Memory: “{event.memory}”</p>}
     <footer><span className="surface-chip">{event.surface === "storefront" ? "Storefront" : "ChatGPT"}</span>
+      <span className="feed-meta"><time dateTime={event.at}>{Number.isNaN(at.getTime()) ? event.at : at.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}</time><span className="feed-id">shopper {event.shopperId}</span><span className="feed-id">negotiation {event.negotiationId}</span></span>
       {event.llm && <small>{event.llm.model} · {event.llm.ms} ms · cost_usd {event.llm.costUsd === null ? "unreported" : `$${event.llm.costUsd.toFixed(4)}`}</small>}</footer>
   </article>;
 }
