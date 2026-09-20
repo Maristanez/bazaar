@@ -9,6 +9,7 @@
   var KEYWORDS = ['jarvis', 'hey jarvis', 'hi jarvis', 'jarvus', 'jervis', 'javis', 'jarves'];
 
   var STORAGE_KEY = 'bazaar:keyword';
+  var SESSION_OFF_KEY = 'bazaar:keyword:off';   // the shopper said Turn off: no auto-arm again this session
   var EAR_LABEL = "Listening for 'Jarvis'";
   var REARM_MS = 500;        // after hands-free, push-to-talk or the panel lets go of the microphone
   var RESTART_MS = 250;      // Chrome ends recognition by itself after silence
@@ -19,6 +20,8 @@
   var WAKE_FALLBACK_MS = 300;
 
   function killed() { return Boolean(window.BazaarChatFlags && window.BazaarChatFlags.keyword === false); }
+  // The owner's theme setting: arm on page load without the shopper's click. 'always' belongs to hands-free (V1).
+  function autoMode() { return Boolean(window.BazaarChatFlags && window.BazaarChatFlags.autoListen === 'keyword'); }
   function Recognition() { return window.SpeechRecognition || window.webkitSpeechRecognition; }
 
   var pattern = new RegExp('(^|[^a-z])(' + KEYWORDS.map(function (word) {
@@ -42,6 +45,17 @@
   var backoffs = 0;
   var ears = [];
   var control = null;
+  var viaAuto = false;       // armed by the owner's auto-listen flag, not by the shopper's click
+  var retryUsed = false;     // a refused auto-arm is tried again once, on the first gesture
+  var retryListening = false;
+
+  function readSessionOff() { try { return window.sessionStorage.getItem(SESSION_OFF_KEY) === '1'; } catch (error) { return false; } }
+  function writeSessionOff(on) {
+    try {
+      if (on) window.sessionStorage.setItem(SESSION_OFF_KEY, '1');
+      else window.sessionStorage.removeItem(SESSION_OFF_KEY);
+    } catch (error) { /* storage blocked */ }
+  }
 
   function readOptIn() { try { return window.localStorage.getItem(STORAGE_KEY) === '1'; } catch (error) { return false; } }
   function writeOptIn(on) {
@@ -129,7 +143,11 @@
       startedAt = Date.now();
       mine.start();
     } catch (error) {
-      if (recogniser === mine) { recogniser = null; onStopped(); countQuickEnd(); }
+      if (recogniser === mine) {
+        recogniser = null;
+        onStopped();
+        if (viaAuto) refused(); else countQuickEnd();
+      }
       return;
     }
     if (recogniser === mine) { showEars(); announce(); }
@@ -160,7 +178,38 @@
 
   function onError(event) {
     var code = event && event.error;
-    if (code === 'not-allowed' || code === 'service-not-allowed') disarm(true);
+    if (code === 'not-allowed' || code === 'service-not-allowed') refused();
+  }
+
+  // The browser said no. Quietly back to the opt-in control; an auto-arm gets one more try on the first gesture.
+  function refused() {
+    var wasAuto = viaAuto;
+    disarm(true);
+    if (!wasAuto || retryUsed || retryListening) return;
+    retryListening = true;
+    document.addEventListener('click', retryOnGesture, false);
+    document.addEventListener('keydown', retryOnGesture, false);
+  }
+
+  // Bubble phase on purpose: a click on "Turn on Hey Jarvis" reaches the control first and counts as the opt-in.
+  function retryOnGesture() {
+    document.removeEventListener('click', retryOnGesture, false);
+    document.removeEventListener('keydown', retryOnGesture, false);
+    retryListening = false;
+    if (retryUsed) return;
+    retryUsed = true;
+    if (optedIn || killed() || !autoMode() || readSessionOff()) return;
+    autoArm();
+  }
+
+  function autoArm() {
+    viaAuto = true;
+    optedIn = true;
+    quickEnds = 0;
+    backoffs = 0;
+    renderControl();
+    announce();
+    sync();
   }
 
   function onEnd() {
@@ -215,6 +264,7 @@
   // forget = the browser refused the microphone, so the remembered choice goes too. Otherwise only this page gives up.
   function disarm(forget) {
     optedIn = false;
+    viaAuto = false;
     if (forget) writeOptIn(false);
     quickEnds = 0;
     backoffs = 0;
@@ -225,7 +275,9 @@
 
   function optIn() {
     optedIn = true;
+    viaAuto = false;
     writeOptIn(true);
+    writeSessionOff(false);
     quickEnds = 0;
     backoffs = 0;
     renderControl();
@@ -245,11 +297,13 @@
 
   function renderControl() {
     if (!control) return;
+    var note = '<p class="juniper-keyword__note">Say "Jarvis" and Juniper starts listening, hands-free. While the chat is closed your browser listens for that one word, and Chrome\'s speech service hears the audio. Turn it off here any time.</p>';
+    // The explanation stays up when the shop turned the word on: the shopper never clicked, so never read it.
     control.innerHTML = optedIn
       ? '<p class="juniper-keyword__line"><span class="juniper-keyword__status">Hey Jarvis is on</span>' +
-        '<span aria-hidden="true"> · </span><button type="button" class="juniper-keyword__toggle" data-juniper-keyword-toggle aria-pressed="true">Turn off</button></p>'
-      : '<p class="juniper-keyword__line"><button type="button" class="juniper-keyword__toggle" data-juniper-keyword-toggle aria-pressed="false">Turn on Hey Jarvis</button></p>' +
-        '<p class="juniper-keyword__note">Say "Jarvis" and Juniper starts listening, hands-free. While the chat is closed your browser listens for that one word, and Chrome\'s speech service hears the audio. Turn it off here any time.</p>';
+        '<span aria-hidden="true"> · </span><button type="button" class="juniper-keyword__toggle" data-juniper-keyword-toggle aria-pressed="true">Turn off</button></p>' +
+        (viaAuto || autoMode() ? note : '')
+      : '<p class="juniper-keyword__line"><button type="button" class="juniper-keyword__toggle" data-juniper-keyword-toggle aria-pressed="false">Turn on Hey Jarvis</button></p>' + note;
   }
 
   function mountControl() {
@@ -261,7 +315,7 @@
     control.addEventListener('click', function (event) {
       var target = event.target;
       if (!target || !target.closest || !target.closest('[data-juniper-keyword-toggle]')) return;
-      if (optedIn) disarm(true); else optIn();
+      if (optedIn) { writeSessionOff(true); disarm(true); } else optIn();
     });
     home.appendChild(control);
     renderControl();
@@ -269,6 +323,7 @@
 
   try {
     optedIn = readOptIn();
+    if (autoMode() && !readSessionOff()) { viaAuto = true; optedIn = true; }
     mountControl();
 
     document.addEventListener('bazaar-voice:state', function (event) {

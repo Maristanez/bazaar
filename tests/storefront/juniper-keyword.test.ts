@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mountWidget } from "./widget.ts";
 
 // A stand-in for Chrome's SpeechRecognition. `running` is the truth the ear is checked against.
-function fakeRecognition(window: any, options: { failWith?: string; endAtOnce?: boolean } = {}) {
+// refuseFirst: only the first N recognisers refuse; later ones start normally.
+type FakeOptions = { failWith?: string; endAtOnce?: boolean; throwOnStart?: boolean; refuseFirst?: number };
+
+function fakeRecognition(window: any, options: FakeOptions = {}) {
   const made: any[] = [];
   class FakeRecognition {
     continuous = false;
@@ -14,7 +17,9 @@ function fakeRecognition(window: any, options: { failWith?: string; endAtOnce?: 
     onerror: any = null;
     constructor() { made.push(this); }
     start() {
-      if (options.failWith) {
+      const refusing = made.length <= (options.refuseFirst ?? Infinity);
+      if (options.throwOnStart && refusing) throw new Error("start refused");
+      if (options.failWith && refusing) {
         this.onerror?.({ error: options.failWith });
         this.onend?.({});
         return;
@@ -39,7 +44,7 @@ function fakeRecognition(window: any, options: { failWith?: string; endAtOnce?: 
   return { made, running: () => made.filter((recognition) => recognition.running) };
 }
 
-type Setup = { optedIn?: boolean; flag?: boolean; handsfree?: boolean; recognition?: Parameters<typeof fakeRecognition>[1]; unsupported?: boolean };
+type Setup = { optedIn?: boolean; flag?: boolean; autoListen?: string; sessionOff?: boolean; handsfree?: boolean; recognition?: Parameters<typeof fakeRecognition>[1]; unsupported?: boolean };
 
 function mount(setup: Setup = {}) {
   let fake = { made: [] as any[], running: () => [] as any[] };
@@ -49,7 +54,12 @@ function mount(setup: Setup = {}) {
     before: (window) => {
       if (!setup.unsupported) fake = fakeRecognition(window, setup.recognition);
       if (setup.optedIn) window.localStorage.setItem("bazaar:keyword", "1");
-      if (setup.flag !== undefined) window.BazaarChatFlags = { keyword: setup.flag };
+      if (setup.flag !== undefined || setup.autoListen !== undefined) {
+        window.BazaarChatFlags = {};
+        if (setup.flag !== undefined) window.BazaarChatFlags.keyword = setup.flag;
+        if (setup.autoListen !== undefined) window.BazaarChatFlags.autoListen = setup.autoListen;
+      }
+      if (setup.sessionOff) window.sessionStorage.setItem("bazaar:keyword:off", "1");
       if (setup.handsfree !== false) {
         window.document.addEventListener("bazaar-chat:ready", () => {
           window.BazaarChat.handsfree = { start, stop: vi.fn(), isOn: () => false };
@@ -277,4 +287,111 @@ describe("V8 the Jarvis keyword", () => {
     expect(JSON.stringify(chat.state())).not.toMatch(/four two/);
     expect((chat.elements.input as HTMLInputElement).value).toBe("");
   });
+});
+
+describe("V8 auto-arm: BazaarChatFlags.autoListen === 'keyword'", () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it("arms on load with no click, wears the ear, reads as on and still explains itself", () => {
+    const { fake, ears, start, document, window } = mount({ autoListen: "keyword" });
+    vi.advanceTimersByTime(50);
+    expect([fake.running().length, ears()]).toEqual([1, 1]);
+    expect(document.querySelector(".juniper-keyword__status")?.textContent).toBe("Hey Jarvis is on");
+    expect(document.querySelector("[data-juniper-keyword-toggle]")?.textContent).toBe("Turn off");
+    expect(document.querySelector(".juniper-keyword__note")?.textContent).toMatch(/Chrome's speech service/);
+    expect(window.localStorage.getItem("bazaar:keyword")).toBeNull();
+
+    fake.made[0].hear("hey jarvis");
+    vi.advanceTimersByTime(400);
+    expect(start).toHaveBeenCalledTimes(1);
+    expect([fake.running().length, ears()]).toEqual([0, 0]);
+  });
+
+  it("still steps aside for hands-free and an open panel, and keeps nothing it hears", () => {
+    const { fake, voice, chat, ears, document } = mount({ autoListen: "keyword" });
+    vi.advanceTimersByTime(50);
+    fake.made[0].hear("my card number is four two four two", true);
+    expect(document.documentElement.outerHTML).not.toMatch(/four two/);
+    voice(true);
+    expect([fake.running().length, ears()]).toEqual([0, 0]);
+    voice(false);
+    vi.advanceTimersByTime(600);
+    expect(fake.running()).toHaveLength(1);
+    chat.open();
+    expect([fake.running().length, ears()]).toEqual([0, 0]);
+  });
+
+  it("the kill switch wins over auto-arm", () => {
+    const { fake, document } = mount({ autoListen: "keyword", flag: false });
+    vi.advanceTimersByTime(10000);
+    document.body.click();
+    vi.advanceTimersByTime(10000);
+    expect(fake.made).toHaveLength(0);
+    expect(document.querySelector("[class^='juniper-keyword__']")).toBeNull();
+  });
+
+  for (const refusal of [{ failWith: "not-allowed" }, { throwOnStart: true }] as FakeOptions[]) {
+    it(`falls back to the opt-in control when the browser refuses (${Object.keys(refusal)[0]}), and retries once on the first gesture`, () => {
+      const { fake, button, ears, document } = mount({ autoListen: "keyword", recognition: { ...refusal, refuseFirst: 1 } });
+      vi.advanceTimersByTime(60000);
+      expect(fake.made).toHaveLength(1);
+      expect(ears()).toBe(0);
+      expect(button()?.textContent).toBe("Turn on Hey Jarvis");
+
+      document.body.click();
+      vi.advanceTimersByTime(50);
+      expect([fake.running().length, ears()]).toEqual([1, 1]);
+      expect(button()?.textContent).toBe("Turn off");
+    });
+  }
+
+  it("retries only once: a second refusal leaves it off however many gestures follow", () => {
+    const { fake, button, document } = mount({ autoListen: "keyword", recognition: { failWith: "not-allowed" } });
+    vi.advanceTimersByTime(1000);
+    document.body.click();
+    vi.advanceTimersByTime(1000);
+    document.body.click();
+    document.body.click();
+    vi.advanceTimersByTime(60000);
+    expect(fake.made).toHaveLength(2);
+    expect(fake.running()).toHaveLength(0);
+    expect(button()?.textContent).toBe("Turn on Hey Jarvis");
+  });
+
+  it("remembers Turn off for the session and does not auto-arm again", () => {
+    const first = mount({ autoListen: "keyword" });
+    vi.advanceTimersByTime(50);
+    first.chat.open();
+    first.button()!.click();
+    expect(first.window.sessionStorage.getItem("bazaar:keyword:off")).toBe("1");
+    first.chat.close();
+    first.document.body.click();
+    vi.advanceTimersByTime(10000);
+    expect(first.fake.running()).toHaveLength(0);
+
+    const later = mount({ autoListen: "keyword", sessionOff: true });
+    later.document.body.click();
+    vi.advanceTimersByTime(10000);
+    expect(later.fake.made).toHaveLength(0);
+    expect(later.button()?.textContent).toBe("Turn on Hey Jarvis");
+
+    later.chat.open();
+    later.button()!.click();
+    later.chat.close();
+    vi.advanceTimersByTime(600);
+    expect(later.fake.running()).toHaveLength(1);
+    expect(later.window.sessionStorage.getItem("bazaar:keyword:off")).toBeNull();
+  });
+
+  for (const autoListen of ["always", undefined]) {
+    it(`changes nothing when the flag is ${autoListen ?? "unset"}`, () => {
+      const { fake, button, document } = mount({ autoListen, flag: true });
+      vi.advanceTimersByTime(5000);
+      document.body.click();
+      vi.advanceTimersByTime(5000);
+      expect(fake.made).toHaveLength(0);
+      expect(button()?.textContent).toBe("Turn on Hey Jarvis");
+    });
+  }
 });
