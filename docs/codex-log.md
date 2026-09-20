@@ -289,3 +289,13 @@
 **Live local replay:** The real Backboard route kept one five tee negotiation across three turns. It read $250 as the cart offer, interpreted “$5 cheaper” as $285 on the same five tees, then kept five tees plus one Merino Socks line when the shopper requested the bundle at $270. The server safely countered with the engine generated totals.
 
 **Verification:** Focused Backboard and voice tests pass. The complete suite reports 293 passing tests across 38 files, workspace type checks pass, the production web build passes, JavaScript syntax checks pass and the diff has no whitespace errors. ElevenLabs transport is covered with mocked upstream audio and transcription responses because no local ElevenLabs key is configured.
+
+### #16 · `Sat 21:46` · `Ritvik / Codex` · `Live bargain prompts and voice deployment`
+
+**Prompt:** Replace the generic storefront quick prompts with realistic bargain prompts, deploy the theme, then wire Railway with the local Supabase and ElevenLabs environment values.
+
+**What changed:** The Shopify chat quick actions now send offer-shaped prompts: “Could you make this $5 cheaper?”, “Could you give me a student discount?” and “If I buy today, could you add socks as a gift?”. The chat welcome and placeholder now steer shoppers toward offers and bundle perks. The workspace also approves the `esbuild` postinstall in `pnpm-workspace.yaml` so local Vite starts without an interactive build approval.
+
+**Deployment:** Pushed the changed theme files to live theme `Bazaar coded storefront` (`#161251000517`). Set the missing Railway production variables from the local `.env` for Supabase and ElevenLabs, then redeployed the `bazaar-chat` service.
+
+**Verification:** The live storefront HTML contains the three new prompt labels and no longer contains `Weekend outfit` or `Sizing help`. Railway `/health` reports `ok: true`, `ownerPolicyConfigured: true`, `voiceConfigured: true`, `shopifyConfigured: true`, nine Shopify products and no warnings. `/api/voice/config` reports ElevenLabs enabled with `eleven_flash_v2_5` and `scribe_v2`.

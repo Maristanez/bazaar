@@ -93,9 +93,9 @@
       return 'Eyeing ' + currentProduct.title + '? Name a price and give me a reason — bundles, budget, or race-day plans help.';
     }
     if (products.length) {
-      return 'Hi, I can see ' + products.length + ' published products. Ask for prices, outfit ideas, sizing, or make an offer with a good reason.';
+      return 'Hi, I can see ' + products.length + ' published products. Make me an offer, ask for a student discount, or try for a small bundle perk.';
     }
-    return 'Hi, I can help with products, sizing, and offers. Try one of the prompts below.';
+    return 'Hi, make me an offer or ask for a small bundle perk. Try one of the prompts below.';
   }
 
   function buildScriptedResponses() {
