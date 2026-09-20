@@ -13,7 +13,7 @@
     if (!widget || !launcher || !document.createElement) return;
 
     var STATE_WORDS = { listening: 'Listening', hearing: 'Listening', thinking: 'Thinking', speaking: 'Juniper is speaking' };
-    var CAPTION_LENGTH = 48;
+    var CAPTION_HARD_CAP = 400; // a sanity bound only — the CSS (direction: rtl) shows the true tail at any length up to this
     var voiceOn = false;
     var voiceState = 'off';
     var captionText = '';
@@ -45,14 +45,17 @@
       if (chat.stickerSvg) head.innerHTML = chat.stickerSvg(mood || 'idle');
     }
 
-    // A live caption matters at its end, not its start: keep the latest words and cut at a word.
+    // A live caption matters at its end, not its start. The visible clipping is CSS's job (.juniper-motion__text
+    // is `direction: rtl` so the browser's own ellipsis eats the FRONT of the line) — no fixed character count
+    // here can predict what fits 13rem across fonts, weights and zoom, and a wrong guess used to hide the very
+    // last words a shorter guess left room for. This only guards against an unbounded string.
     function tail(text) {
       var clean = String(text || '').replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
-      if (clean.length <= CAPTION_LENGTH) return clean;
-      var cut = clean.slice(clean.length - CAPTION_LENGTH);
+      if (clean.length <= CAPTION_HARD_CAP) return clean;
+      var cut = clean.slice(clean.length - CAPTION_HARD_CAP);
       var space = cut.indexOf(' ');
       if (space > -1 && space < cut.length - 1) cut = cut.slice(space + 1);
-      return '…' + cut;
+      return cut;
     }
 
     function shopperIsSpeaking() {

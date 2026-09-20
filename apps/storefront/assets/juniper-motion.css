@@ -247,12 +247,17 @@
   scale: 1.06;
 }
 
+/* `direction: rtl` + `text-align: left` is the trick that lets the browser's own ellipsis clip the FRONT of the
+   line instead of the end — the only way to reliably keep "would you take less…" showing its true last word
+   at any caption length, font load or viewport width, instead of guessing a character budget that fits 13rem. */
 .juniper-motion__text {
   min-width: 0;
   max-width: 13rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  direction: rtl;
+  text-align: left;
 }
 
 /* While the shopper speaks the caption streams; a fixed measure keeps the pill from twitching with every word. */
@@ -301,6 +306,14 @@
 /* ── Phones: the panel is the whole screen, so it simply rises ───────────────────────────────────────────── */
 
 @media (max-width: 480px) {
+  /* The full-screen panel must paint over the launcher/pill it is sliding past, not under it — otherwise, for the
+     ~120ms both are on screen together, the fading launcher floats visibly on top of the panel's own footer
+     (there is no header trip on phones, so that overlap has nowhere to hide the way it does on desktop). */
+  .ai-chat__panel[hidden],
+  .ai-chat__panel:not([hidden]) {
+    z-index: 1;
+  }
+
   .ai-chat__panel[hidden] {
     position: fixed;
     inset: 0;

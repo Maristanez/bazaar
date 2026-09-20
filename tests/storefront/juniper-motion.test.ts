@@ -75,13 +75,20 @@ describe("juniper-motion — the voice pill", () => {
     expect(text()).toBe("Listening");
   });
 
-  it("keeps the tail of a long caption", () => {
+  it("hands a normal-length caption to the text box whole, so the CSS ellipsis — not a character guess — decides what's visible", () => {
     const { voice, caption, text } = mount();
     voice(true, "hearing");
-    caption("I have been looking at these shoes for a long while now and I wondered about the gaiters");
-    expect(text()!.length).toBeLessThanOrEqual(49);
-    expect(text()!.startsWith("…")).toBe(true);
-    expect(text()!.endsWith("about the gaiters")).toBe(true);
+    const said = "I have been looking at these shoes for a long while now and I wondered about the gaiters";
+    caption(said);
+    expect(text()).toBe(said);
+  });
+
+  it("bounds an extreme caption, but still keeps its true final words", () => {
+    const { voice, caption, text } = mount();
+    voice(true, "hearing");
+    caption("word ".repeat(200) + "and that is the real end of it");
+    expect(text()!.length).toBeLessThanOrEqual(400);
+    expect(text()!.endsWith("and that is the real end of it")).toBe(true);
   });
 
   it("is labelled and focusable, and leaves announcements to the panel", () => {
@@ -153,5 +160,19 @@ describe("juniper-motion — the stylesheet", () => {
 
   it("writes no gradient and no glass", () => {
     expect(css).not.toMatch(/gradient\(|backdrop-filter/);
+  });
+
+  it("shows the true end of a caption by clipping the front of the line, not by trusting a character count", () => {
+    // direction: rtl (with text-align: left) makes the browser's own ellipsis eat the start of the line instead
+    // of the end — verified in a real page: at 13rem/0.9rem/500 the box fits ~33 characters, well under the
+    // 48-character budget the old code guessed, which silently hid the shopper's last few words.
+    const textRule = css.slice(css.indexOf(".juniper-motion__text {"), css.indexOf(".juniper-motion__text {") + 300);
+    expect(textRule).toMatch(/direction:\s*rtl/);
+    expect(textRule).toMatch(/text-align:\s*left/);
+  });
+
+  it("keeps the phone panel above the launcher and pill it slides past, so a mid-transition frame never floats a launcher ghost over the panel's own footer", () => {
+    const phone = css.slice(css.indexOf("@media (max-width: 480px)"));
+    expect(phone).toMatch(/\.ai-chat__panel\[hidden\],\s*\n\s*\.ai-chat__panel:not\(\[hidden\]\)\s*{\s*\n\s*z-index:\s*1;/);
   });
 });
