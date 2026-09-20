@@ -1,4 +1,5 @@
-export type NegotiationItem = {
+/** A mirrored Shopify variant as the catalog holds it; looser than the engine's NegotiationItem, which it becomes once selected. */
+export type CatalogItem = {
   variantId: string;
   variantNumericId?: string;
   productId: string;
@@ -28,10 +29,10 @@ export type CatalogPayload = {
 /** Resolve the shopper's product and variant without falling through to a different model. */
 export function selectCatalogItem(
   payload: CatalogPayload,
-  items: readonly NegotiationItem[],
-  contextItem?: NegotiationItem,
+  items: readonly CatalogItem[],
+  contextItem?: CatalogItem,
   allowFallback = true,
-): NegotiationItem | null {
+): CatalogItem | null {
   const product = payload.product && typeof payload.product === "object" ? payload.product : {};
   const rawMessage = payload.message || payload.text || "";
   const message = normalize(rawMessage);
@@ -47,9 +48,9 @@ export function selectCatalogItem(
   const accessoryContext = !payload.negotiationId && pageContext ? pageContext : contextItem ?? pageContext;
   const explicit = explicitProduct(message, items, accessoryContext);
   if (!explicit && hasUnknownNamedProduct(rawMessage)) return null;
-  const sameProduct = (a: NegotiationItem | undefined, b: NegotiationItem | undefined): boolean => Boolean(a && b && (a.productId === b.productId || (!!a.handle && a.handle === b.handle)));
+  const sameProduct = (a: CatalogItem | undefined, b: CatalogItem | undefined): boolean => Boolean(a && b && (a.productId === b.productId || (!!a.handle && a.handle === b.handle)));
 
-  let productItems: NegotiationItem[] = [];
+  let productItems: CatalogItem[] = [];
   if (explicit) {
     productItems = items.filter((item) => item.productId === explicit.productId);
   } else if (hasAuthoritativeProduct(product, payload) && !payload.negotiationId && contextItem && !productMatches(contextItem, product)) {
@@ -104,7 +105,7 @@ export function selectCatalogItem(
   return first || null;
 }
 
-function usableItem(item: NegotiationItem | undefined): NegotiationItem | null {
+function usableItem(item: CatalogItem | undefined): CatalogItem | null {
   return item?.inStock && item.cost !== null ? item : null;
 }
 
@@ -133,7 +134,7 @@ function hasConcreteProduct(product: Record<string, unknown>): boolean {
   return ["selectedVariantId", "variantId", "productId", "id", "handle", "title"].some((key) => Boolean(product[key]));
 }
 
-function productMatches(item: NegotiationItem, product: Record<string, unknown>): boolean {
+function productMatches(item: CatalogItem, product: Record<string, unknown>): boolean {
   const ids = [product.productId, product.id].filter(Boolean).map((value) => stripGid(String(value)));
   const variants = [product.selectedVariantId, product.variantId].filter(Boolean).map((value) => stripGid(String(value)));
   const handle = String(product.handle || "").toLowerCase();
@@ -144,7 +145,7 @@ function productMatches(item: NegotiationItem, product: Record<string, unknown>)
   return variants.includes(stripGid(item.variantId)) || variants.includes(String(item.variantNumericId || ""));
 }
 
-function explicitProduct(message: string, items: readonly NegotiationItem[], contextItem?: NegotiationItem): NegotiationItem | null {
+function explicitProduct(message: string, items: readonly CatalogItem[], contextItem?: CatalogItem): CatalogItem | null {
   const candidates = items
     .map((item) => ({ item, score: productScore(message, item) }))
     .filter((candidate) => candidate.score > 0)
@@ -157,7 +158,7 @@ function explicitProduct(message: string, items: readonly NegotiationItem[], con
   return candidates[0]?.item || null;
 }
 
-function isIncludedAccessory(message: string, item: NegotiationItem, context: NegotiationItem): boolean {
+function isIncludedAccessory(message: string, item: CatalogItem, context: CatalogItem): boolean {
   if (!item.isAddOn || item.productId === context.productId) return false;
   const mention = accessoryMention(message, item);
   if (!mention) return false;
@@ -168,7 +169,7 @@ function isIncludedAccessory(message: string, item: NegotiationItem, context: Ne
     || /^(?:included|thrown in|too)\b/.test(after);
 }
 
-function accessoryMention(message: string, item: NegotiationItem): { position: number; length: number } | null {
+function accessoryMention(message: string, item: CatalogItem): { position: number; length: number } | null {
   const name = normalize(item.title);
   const exactPosition = message.indexOf(name);
   if (exactPosition >= 0) return { position: exactPosition, length: name.length };
@@ -191,7 +192,7 @@ function isAccessoryContextMessage(message: string): boolean {
   return /\b(?:with|including|included|plus|and|without|no|skip|exclude|excluding|don't want|do not want)\b/.test(message);
 }
 
-function productScore(message: string, item: NegotiationItem): number {
+function productScore(message: string, item: CatalogItem): number {
   const haystack = ` ${message} `;
   const title = normalize(item.title);
   const handle = normalize(item.handle || "");

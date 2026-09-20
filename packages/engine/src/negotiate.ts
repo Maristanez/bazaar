@@ -1,4 +1,5 @@
-import type { Item } from "./types";
+import type { Item } from "./types.ts";
+import { formatMoney, toShopper } from "./money.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_MAX_ROUNDS = 4;
@@ -83,7 +84,7 @@ export function priceOffer(
   }
   if (!Number.isSafeInteger(offered) || offered <= 0) return { kind: "closed", items: [mainQty], listTotal, total: listTotal, line: "I cannot safely haggle this item because the offer is invalid.", badges: ["invalid offer"] };
   if (offered >= listTotal && !reason.hasAddOnIntent) {
-    return { kind: "accepted", items: [mainQty], listTotal, total: listTotal, line: `${main.title} is already ${formatMoney(roundToShopper(main.list))}${quantity > 1 ? " each" : ""}. You can check out at list price, or send me a lower offer to haggle.`, badges: ["list price", "checkout ready"] };
+    return { kind: "accepted", items: [mainQty], listTotal, total: listTotal, line: `${main.title} is already ${formatMoney(toShopper(main.list))}${quantity > 1 ? " each" : ""}. You can check out at list price, or send me a lower offer to haggle.`, badges: ["list price", "checkout ready"] };
   }
   const capPct = discountCapOf(options.discountCapPct);
   const maxRounds = maxRoundsOf(options.maxRounds);
@@ -92,9 +93,10 @@ export function priceOffer(
   const baseTarget = targetOf(pricedMain, floor, options.now);
   const sellerTarget = sellerTargetFor(pricedMain, floor, baseTarget, reason, step, capPct);
   const ask = sellerAskFor(pricedMain, sellerTarget, step, reason, options.now);
-  const safeOffered = roundToShopper(offered);
+  const safeOffered = toShopper(offered);
   const hasConvincingReason = reason.score >= 2 || reason.hasBulkIntent || quantity > 1;
-  const isLowball = safeOffered < roundToShopper(main.list * quantity * 0.8);
+  // Wording only: an offer well under list gets the firm line. The owner's lowball rule is isLowball (lowball.ts).
+  const wellUnderList = safeOffered < toShopper(main.list * quantity * 0.8);
   const bundleItems = mirror.items.filter(item => validItem(item) && item.inStock && item.cost !== null && item.productId !== main.productId);
   if (bundleItems.length && reason.hasAddOnIntent) {
     const bundlePart = bundleItems.reduce((sum, item) => {
@@ -104,7 +106,7 @@ export function priceOffer(
     const bundleCost = main.cost * quantity + bundleItems.reduce((sum, item) => sum + item.cost! * (item.qty || 1), 0);
     const bundleList = main.list * quantity + bundleItems.reduce((sum, item) => sum + item.list * (item.qty || 1), 0);
     const bundleFloor = Math.max(bundleCost + 1, Math.ceil(bundleCost * (1 + options.floorPct / 100)));
-    const bundleTotal = roundToShopper(Math.max(ask + bundlePart, bundleFloor));
+    const bundleTotal = toShopper(Math.max(ask + bundlePart, bundleFloor));
     if (bundleFloor <= bundleList && bundleTotal > bundleCost && bundleTotal >= bundleFloor && bundleTotal <= bundleList) {
       const accepted = hasConvincingReason && safeOffered >= bundleTotal;
       const total = accepted ? Math.min(bundleList, safeOffered) : bundleTotal;
@@ -122,10 +124,15 @@ export function priceOffer(
   const safeTotal = Math.min(listTotal, Math.max(floor, Math.ceil(listTotal * (1 - capPct / 100)), total));
   const line = round === 1 && reason.score > 0
     ? `${reasonPrefix(reason)}I can start at ${formatMoney(safeTotal)}. If you can show stronger intent — bundle, checkout today, or a real comparison — I may be able to sharpen it.`
-    : step >= 3 || isLowball
+    : step >= 3 || wellUnderList
       ? `I am going to hold firm at ${formatMoney(safeTotal)} on this one. I need a stronger reason to move lower — a real bundle, checkout today, or a fair comparison.`
       : `${reason.score === 0 ? "I need a better reason before I move much. " : ""}${reasonPrefix(reason)}I can do ${formatMoney(safeTotal)} if you want to move forward.`;
   return { kind: "counter", items: [mainQty], listTotal, total: safeTotal, line, badges: reasonBadges(reason, [round >= maxRounds ? "firm counter" : reason.score === 0 ? "reason needed" : "seller counter"]) };
+}
+
+/** The figure the shopkeeper suggests a shopper open with when they have not named one. A prompt to the shopper, never an offer from the shop. */
+export function suggestedOpeningOffer(list: number, quantity = 1): number {
+  return toShopper(list * quantity * 0.85);
 }
 
 export function auditOffer(items: readonly (NegotiationItem & { qty?: number })[], total: number, floorPct: number, now: Date, ownerApproved = false): NegotiationAudit | null {
@@ -228,10 +235,10 @@ function sellerTargetFor(
   round: number,
   capPct: number,
 ): number {
-  const protectedTarget = roundToShopper(item.list * (1 - maxSellerDiscount(reason, round, capPct)));
+  const protectedTarget = toShopper(item.list * (1 - maxSellerDiscount(reason, round, capPct)));
   const reasonBaseTarget = reason.score >= 2 && baseTarget >= item.list ? protectedTarget : baseTarget;
   const reasonTarget = reasonAdjustedTarget(item.list, reasonBaseTarget, reason.score);
-  return roundToShopper(Math.max(floor, reasonTarget, protectedTarget));
+  return toShopper(Math.max(floor, reasonTarget, protectedTarget));
 }
 
 function sellerAskFor(
@@ -241,8 +248,8 @@ function sellerAskFor(
   reason: BuyerReason,
   now: Date,
 ): number {
-  if (reason.score === 0 && round <= 2) return roundToShopper(item.list);
-  return roundToShopper(askFor(item.list, sellerTarget, item.stockedAt, round, now));
+  if (reason.score === 0 && round <= 2) return toShopper(item.list);
+  return toShopper(askFor(item.list, sellerTarget, item.stockedAt, round, now));
 }
 
 function reasonPrefix(reason: BuyerReason): string {
@@ -251,12 +258,4 @@ function reasonPrefix(reason: BuyerReason): string {
 
 function reasonBadges(reason: BuyerReason, badges: string[]): string[] {
   return reason.label ? [`reason: ${reason.label}`, ...badges] : badges;
-}
-
-function roundToShopper(cents: number): number {
-  return Math.ceil(Number(cents || 0) / 100) * 100;
-}
-
-function formatMoney(cents: number): string {
-  return cents % 100 === 0 ? `$${(cents / 100).toFixed(0)}` : `$${(cents / 100).toFixed(2)}`;
 }

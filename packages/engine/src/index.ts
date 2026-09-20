@@ -1,11 +1,12 @@
 // The deal engine (SPEC §6). Pure: time, seed and data arrive as arguments — no I/O, no clock, no randomness.
+// Explicit .ts extensions: the server runs this source directly under Node's strip-types runtime.
 export const PACKAGE = "@bazaar/engine";
-export { ask, costOf, floorOf, targetOf, urgency } from "./formulas";
-export { toShopper } from "./money";
-export type { Item } from "./types";
-export { buildMenu } from "./menu";
-export type { MenuInput, MenuResult } from "./menu";
-export { auditAccepted, addOnPart } from "./audit";
-export type { PriceAudit } from "./audit";
-export { DEFAULT_SETTINGS, SETTING_RANGES, resolveSettings } from "./settings";
-export type { ResolvedSettings } from "./settings";
+export type { Item } from "./types.ts";
+export { formatMoney, toShopper } from "./money.ts";
+export { isLowball } from "./lowball.ts";
+export { analyzeBuyerReason, applyNegotiationContext, auditOffer, priceOffer, suggestedOpeningOffer } from "./negotiate.ts";
+export type { BuyerReason, NegotiationAudit, NegotiationItem, NegotiationMirror, NegotiationOffer, NegotiationOptions } from "./negotiate.ts";
+export { buildNegotiationMenu, rankNegotiationMenu } from "./negotiation-menu.ts";
+export type { NegotiationMenuCandidate, NegotiationMenuInput, NegotiationMenuResult, RequestedNegotiationItem } from "./negotiation-menu.ts";
+export { DEFAULT_SETTINGS, SETTING_RANGES, resolveSettings } from "./settings.ts";
+export type { ResolvedSettings } from "./settings.ts";

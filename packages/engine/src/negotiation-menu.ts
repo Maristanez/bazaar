@@ -1,4 +1,3 @@
-// @ts-expect-error Node's strip-types runtime requires the explicit extension.
 import { priceOffer, type BuyerReason, type NegotiationItem, type NegotiationOffer, type NegotiationMirror, type NegotiationOptions } from "./negotiate.ts";
 
 export type NegotiationMenuInput = {

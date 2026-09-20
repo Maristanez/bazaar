@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { selectCatalogItem, type NegotiationItem } from "./catalog";
+import { selectCatalogItem, type CatalogItem } from "./catalog";
 
-const items: NegotiationItem[] = [
+const items: CatalogItem[] = [
   { variantId: "tr2-9", variantNumericId: "201", productId: "tr2", productNumericId: "20", handle: "trail-runner-2", title: "Trail Runner 2", size: "9", productType: "Shoes", list: 14900, cost: 7800, stockedAt: "2026-06-17", inStock: true, isAddOn: false },
   { variantId: "tr2-10", variantNumericId: "202", productId: "tr2", productNumericId: "20", handle: "trail-runner-2", title: "Trail Runner 2", size: "10", productType: "Shoes", list: 14900, cost: 7800, stockedAt: "2026-06-17", inStock: true, isAddOn: false },
   { variantId: "tr3-9", variantNumericId: "301", productId: "tr3", productNumericId: "30", handle: "trail-runner-3", title: "Trail Runner 3", size: "9", productType: "Shoes", list: 16900, cost: 9500, stockedAt: "2026-09-07", inStock: true, isAddOn: false },

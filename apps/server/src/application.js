@@ -3,16 +3,14 @@ import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createBackboardShopkeeper } from "@bazaar/llm";
-import { check as checkShopkeeperPick } from "./core/check.ts";
+import { check as checkShopkeeperPick } from "./check.ts";
 import { createSupabaseDb } from "./infra/db.ts";
 import { createOwnerRuntime } from "./owner/runtime.ts";
 import { loadRedTeamResult } from "./owner/redteam.ts";
 import { dealKpis } from "./owner/kpis.ts";
-import { analyzeBuyerReason, applyNegotiationContext, auditOffer } from "../../../packages/engine/src/negotiate.ts";
+import { analyzeBuyerReason, applyNegotiationContext, auditOffer, buildNegotiationMenu, formatMoney, isLowball, rankNegotiationMenu, resolveSettings, suggestedOpeningOffer, toShopper } from "@bazaar/engine";
 import { selectCatalogItem } from "./catalog.ts";
 import { publicConfig } from "./public-config.ts";
-import { buildNegotiationMenu, rankNegotiationMenu } from "../../../packages/engine/src/negotiation-menu.ts";
-import { resolveSettings } from "../../../packages/engine/src/settings.ts";
 import { randomUUID } from "node:crypto";
 
 
@@ -814,7 +812,7 @@ async function makeOfferTurn(payload, message) {
       };
     }
     return {
-      reply: `I can talk about ${match.item.title}, but I need your number first. Try “Could you do ${formatMoney(roundToShopper(match.item.list * (terms.quantity || 1) * 0.85))}${(terms.quantity || 1) > 1 ? " total" : ""}?” and give me a reason.`,
+      reply: `I can talk about ${match.item.title}, but I need your number first. Try “Could you do ${formatMoney(suggestedOpeningOffer(match.item.list, terms.quantity || 1))}${(terms.quantity || 1) > 1 ? " total" : ""}?” and give me a reason.`,
       products: prioritizePublicProducts(mirror, match.item),
     };
   }
@@ -830,7 +828,7 @@ async function makeOfferTurn(payload, message) {
   if (pending) return { reply: pending.card.line, card: currentCard(pending), negotiationId };
   const { maxRounds, discountCapPct, lowballCutoffPct } = ownerSettings();
   // A lowball earns nothing: code counters with the quote already on the table, no LLM call, and the round does not advance.
-  const lowball = lowballCutoffPct > 0 && offered * 100 < match.item.list * quantity * lowballCutoffPct;
+  const lowball = isLowball(offered, match.item.list * quantity, lowballCutoffPct);
   const round = lowball ? Math.max(1, previousRound) : Math.min(maxRounds, previousRound + 1);
   negotiation.round = lowball ? previousRound : round;
   rememberShopperContext(payload.shopperId, match.item, quantity, negotiationId, { reasonText, reasonTags: reason.labels, requestedItems });
@@ -891,7 +889,7 @@ async function makeOfferTurn(payload, message) {
     badges: offer.badges,
     trail: [
       { label: "List", amount: offer.listTotal, by: "shop" },
-      { label: round === 1 ? "Your offer" : `Round ${round}`, amount: roundToShopper(offered), by: "shopper" },
+      { label: round === 1 ? "Your offer" : `Round ${round}`, amount: toShopper(offered), by: "shopper" },
       { label: "Shop", amount: offer.total, by: "shop" },
     ],
     expiresAt: expiresAt.toISOString(),
@@ -901,13 +899,13 @@ async function makeOfferTurn(payload, message) {
   const stored = { ...offer, line: replyLine, offerId, negotiationId, shopperId, expiresAt, status: "live", backboard: phrased.trace, card };
   state.offers.set(offerId, stored);
   const audit = auditOffer(offer.items, offer.total, owner.getPolicy().floorPct, new Date());
-  if (!lowball && previousRound >= maxRounds && latestPolicy.askOwner && !negotiation.approvalUsed && audit && roundToShopper(offered) > audit.cost && roundToShopper(offered) < audit.floor && roundToShopper(offered) < offer.total) {
-    const approval = owner.requestApproval({ negotiationId, shopperId, surface: "storefront", items: card.option.items, offer: roundToShopper(offered), cost: audit.cost, finalTotal: offer.total });
+  if (!lowball && previousRound >= maxRounds && latestPolicy.askOwner && !negotiation.approvalUsed && audit && toShopper(offered) > audit.cost && toShopper(offered) < audit.floor && toShopper(offered) < offer.total) {
+    const approval = owner.requestApproval({ negotiationId, shopperId, surface: "storefront", items: card.option.items, offer: toShopper(offered), cost: audit.cost, finalTotal: offer.total });
     negotiation.approvalUsed = true;
     stored.finalOffer = { ...offer };
     stored.approvalId = approval.id;
     stored.status = "pending_owner";
-    stored.total = roundToShopper(offered);
+    stored.total = toShopper(offered);
     card.status = "pending_owner";
     card.pendingUntil = approval.deadline;
     card.option.total = stored.total;
@@ -918,7 +916,7 @@ async function makeOfferTurn(payload, message) {
   if (audit) owner.publish({
     at: new Date().toISOString(), surface: "storefront", shopperId, negotiationId,
     kind: "decision", reasoning: lowball
-      ? `Lowball · countered at ${formatMoney(offer.total)} · no LLM call. ${formatMoney(roundToShopper(offered))} is under ${lowballCutoffPct}% of list; round ${round} stands.`
+      ? `Lowball · countered at ${formatMoney(offer.total)} · no LLM call. ${formatMoney(toShopper(offered))} is under ${lowballCutoffPct}% of list; round ${round} stands.`
       : `Server-priced ${selectedMain.title}; ${reason.label || "no buyer reason"}.`,
     offer: offered, round, menu, picked: card.option.id,
     ...audit, ...(phrased.trace ? { threadId: phrased.trace.threadId, memory: phrased.trace.memory, llm: { provider: phrased.trace.provider, model: phrased.trace.model, ms: phrased.trace.ms, costUsd: phrased.trace.costUsd } } : {}),
@@ -1201,8 +1199,8 @@ async function understandOffer(message, payload, mirror, shopperContext) {
   // Only an unmistakable total qualifies: one number, and no wording that could make it relative, per unit or a bundle ask.
   const unambiguous = (String(message).match(/\d+(?:\.\d+)?/g) || []).length === 1
     && !/\b(?:off|cheaper|less|lower|discount|each|per|apiece|free|throw|include|plus|another|extra)\b|%/i.test(String(message));
-  if (unambiguous && lowballCutoffPct > 0 && listed && plain.priceMode === "total" && plain.currency === "CAD" && Number.isFinite(plain.dollars)
-    && plain.dollars * 100 * 100 < listed * (plain.quantity || shopperContext?.quantity || 1) * lowballCutoffPct) return plain;
+  if (unambiguous && listed && plain.priceMode === "total" && plain.currency === "CAD" && Number.isFinite(plain.dollars)
+    && isLowball(plain.dollars * 100, listed * (plain.quantity || shopperContext?.quantity || 1), lowballCutoffPct)) return plain;
   const shopperId = requireShopperId(payload);
   const negotiationId = payload.negotiationId || shopperContext?.negotiationId || `catalog:${shopperId}`;
   const latest = latestNegotiationOffer(negotiationId);
@@ -1449,7 +1447,7 @@ function lowballCounter(candidates, menu, offered) {
     : offer.total < offer.listTotal
       ? `that is already ${formatMoney(offer.listTotal - offer.total)} off the ${formatMoney(offer.listTotal)} list price`
       : `that is the list price`;
-  return { optionId: picked.id, line: `I can't get near ${formatMoney(roundToShopper(offered))}. ${title} is ${formatMoney(offer.total)} — ${fact}. Send me a fairer number and a reason, and I can work with you.`, trace: null };
+  return { optionId: picked.id, line: `I can't get near ${formatMoney(toShopper(offered))}. ${title} is ${formatMoney(offer.total)} — ${fact}. Send me a fairer number and a reason, and I can work with you.`, trace: null };
 }
 
 function sameOfferItems(items, other) {
@@ -1758,20 +1756,12 @@ const TENS_NUMBER_WORDS = {
 
 const NUMBER_WORD_PATTERN = "(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fourty|fifty|sixty|seventy|eighty|ninety|hundred|benjamin)";
 
-function roundToShopper(cents) {
-  return Math.ceil(Number(cents || 0) / 100) * 100;
-}
-
 function dollarsToCents(value) {
   return Math.round(Number(value || 0) * 100);
 }
 
 function centsToDecimal(cents) {
   return (Math.max(0, cents) / 100).toFixed(2);
-}
-
-function formatMoney(cents) {
-  return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`;
 }
 
 function gidTail(gid) {

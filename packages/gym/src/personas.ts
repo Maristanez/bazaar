@@ -1,6 +1,6 @@
 import type { GymShopper } from "@bazaar/contracts";
-import type { Random } from "./rng";
-import { wholeDollarBetween } from "./rng";
+import type { Random } from "./rng.ts";
+import { wholeDollarBetween } from "./rng.ts";
 
 export type Persona = GymShopper["persona"];
 

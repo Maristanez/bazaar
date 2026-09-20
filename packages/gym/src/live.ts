@@ -1,9 +1,7 @@
 import type { GymResult, GymShopper, PolicySettings } from "@bazaar/contracts";
-import { analyzeBuyerReason, type NegotiationItem, type NegotiationOffer } from "../../../packages/engine/src/negotiate";
-import { buildNegotiationMenu, rankNegotiationMenu } from "../../../packages/engine/src/negotiation-menu";
-import { resolveSettings, type ResolvedSettings } from "../../../packages/engine/src/settings";
-import { makePopulation, type SimulatedPersona } from "./personas";
-import { mulberry32 } from "./rng";
+import { analyzeBuyerReason, buildNegotiationMenu, isLowball, rankNegotiationMenu, resolveSettings, type NegotiationItem, type NegotiationOffer, type ResolvedSettings } from "@bazaar/engine";
+import { makePopulation, type SimulatedPersona } from "./personas.ts";
+import { mulberry32 } from "./rng.ts";
 
 export type LiveGymInput = {
   main: NegotiationItem;
@@ -23,10 +21,6 @@ export type LiveGymResult = GymResult & { lowballs: number };
 /** Shoppers whose opening offer was below cutoffPct% of list. A cutoff of 0 means the rule is off. */
 export function countLowballs(result: Pick<GymResult, "shoppers">, list: number, cutoffPct: number): number {
   return result.shoppers.filter((shopper) => isLowball(shopper.rounds[0]?.offer ?? list, list, cutoffPct)).length;
-}
-
-function isLowball(offer: number, list: number, cutoffPct: number): boolean {
-  return cutoffPct > 0 && offer * 100 < list * cutoffPct;
 }
 
 function assertInput(input: LiveGymInput): void {

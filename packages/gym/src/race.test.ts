@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { runLiveGym } from "./live";
 import { raceLayout } from "./race";
-import type { NegotiationItem } from "../../../packages/engine/src/negotiate";
+import type { NegotiationItem } from "@bazaar/engine";
 
 const main: NegotiationItem = { variantId: "v", productId: "p", title: "Trail Runner", productType: "shoes", list: 14900, cost: 7800, stockedAt: "2026-06-17", inStock: true, isAddOn: false };
 const addOn: NegotiationItem = { variantId: "a", productId: "a", title: "Trail Gaiters", productType: "accessories", list: 3900, cost: 1700, stockedAt: "2026-05-01", inStock: true, isAddOn: true };

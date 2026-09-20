@@ -1,7 +1,6 @@
 import type { Approval, ConsoleEvent, PausePersistence, PauseResult, Policy, PolicySettings, RedTeamResult } from "@bazaar/contracts";
 import type { SupabaseDb } from "../infra/db";
-// @ts-expect-error Node's strip-types runtime requires the explicit extension.
-import { resolveSettings } from "../../../../packages/engine/src/settings.ts";
+import { resolveSettings } from "@bazaar/engine";
 
 export type OwnerRuntimeDb = Pick<SupabaseDb, "loadLatestPolicy" | "appendPolicy">;
 
