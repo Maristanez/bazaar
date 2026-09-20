@@ -7,6 +7,7 @@ import { check as checkShopkeeperPick } from "./core/check.ts";
 import { createSupabaseDb } from "./infra/db.ts";
 import { createOwnerRuntime } from "./owner/runtime.ts";
 import { loadRedTeamResult } from "./owner/redteam.ts";
+import { dealKpis } from "./owner/kpis.ts";
 import { analyzeBuyerReason, applyNegotiationContext, auditOffer } from "../../../packages/engine/src/negotiate.ts";
 import { selectCatalogItem } from "./catalog.ts";
 import { publicConfig } from "./public-config.ts";
@@ -102,6 +103,7 @@ const server = createServer(async (request, response) => {
         sendJson(response, request, 200, {
           policy: owner.getPolicy(), pausePersistence: owner.getPausePersistence(), products: ownerProducts(mirror), pendingApprovals: owner.pendingApprovals(),
           redteam: owner.getRedTeamResult(),
+          ...(await ownerKpis()),
         });
         return;
       }
@@ -374,6 +376,18 @@ function shopName() {
 
 function shopBaseUrl() {
   return `https://${shopName()}.myshopify.com`;
+}
+
+// Real settled deals only; the Forecast's simulated figures never pass through here.
+async function ownerKpis() {
+  if (!db.listDeals) return {};
+  try {
+    const agentCostUsd = owner.eventsAfter().reduce((sum, { event }) => sum + (event.llm?.costUsd || 0), 0);
+    return { kpis: dealKpis(await db.listDeals(), agentCostUsd) };
+  } catch (error) {
+    console.error("[kpis]", error);
+    return {};
+  }
 }
 
 async function safeSyncMirror() {

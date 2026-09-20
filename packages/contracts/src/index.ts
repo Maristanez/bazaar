@@ -39,7 +39,10 @@ export type ConsoleEvent = { at: string; surface: "storefront"|"chatgpt"; negoti
 export type Deal         = { id: string; merchantId: string; offerId: string; surface: "storefront"|"chatgpt"; items: Option["items"];
                       listTotal: number; agreedTotal: number; cost: number; floor: number; profit: number; ownerApproved: boolean;
                       code: string | null; createdAt: string };                             // mirrors the `deals` table, column for column
-export type ConsoleState = { policy: Policy; pausePersistence: PausePersistence; products: OwnerProduct[]; pendingApprovals: Approval[]; redteam: RedTeamResult };
+export type DealKpis     = { deals: number; customersSaved: number; revenueRecovered: number; profitRecovered: number; vsBanner: number; agentCostUsd: number };  // cents, except agentCostUsd; real settled deals only
+export type CatalogStatus = { source: "shopify-admin"|"seed-fallback"; loadedAt: string|null; warnings: string[] };
+export type ConsoleState = { policy: Policy; pausePersistence: PausePersistence; products: OwnerProduct[]; pendingApprovals: Approval[]; redteam: RedTeamResult;
+                      kpis?: DealKpis; kpisByProduct?: Record<string, DealKpis>; catalog?: CatalogStatus };   // additive, owner-only (SPEC §4.4.2)
 export type RedTeamLayer = "validate"|"engine"|"check"|"auditor"|"shopify_code";
 export type RedTeamResult = {
   ranAt: string;
