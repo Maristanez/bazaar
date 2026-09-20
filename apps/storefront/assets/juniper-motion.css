@@ -1,1 +1,381 @@
-/* V3 open / close motion and the voice pill (docs/PLAN.md). */
+/* V3 open / close motion and the voice pill (docs/PLAN.md).
+ *
+ * The chat toggles the panel with the `hidden` attribute. Everything here rides on that: `display` transitions with
+ * allow-discrete, the folded shape is the [hidden] style, and @starting-style gives the first frame of the unfold.
+ * A browser without allow-discrete drops those transition declarations whole and keeps critical.css's instant switch.
+ *
+ * The idea: the panel is the trail map, folded into the launcher's corner. It opens sideways first, then upward,
+ * and settles flat. The launcher rides the leading fold up into the header, where Juniper's head lands with the slap.
+ */
+
+.ai-chat {
+  --juniper-motion-open: 280ms;
+  --juniper-motion-close: 200ms;
+  --juniper-motion-panel-w: min(25.25rem, calc(100vw - 2.5rem));
+  --juniper-motion-panel-h: min(45rem, calc(100svh - 2.5rem));
+}
+
+/* ── The panel: a map unfolding from the bottom right corner ─────────────────────────────────────────────── */
+
+/* Open. `scale` carries the sideways fold and `transform` the upward one, so each gets its own clock. */
+.ai-chat__panel {
+  transform-origin: 100% 100%;
+  opacity: 1;
+  scale: 1 1;
+  rotate: 0deg;
+  transform: none;
+  transition:
+    opacity 140ms linear,
+    scale 190ms var(--ease),
+    transform 220ms var(--ease) 60ms,
+    rotate var(--juniper-motion-open) var(--ease),
+    display var(--juniper-motion-open) allow-discrete;
+}
+
+/* Folded. Rendered only while closing: it leaves the flow so the returning launcher does not shove it upward. */
+.ai-chat__panel[hidden] {
+  display: none;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  opacity: 0;
+  scale: 0.4 1;
+  rotate: -3deg;
+  transform: scaleY(0.07);
+  pointer-events: none;
+  transition:
+    opacity 110ms linear 90ms,
+    scale 150ms var(--ease) 50ms,
+    transform 170ms var(--ease),
+    rotate var(--juniper-motion-close) var(--ease),
+    display var(--juniper-motion-close) allow-discrete;
+}
+
+@starting-style {
+  .ai-chat__panel:not([hidden]) {
+    opacity: 0;
+    scale: 0.4 1;
+    rotate: -3deg;
+    transform: scaleY(0.07);
+  }
+}
+
+/* Juniper's head lands in the header once the fold has passed it. `backwards` only, so moods and hovers keep working. */
+.ai-chat__panel:not([hidden]) .ai-chat__sticker--head {
+  animation: juniper-motion-land 0.55s var(--ease) 130ms backwards;
+}
+
+@keyframes juniper-motion-land {
+  from {
+    scale: 1.5;
+    rotate: 9deg;
+    opacity: 0;
+    filter: drop-shadow(0 14px 10px rgb(47 22 4 / 0%)) blur(3px);
+  }
+
+  to {
+    scale: 1;
+    rotate: -7deg;
+    opacity: 1;
+    filter: drop-shadow(0 3px 5px rgb(47 22 4 / 28%)) blur(0);
+  }
+}
+
+/* ── The launcher: rides the fold into the header, and drops back when the map is put away ───────────────── */
+
+/* Panel open. Still display:none in the end, as critical.css has it; the trip happens on the way there. */
+.ai-chat__panel:not([hidden]) + .ai-chat__launcher {
+  display: none;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  transform-origin: 0 0;
+  translate: calc(100% - var(--juniper-motion-panel-w) + 0.4rem) calc(100% - var(--juniper-motion-panel-h) + 0.3rem);
+  scale: 0.6;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    translate var(--juniper-motion-open) var(--ease),
+    scale var(--juniper-motion-open) var(--ease),
+    opacity 120ms linear 70ms,
+    display var(--juniper-motion-open) allow-discrete;
+}
+
+.ai-chat__launcher[hidden] {
+  display: none;
+}
+
+/* The return is armed by the first open (juniper-motion.js), so it never plays on page load. */
+.juniper-motion--live .ai-chat__panel[hidden] + .ai-chat__launcher {
+  transition:
+    translate var(--juniper-motion-close) var(--ease),
+    scale var(--juniper-motion-close) var(--ease),
+    opacity 120ms linear;
+}
+
+@starting-style {
+  .juniper-motion--live .ai-chat__panel[hidden] + .ai-chat__launcher {
+    translate: 0 -1.75rem;
+    scale: 0.85;
+    opacity: 0;
+  }
+}
+
+/* ── The voice pill: what is left on the counter while Juniper keeps listening ───────────────────────────── */
+
+.juniper-motion__pill {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: fit-content;
+  max-width: calc(100vw - 1.5rem);
+  min-height: 3.5rem;
+  margin-left: auto;
+  padding: 0 0.375rem 0 0.3rem;
+  border-radius: 999px;
+  background: var(--teal);
+  color: var(--cream);
+  box-shadow: 0 10px 24px -8px rgb(0 76 76 / 70%);
+  transform-origin: 100% 100%;
+  transition:
+    translate var(--juniper-motion-open) var(--ease),
+    scale var(--juniper-motion-open) var(--ease),
+    rotate var(--juniper-motion-open) var(--ease),
+    opacity 140ms linear,
+    display var(--juniper-motion-open) allow-discrete;
+}
+
+/* Put away: fades where it stands, out of the flow so the launcher can take its place in the same frame. */
+.juniper-motion__pill[hidden] {
+  display: none;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  scale: 0.9;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    translate var(--juniper-motion-close) var(--ease),
+    scale var(--juniper-motion-close) var(--ease),
+    opacity 120ms linear,
+    display var(--juniper-motion-close) allow-discrete;
+}
+
+/* Opened from the pill: Juniper's head makes the same trip to the header the launcher makes. */
+.ai-chat__panel:not([hidden]) ~ .juniper-motion__pill[hidden] {
+  transform-origin: 0 0;
+  translate: calc(100% - var(--juniper-motion-panel-w) + 0.4rem) calc(100% - var(--juniper-motion-panel-h) + 0.3rem);
+  scale: 0.6;
+  transition:
+    translate var(--juniper-motion-open) var(--ease),
+    scale var(--juniper-motion-open) var(--ease),
+    opacity 120ms linear 70ms,
+    display var(--juniper-motion-open) allow-discrete;
+}
+
+/* Arrives with the shop's slap. */
+@starting-style {
+  .juniper-motion__pill:not([hidden]) {
+    scale: 1.06;
+    rotate: 1.2deg;
+    opacity: 0;
+  }
+}
+
+.ai-chat .juniper-motion__pill-open {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 3.5rem;
+  padding: 0 0.35rem 0 0;
+  border-radius: 999px;
+  background: transparent !important;
+  color: var(--cream) !important;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+/* The halo is the mic's level meter: a coral ring behind the head that swells with --juniper-level (0..1). */
+.juniper-motion__halo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+}
+
+.juniper-motion__halo::before {
+  content: '';
+  position: absolute;
+  inset: 0.2rem;
+  border: 2px solid var(--coral);
+  border-radius: 50%;
+  background: rgb(243 103 90 / 24%);
+  scale: calc(1 + var(--juniper-level, 0) * 0.3);
+  opacity: calc(0.5 + var(--juniper-level, 0) * 0.5);
+  transition: scale 90ms linear, opacity 90ms linear;
+}
+
+/* While Juniper talks the ring follows her voice instead of the mic. */
+.juniper-motion__pill[data-state='speaking'] .juniper-motion__halo::before {
+  scale: calc(1 + var(--juniper-mouth, 0) * 0.3);
+  opacity: calc(0.5 + var(--juniper-mouth, 0) * 0.5);
+}
+
+.juniper-motion__pill[data-state='thinking'] .juniper-motion__halo::before {
+  scale: 1;
+  animation: juniper-motion-think 1.2s var(--ease) infinite alternate;
+}
+
+@keyframes juniper-motion-think {
+  from { opacity: 0.25; }
+  to { opacity: 0.8; }
+}
+
+.juniper-motion__head {
+  position: relative;
+  width: 2.7rem;
+  height: 2.7rem;
+  margin-top: -0.5rem;
+}
+
+.juniper-motion__pill-open:hover .juniper-motion__head {
+  rotate: 4deg;
+  scale: 1.06;
+}
+
+.juniper-motion__text {
+  min-width: 0;
+  max-width: 13rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* While the shopper speaks the caption streams; a fixed measure keeps the pill from twitching with every word. */
+.juniper-motion__pill[data-state='hearing'] .juniper-motion__text {
+  width: 13rem;
+  font-weight: 500;
+}
+
+.ai-chat .juniper-motion__pill-stop {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--coral) !important;
+  transition: scale 0.2s var(--ease);
+}
+
+.juniper-motion__pill-stop:hover {
+  scale: 1.06;
+}
+
+.juniper-motion__pill-stop:active {
+  scale: 0.96;
+}
+
+.juniper-motion__pill-stop i {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 0.22rem;
+  background: var(--bark);
+}
+
+/* The pill sits on any page colour, so its focus rings live inside it: cream on the teal, bark on the coral. */
+.ai-chat .juniper-motion__pill-open:focus-visible {
+  outline: 3px solid var(--cream);
+  outline-offset: -3px;
+}
+
+.ai-chat .juniper-motion__pill-stop:focus-visible {
+  outline: 3px solid var(--bark);
+  outline-offset: -3px;
+}
+
+/* ── Phones: the panel is the whole screen, so it simply rises ───────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .ai-chat__panel[hidden] {
+    position: fixed;
+    inset: 0;
+    opacity: 1;
+    scale: 1 1;
+    rotate: 0deg;
+    transform: none;
+    translate: 0 100%;
+    transition:
+      translate var(--juniper-motion-close) var(--ease),
+      display var(--juniper-motion-close) allow-discrete;
+  }
+
+  .ai-chat__panel {
+    translate: 0 0;
+    transition:
+      translate var(--juniper-motion-open) var(--ease),
+      display var(--juniper-motion-open) allow-discrete;
+  }
+
+  @starting-style {
+    .ai-chat__panel:not([hidden]) {
+      opacity: 1;
+      scale: 1 1;
+      rotate: 0deg;
+      transform: none;
+      translate: 0 100%;
+    }
+  }
+
+  /* No header to travel to that the eye can follow: the launcher and the pill step back where they stand. */
+  .ai-chat__panel:not([hidden]) + .ai-chat__launcher,
+  .ai-chat__panel:not([hidden]) ~ .juniper-motion__pill[hidden] {
+    transform-origin: 100% 100%;
+    translate: 0 0;
+    scale: 0.9;
+    transition:
+      scale 120ms var(--ease),
+      opacity 120ms linear,
+      display 120ms allow-discrete;
+  }
+
+  .juniper-motion__text {
+    max-width: 9.5rem;
+  }
+
+  .juniper-motion__pill[data-state='hearing'] .juniper-motion__text {
+    width: 9.5rem;
+  }
+}
+
+/* ── Reduced motion: open, close and the pill all switch at once. The halo keeps its level as opacity only. ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-chat__panel,
+  .ai-chat__panel[hidden],
+  .ai-chat__launcher,
+  .ai-chat__panel:not([hidden]) + .ai-chat__launcher,
+  .juniper-motion--live .ai-chat__panel[hidden] + .ai-chat__launcher,
+  .juniper-motion__pill,
+  .juniper-motion__pill[hidden],
+  .ai-chat__panel:not([hidden]) ~ .juniper-motion__pill[hidden],
+  .juniper-motion__pill *,
+  .juniper-motion__pill *::before,
+  .ai-chat__panel:not([hidden]) .ai-chat__sticker--head {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .juniper-motion__halo::before,
+  .juniper-motion__pill[data-state='speaking'] .juniper-motion__halo::before {
+    scale: 1;
+  }
+
+  .juniper-motion__pill[data-state='thinking'] .juniper-motion__halo::before {
+    opacity: 0.6;
+  }
+}
