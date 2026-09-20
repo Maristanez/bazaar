@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { analyzeBuyerReason, applyNegotiationContext, auditOffer, priceOffer } from "./negotiate";
+import { analyzeBuyerReason, applyNegotiationContext, auditOffer, priceOffer, type BuyerReason } from "./negotiate";
 
 const shoe = {
   variantId: "tr2-10", productId: "tr2", title: "Trail Runner 2", size: "10", productType: "shoe",
@@ -130,6 +130,41 @@ describe("owner discount cap", () => {
         const floor = Math.max(cost + 1, Math.ceil(cost * (1 + floorPct / 100)));
         expect(offer.total).toBeGreaterThanOrEqual(Math.max(floor, Math.ceil(list * (1 - cap / 100))));
       }));
+  });
+});
+
+describe("owner-set max rounds", () => {
+  const strong = { score: 4, label: "market comparison", labels: ["market comparison"], hasBulkIntent: true, hasAddOnIntent: false, hasMarketComparison: true, isReadyToBuy: true };
+  const price = (round: number, maxRounds: number | undefined, reason: BuyerReason = strong) => priceOffer(shoe, 9000, round, { items: [shoe] }, reason, 1, { floorPct: 25, now, maxRounds });
+
+  it("the last of two rounds reaches the price the fourth of four reaches today", () => {
+    expect(price(4, undefined).total).toBe(12900);
+    expect(price(2, 2).total).toBe(12900);
+    expect(price(2, 2).badges).toContain("firm counter");
+  });
+
+  it("the last of six rounds reaches the same price, and the middle rounds sit above it", () => {
+    expect(price(6, 6).total).toBe(12900);
+    expect(price(3, 6).total).toBeGreaterThan(12900);
+    expect(price(3, 6).total).toBeLessThan(14900);
+    expect(price(4, 6).badges).not.toContain("firm counter");
+  });
+
+  it("a shopper with no reason still gets the small final-round move when there are only two rounds", () => {
+    expect(price(4, undefined, emptyReasonForTest()).total).toBe(14800);
+    expect(price(2, 2, emptyReasonForTest()).total).toBe(14800);
+    expect(price(1, 2, emptyReasonForTest()).total).toBe(14900);
+  });
+
+  it("four rounds is the default", () => {
+    for (const round of [1, 2, 3, 4]) expect(price(round, 4)).toEqual(price(round, undefined));
+  });
+
+  it("prices never step up as the rounds go on", () => {
+    for (const maxRounds of [2, 3, 5, 6]) {
+      const totals = Array.from({ length: maxRounds }, (_, index) => price(index + 1, maxRounds).total);
+      expect(totals).toEqual(totals.slice().sort((a, b) => b - a));
+    }
   });
 });
 

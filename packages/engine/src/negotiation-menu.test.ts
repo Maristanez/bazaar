@@ -15,6 +15,13 @@ function input(overrides: Partial<NegotiationMenuInput> = {}): NegotiationMenuIn
 }
 
 describe("buildNegotiationMenu", () => {
+  it("passes the owner's max rounds through: round 2 of 2 prices like round 4 of 4", () => {
+    const reason = analyzeBuyerReason("price match, buying today, older model");
+    const lastOfTwo = buildNegotiationMenu(input({ main: tr2, round: 2, maxRounds: 2, reason, allowAlternatives: false }));
+    expect(lastOfTwo[0]!.offer.total).toBe(13300);
+    expect(buildNegotiationMenu(input({ main: tr2, round: 2, reason, allowAlternatives: false }))[0]!.offer.total).toBeGreaterThan(13300);
+  });
+
   it("passes the owner's discount cap to every single-item option", () => {
     // 3% off: TR3 $169 → $163.93 → $164, TR2 $149 → $144.53 → $145, Ridge $99 → $96.03 → $97.
     const menu = buildNegotiationMenu(input({ round: 4, reason: analyzeBuyerReason("price match, buying today, older model"), discountCapPct: 3 }));

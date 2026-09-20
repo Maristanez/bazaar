@@ -1,7 +1,7 @@
 import type { Item } from "./types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const MAX_ROUNDS = 4;
+const DEFAULT_MAX_ROUNDS = 4;
 
 export type NegotiationItem = Item & {
   variantNumericId?: string;
@@ -21,7 +21,8 @@ export type NegotiationOffer = {
   items: NegotiationItem[]; listTotal: number; total: number; line: string; badges: string[];
 };
 /** discountCapPct: the most the owner lets the shopkeeper take off list (0–40, default 22). It never reaches below the floor. */
-export type NegotiationOptions = { floorPct: number; now: Date; discountCapPct?: number };
+/** maxRounds: how many rounds the owner allows (2–6, default 4). The round curve stretches so the last round always lands where round 4 of 4 does. */
+export type NegotiationOptions = { floorPct: number; now: Date; discountCapPct?: number; maxRounds?: number };
 const DEFAULT_DISCOUNT_CAP_PCT = 22;
 export type NegotiationAudit = { cost: number; floor: number; target: number; profit: number };
 type ReasonSignal = { pattern: RegExp; score: number; label: string; key?: string };
@@ -85,10 +86,12 @@ export function priceOffer(
     return { kind: "accepted", items: [mainQty], listTotal, total: listTotal, line: `${main.title} is already ${formatMoney(roundToShopper(main.list))}${quantity > 1 ? " each" : ""}. You can check out at list price, or send me a lower offer to haggle.`, badges: ["list price", "checkout ready"] };
   }
   const capPct = discountCapOf(options.discountCapPct);
+  const maxRounds = maxRoundsOf(options.maxRounds);
+  const step = curveStep(round, maxRounds);
   const pricedMain = { ...main, list: main.list * quantity };
   const baseTarget = targetOf(pricedMain, floor, options.now);
-  const sellerTarget = sellerTargetFor(pricedMain, floor, baseTarget, reason, round, capPct);
-  const ask = sellerAskFor(pricedMain, sellerTarget, round, reason, options.now);
+  const sellerTarget = sellerTargetFor(pricedMain, floor, baseTarget, reason, step, capPct);
+  const ask = sellerAskFor(pricedMain, sellerTarget, step, reason, options.now);
   const safeOffered = roundToShopper(offered);
   const hasConvincingReason = reason.score >= 2 || reason.hasBulkIntent || quantity > 1;
   const isLowball = safeOffered < roundToShopper(main.list * quantity * 0.8);
@@ -119,10 +122,10 @@ export function priceOffer(
   const safeTotal = Math.min(listTotal, Math.max(floor, Math.ceil(listTotal * (1 - capPct / 100)), total));
   const line = round === 1 && reason.score > 0
     ? `${reasonPrefix(reason)}I can start at ${formatMoney(safeTotal)}. If you can show stronger intent — bundle, checkout today, or a real comparison — I may be able to sharpen it.`
-    : round >= 3 || isLowball
+    : step >= 3 || isLowball
       ? `I am going to hold firm at ${formatMoney(safeTotal)} on this one. I need a stronger reason to move lower — a real bundle, checkout today, or a fair comparison.`
       : `${reason.score === 0 ? "I need a better reason before I move much. " : ""}${reasonPrefix(reason)}I can do ${formatMoney(safeTotal)} if you want to move forward.`;
-  return { kind: "counter", items: [mainQty], listTotal, total: safeTotal, line, badges: reasonBadges(reason, [round >= MAX_ROUNDS ? "firm counter" : reason.score === 0 ? "reason needed" : "seller counter"]) };
+  return { kind: "counter", items: [mainQty], listTotal, total: safeTotal, line, badges: reasonBadges(reason, [round >= maxRounds ? "firm counter" : reason.score === 0 ? "reason needed" : "seller counter"]) };
 }
 
 export function auditOffer(items: readonly (NegotiationItem & { qty?: number })[], total: number, floorPct: number, now: Date, ownerApproved = false): NegotiationAudit | null {
@@ -135,6 +138,15 @@ export function auditOffer(items: readonly (NegotiationItem & { qty?: number })[
   const main = items[0]!;
   const target = Math.ceil(list - urgencyFor(main.stockedAt, now) * (list - floor));
   return { cost, floor, target, profit: total - cost };
+}
+
+function maxRoundsOf(value: number | undefined): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 2 && value <= 6 ? value : DEFAULT_MAX_ROUNDS;
+}
+
+/** Where round r of N sits on today's four-round curve: 1 at the first round, 4 at the last (and it stays there). With N = 4 it is the round itself. */
+function curveStep(round: number, maxRounds: number): number {
+  return Math.min(4, 1 + (round - 1) * 3 / (maxRounds - 1));
 }
 
 function discountCapOf(value: number | undefined): number {
@@ -188,7 +200,7 @@ function reasonAdjustedTarget(list: number, baseTarget: number, score: number): 
   return Math.ceil(list - strength * (list - baseTarget));
 }
 
-function maxSellerDiscount(reason: BuyerReason, round: number, capPct: number): number {
+function maxSellerDiscount(reason: BuyerReason, step: number, capPct: number): number {
   const baseByScore = [
     [0, 0, 0.04, 0.06],
     [0.02, 0.04, 0.07, 0.09],
@@ -197,7 +209,10 @@ function maxSellerDiscount(reason: BuyerReason, round: number, capPct: number): 
     [0.05, 0.1, 0.15, 0.18],
   ];
   const score = Math.max(0, Math.min(4, reason.score));
-  let discount = baseByScore[score]![Math.max(1, Math.min(MAX_ROUNDS, round)) - 1]!;
+  const row = baseByScore[score]!;
+  const position = Math.max(1, Math.min(4, step)) - 1;
+  const lower = Math.floor(position);
+  let discount = row[lower]! + (row[Math.min(3, lower + 1)]! - row[lower]!) * (position - lower);
   if (reason.hasBulkIntent) discount += 0.03;
   if (reason.hasAddOnIntent) discount += 0.02;
   if (reason.isReadyToBuy) discount += 0.02;

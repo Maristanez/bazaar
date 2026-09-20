@@ -12,6 +12,7 @@ export type NegotiationMenuInput = {
   now: Date;
   /** Owner settings (SPEC §4.4.1); absent = the defaults. */
   discountCapPct?: number;
+  maxRounds?: number;
   requestedAddOn?: string;
   requestedItems?: readonly RequestedNegotiationItem[];
   allowAlternatives?: boolean;
@@ -29,7 +30,7 @@ export type NegotiationMenuResult = readonly NegotiationMenuCandidate[];
 /** Build safe server-side choices while keeping all pricing in priceOffer. */
 export function buildNegotiationMenu(input: NegotiationMenuInput): NegotiationMenuResult {
   const { main, mirror, offered, round, reason, quantity, floorPct } = input;
-  const pricing: NegotiationOptions = { floorPct, now: input.now, discountCapPct: input.discountCapPct };
+  const pricing: NegotiationOptions = { floorPct, now: input.now, discountCapPct: input.discountCapPct, maxRounds: input.maxRounds };
   const hasExplicitItems = Boolean(input.requestedItems?.length);
   const requestedItems = resolveRequestedItems(input.requestedItems, mirror.items, main);
   if (hasExplicitItems && requestedItems.length !== input.requestedItems!.length) return [];
