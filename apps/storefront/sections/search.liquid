@@ -28,20 +28,17 @@
       {% paginate search.results by 20 %}
         {% # Search result items may be an article, a page, or a product. %}
         {% for result in search.results %}
-          <div class="search-result">
-            {% assign featured_image = result.featured_image | default: result.image %}
-            {% if featured_image %}
-              {% render 'image', class: 'search-result__image', image: featured_image, url: result.url, width: 400 %}
-            {% endif %}
-            <div class="search-result__content">
-              <p>
-                {{ result.title | link_to: result.url }}
-                {% if result.price %}
-                  {{ result.price | money_with_currency }}
-                {% endif %}
-              </p>
+          {% if result.object_type == 'product' %}
+            {% render 'product-card', product: result %}
+          {% else %}
+            <div class="search-result">
+              {% assign featured_image = result.featured_image | default: result.image %}
+              {% if featured_image %}
+                {% render 'image', class: 'search-result__image', image: featured_image, url: result.url, width: 400 %}
+              {% endif %}
+              <h3>{{ result.title | link_to: result.url }}</h3>
             </div>
-          </div>
+          {% endif %}
         {% endfor %}
 
         {{ paginate | default_pagination }}
@@ -51,15 +48,51 @@
 {% endif %}
 
 {% stylesheet %}
+  form[role='search'] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+  }
+  form[role='search'] input {
+    flex: 1 1 16rem;
+    min-width: 0;
+    max-width: 36rem;
+    min-height: 3rem;
+    padding: 0 1.2rem;
+    border: 2px solid var(--th-teal);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--th-bark);
+    caret-color: var(--th-coral);
+  }
+  form[role='search'] input::placeholder { color: var(--th-bark-soft); }
+  form[role='search'] button {
+    min-height: 3rem;
+    padding: 0 1.65rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--th-coral);
+    color: var(--th-bark);
+    cursor: pointer;
+    font-family: var(--th-display);
+    font-weight: 600;
+    font-size: 1.05rem;
+  }
   .search-results {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(1.25rem, 3.4vw, 3.25rem);
+    margin: 2rem 0 6rem;
   }
+  .search-result h3 { font-family: var(--th-display); font-weight: 600; font-size: 1.3rem; }
+  .search-result a { color: inherit; }
   .search-results .prev,
   .search-results .page,
   .search-results .next {
     grid-column: 1 / -1;
   }
+  @media (max-width: 750px) { .search-results { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 {% endstylesheet %}
 
 {% schema %}

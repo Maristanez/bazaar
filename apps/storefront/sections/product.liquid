@@ -25,7 +25,15 @@
   <div class="product-shell__panel">
     <p class="product-shell__kicker">{{ product.type | default: 'Trail gear' }}</p>
     <h1>{{ product.title }}</h1>
-    <p class="product-shell__price">{{ product.price | money }}</p>
+    <p class="product-shell__price">
+      {%- if product.compare_at_price > product.price -%}
+        <s class="product-shell__was">{{ product.compare_at_price | money }}</s>
+        {{ product.price | money }}
+        <span class="product-shell__sale-badge">Sale</span>
+      {%- else -%}
+        {{ product.price | money }}
+      {%- endif -%}
+    </p>
 
     {% if product.description != blank %}
       <div class="product-shell__description">
@@ -80,20 +88,18 @@
 
 {% stylesheet %}
   .product-shell {
-    --spruce: #064e3b;
-    --spruce-2: #0f766e;
-    --lichen: #e7f2e8;
-    --bone: #fbf7ef;
-    --ink: #17211c;
-    --trail: #ea580c;
+    --spruce: var(--th-teal);
+    --spruce-2: #0b6363;
+    --lichen: #f1e8d8;
+    --bone: var(--th-cream);
+    --ink: var(--th-bark);
+    --trail: var(--th-bark);
     display: grid;
     grid-template-columns: minmax(0, 1.12fr) minmax(21rem, 0.88fr);
     gap: clamp(1.25rem, 4vw, 4rem);
     align-items: start;
-    padding: clamp(2rem, 6vw, 5rem) var(--page-margin) clamp(4rem, 8vw, 7rem);
-    background:
-      radial-gradient(circle at 12% 6%, rgb(15 118 110 / 14%), transparent 28rem),
-      linear-gradient(180deg, #fbf7ef 0%, #f5f0e7 100%);
+    padding: clamp(2rem, 6vw, 5rem) 0 clamp(4rem, 8vw, 7rem);
+    background: var(--th-cream);
     color: var(--ink);
   }
 
@@ -107,13 +113,17 @@
     position: relative;
     overflow: hidden;
     min-height: 14rem;
-    border-radius: 1.35rem;
+    border: 8px solid #fff;
+    border-radius: 1.5rem;
     background: var(--lichen);
-    box-shadow: inset 0 0 0 1px rgb(6 78 59 / 10%);
+    box-shadow: 0 18px 30px -18px rgb(47 22 4 / 55%), 0 3px 6px rgb(47 22 4 / 12%);
   }
 
   .product-shell__image--primary {
     grid-column: 1 / -1;
+    border-width: 12px;
+    border-radius: 2rem;
+    transform: rotate(-1.5deg);
     min-height: clamp(25rem, 54vw, 42rem);
   }
 
@@ -133,15 +143,10 @@
 
   .product-shell__panel {
     position: sticky;
-    top: 1.25rem;
+    top: 5.75rem;
     display: grid;
     gap: 1rem;
-    padding: clamp(1.25rem, 3vw, 2rem);
-    border: 1px solid rgb(6 78 59 / 14%);
-    border-radius: 1.35rem;
-    background: rgb(255 255 255 / 82%);
-    box-shadow: 0 24px 80px rgb(23 33 28 / 10%);
-    backdrop-filter: blur(14px);
+    padding: clamp(0.5rem, 2vw, 1.5rem) 0;
   }
 
   .product-shell__kicker {
@@ -156,20 +161,47 @@
 
   .product-shell h1 {
     color: var(--spruce);
-    font-size: clamp(2.6rem, 6vw, 5.25rem);
-    letter-spacing: -0.065em;
-    line-height: 0.92;
+    font-family: var(--th-display);
+    font-weight: 700;
+    font-size: clamp(2.6rem, 5.4vw, 4.4rem);
+    letter-spacing: -0.02em;
+    line-height: 1.02;
   }
 
   .product-shell__price {
+    width: fit-content;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.15rem 1rem;
+    border-radius: 999px;
+    background: var(--th-sun);
     color: var(--trail);
-    font-size: clamp(1.65rem, 3vw, 2.4rem);
-    font-weight: 900;
+    font-family: var(--th-display);
+    font-size: clamp(1.4rem, 2.4vw, 1.7rem);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    transform: rotate(-2deg);
+  }
+  .product-shell__was {
+    font-size: 0.62em;
+    font-weight: 500;
+    opacity: 0.65;
+  }
+  .product-shell__sale-badge {
+    font-size: 0.5em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--th-coral);
+    color: var(--th-cream);
+    padding: 0.2em 0.55em;
+    border-radius: 999px;
   }
 
   .product-shell__description {
     max-width: 42rem;
-    color: #3f4d45;
+    color: var(--th-bark-soft);
     font-size: 1rem;
     line-height: 1.7;
   }
@@ -213,27 +245,31 @@
     min-height: 3.15rem;
     border: 0;
     border-radius: 999px;
-    background: var(--trail);
-    color: #fff;
+    background: var(--th-coral);
+    color: var(--th-bark);
     cursor: pointer;
     font: inherit;
-    font-weight: 900;
+    font-family: var(--th-display);
+    font-weight: 600;
+    font-size: 1.05rem;
   }
 
   .product-shell__offer {
     min-height: 3.15rem;
-    border: 0;
+    border: 2px solid var(--th-teal);
     border-radius: 999px;
-    background: #f6d809;
-    color: #2f1604;
+    background: transparent;
+    color: var(--th-teal);
     cursor: pointer;
     font: inherit;
-    font-weight: 900;
+    font-family: var(--th-display);
+    font-weight: 600;
+    font-size: 1.05rem;
     transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), background-color 180ms ease;
   }
 
   .product-shell__offer:hover {
-    background: #ffe53d;
+    background: var(--th-paper);
     transform: translateY(-1px);
   }
 

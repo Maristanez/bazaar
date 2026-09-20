@@ -1,25 +1,38 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { GymResult, OwnerProduct, Policy, PolicySettings } from "@bazaar/contracts";
-import { raceLayout, runLiveGym, type LiveGymInput, type RaceDot } from "@bazaar/gym";
+import { raceLayout, runLiveGym, type RaceDot, type LiveGymInput } from "@bazaar/gym";
 import { SETTING_RANGES, floorOf, resolveSettings } from "@bazaar/engine";
 import { invalidReason, items } from "./gymItems";
 
 type Draft = Pick<Policy, "floorPct" | "askOwner"> & { settings?: PolicySettings };
-const W = 980, X0 = 60, X1 = 950, CLOUD_TOP = 46, CLOUD_BOTTOM = 150, BASE = 330, PER_ROW = 6, STEP_MS = 1050;
 type PillKey = "floor" | "maxOff" | "rounds" | "lowball";
 const PILLS: { key: PillKey; label: string }[] = [{ key: "floor", label: "Floor" }, { key: "maxOff", label: "Max off" }, { key: "rounds", label: "Rounds" }, { key: "lowball", label: "Lowball" }];
-const OUTCOMES: Record<RaceDot["kind"], { label: string; fill: string; stroke?: string }> = {
-  list: { label: "Paid list", fill: "var(--color-teal)" },
-  saved: { label: "Saved by your shopkeeper", fill: "#19c3c3" },
-  bundle: { label: "Bought a bundle", fill: "#3a8f8a" },
-  owner: { label: "Would ask you", fill: "#f6d809", stroke: "var(--color-bark)" },
-  missed: { label: "Walked — a deal missed", fill: "transparent", stroke: "#5c503e" },
-  walked: { label: "Walked away", fill: "transparent", stroke: "#a49885" },
-  deciding: { label: "Still deciding", fill: "#cdbfa6" },
-};
 const PERSONA_LABEL: Record<RaceDot["persona"], string> = { bargain: "Bargain hunter", budgeted: "On a budget", impatient: "Impatient", loyal: "Loyal customer", lowballer: "Lowballer" };
 const money = (cents: number) => `${cents < 0 ? "−" : ""}$${Math.round(Math.abs(cents) / 100).toLocaleString("en-CA")}`;
 const jitter = (id: number, salt: number) => (((id * 2654435761 + salt * 40503) >>> 0) % 1000) / 1000;
+
+// One outcome bucket per group of shoppers. Order reads left-to-right as "how it went, best case first".
+type GroupKey = "list" | "saved" | "bundle" | "owner" | "walked";
+const GROUPS: { key: GroupKey; title: string; fill: string; stroke?: string; outline?: boolean }[] = [
+  { key: "list", title: "Paid full price", fill: "var(--color-teal)" },
+  { key: "saved", title: "Got a better deal", fill: "#19c3c3" },
+  { key: "bundle", title: "Bought a bundle", fill: "#3a8f8a" },
+  { key: "owner", title: "Would ask you", fill: "#f6d809", stroke: "var(--color-bark)" },
+  { key: "walked", title: "Walked away", fill: "transparent", stroke: "#8a7f6c", outline: true },
+];
+function groupOf(dot: RaceDot): GroupKey {
+  if (dot.kind === "list" || dot.kind === "saved" || dot.kind === "bundle" || dot.kind === "owner") return dot.kind;
+  return "walked";
+}
+function outcomeLine(dot: RaceDot, list: number): string {
+  const persona = PERSONA_LABEL[dot.persona];
+  if (dot.kind === "list") return `${persona} · paid full price, ${money(dot.price!)}`;
+  if (dot.kind === "saved") return `${persona} · got a better deal at ${money(dot.price!)} (list is ${money(list)})`;
+  if (dot.kind === "bundle") return `${persona} · bought a bundle for ${money(dot.price!)}`;
+  if (dot.kind === "owner") return `${persona} · borderline offer — would ask you to decide`;
+  if (dot.kind === "missed") return `${persona} · walked away — would have paid up to ${money(dot.willingness)}, more than your floor`;
+  return `${persona} · walked away — wasn't willing to pay your floor`;
+}
 
 /** Figures for one Gym run. Every number is derived from the run itself. */
 function figures(result: GymResult, list: number, cost: number) {
@@ -30,16 +43,27 @@ function figures(result: GymResult, list: number, cost: number) {
   return { profit, vsNoShopkeeper: profit - noShopkeeper, vsBanner: result.profitVsBanner };
 }
 
+const W = 980, COLUMNS = 10, DOT_DX = 13, DOT_DY = 11, ZONE_GAP = 16, ZONE_TOP = 74, DOT_PAD = 16;
+
 export function Race({ products, policy, draft, saving, onDraft, onAdopt }: { products: OwnerProduct[]; policy: Policy; draft?: Draft; saving?: boolean; onDraft(next: Draft): void; onAdopt(): void }) {
   const catalog = useMemo(() => items(products), [products]);
-  // Oldest stock first: it has the most room to bend, so the race opens where haggling actually happens.
-  const mains = useMemo(() => catalog.filter(item => !item.isAddOn && !invalidReason(item)).sort((a, b) => Date.parse(a.stockedAt ?? "9999") - Date.parse(b.stockedAt ?? "9999")), [catalog]);
+  // Every open-to-offers product, add-ons included: one entry per product, not per size, since a
+  // shoe's three sizes all haggle the same way. Oldest stock first — it has the most room to bend,
+  // so the visualization opens where haggling actually happens.
+  const mains = useMemo(() => {
+    const byProduct = new Map<string, (typeof catalog)[number]>();
+    for (const item of catalog) {
+      if (invalidReason(item) || byProduct.has(item.productId)) continue;
+      byProduct.set(item.productId, item);
+    }
+    return [...byProduct.values()].sort((a, b) => Date.parse(a.stockedAt ?? "9999") - Date.parse(b.stockedAt ?? "9999"));
+  }, [catalog]);
   const [selectedId, setSelectedId] = useState<string>();
-  const [round, setRound] = useState(99);
+  const [settled, setSettled] = useState(true);
   const [hover, setHover] = useState<number | undefined>(undefined);
   const [pill, setPill] = useState<PillKey>("floor");
   const [runAt] = useState(() => Date.now());
-  const timer = useRef<number | undefined>(undefined);
+  const replayTimer = useRef<number | undefined>(undefined);
   const main = mains.find(item => item.variantId === selectedId) ?? mains[0];
   const floorPct = draft?.floorPct ?? policy.floorPct, askOwner = draft?.askOwner ?? policy.askOwner;
   const settings = resolveSettings({ ...policy.settings, ...draft?.settings });
@@ -57,31 +81,40 @@ export function Race({ products, policy, draft, saving, onDraft, onAdopt }: { pr
     } catch { return undefined; }
   }, [askOwner, catalog, dirty, floorPct, main, policy.askOwner, policy.floorPct, runAt, settings.discountCapPct, settings.lowballCutoffPct, settings.maxRounds, savedSettings.discountCapPct, savedSettings.lowballCutoffPct, savedSettings.maxRounds]);
 
-  const stop = () => { if (timer.current !== undefined) window.clearInterval(timer.current); timer.current = undefined; };
   function play() {
-    stop();
-    if (!run || (typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) { setRound(99); return; }
-    const last = raceLayout(run.candidate, main!.list, 99).rounds;
-    let at = 0; setRound(0);
-    timer.current = window.setInterval(() => { at += 1; if (at >= last) { stop(); setRound(99); } else setRound(at); }, STEP_MS);
+    if (window.clearTimeout) window.clearTimeout(replayTimer.current);
+    if (typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setSettled(true); return; }
+    setSettled(false);
+    replayTimer.current = window.setTimeout(() => setSettled(true), 60);
   }
-  useEffect(() => stop, []);
+  useEffect(() => () => window.clearTimeout(replayTimer.current), []);
 
   if (!main || !run) return <section className="paper race" aria-labelledby="race-title"><h2 id="race-title">Try it on 300 shoppers</h2><p className="muted">No product is ready to simulate: each needs a cost in Shopify and stock on hand.</p></section>;
 
   const cost = main.cost!, list = main.list, floor = floorOf(cost, floorPct);
-  const race = raceLayout(run.candidate, list, round), settled = race.round >= race.rounds;
   const final = raceLayout(run.candidate, list, 99), before = raceLayout(run.saved, list, 99);
   const now = figures(run.candidate, list, cost), was = figures(run.saved, list, cost);
-  const top = Math.max(list, ...run.candidate.shoppers.map(shopper => shopper.agreed ?? 0)) * 1.04, low = cost * 0.94;
-  const x = (cents: number) => X0 + (Math.min(Math.max(cents, low), top) - low) / (top - low) * (X1 - X0);
-  const place = (dot: RaceDot) => dot.state === "bought"
-    ? { x: x(dot.bucket!) - 22 + (dot.seat! % PER_ROW) * 9, y: BASE - 6 - Math.floor(dot.seat! / PER_ROW) * 9 }
-    : { x: x(dot.willingness) + (jitter(dot.id, 1) - 0.5) * 10, y: CLOUD_TOP + jitter(dot.id, 2) * (CLOUD_BOTTOM - CLOUD_TOP) };
-  const change = (next: number, prev: number, format: (value: number) => string) => settled && next !== prev
+
+  const groups = GROUPS.map(group => ({ ...group, dots: final.dots.filter(dot => groupOf(dot) === group.key) }));
+  const missedCount = final.dots.filter(dot => dot.kind === "missed").length;
+  const maxRows = Math.max(1, ...groups.map(group => Math.ceil(group.dots.length / COLUMNS)));
+  const zoneWidth = COLUMNS * DOT_DX + DOT_PAD;
+  const totalWidth = groups.length * zoneWidth + (groups.length - 1) * ZONE_GAP;
+  const startX = (W - totalWidth) / 2;
+  const zoneX = new Map(groups.map((group, index) => [group.key, startX + index * (zoneWidth + ZONE_GAP)]));
+  const gridBottom = ZONE_TOP + maxRows * DOT_DY + 16;
+  const height = gridBottom + (missedCount > 0 ? 46 : 26);
+  const crowdCenterY = 26;
+
+  function posFor(dot: RaceDot, seat: number, key: GroupKey): { x: number; y: number } {
+    if (!settled) return { x: W / 2 + (jitter(dot.id, 1) - 0.5) * (W - 60), y: crowdCenterY + (jitter(dot.id, 2) - 0.5) * 24 };
+    const zx = zoneX.get(key)!;
+    return { x: zx + DOT_PAD / 2 + (seat % COLUMNS) * DOT_DX, y: ZONE_TOP + Math.floor(seat / COLUMNS) * DOT_DY };
+  }
+
+  const change = (next: number, prev: number, format: (value: number) => string) => next !== prev
     ? <i className={next > prev ? "up" : "down"}>{next > prev ? "▲" : "▼"} {format(Math.abs(next - prev))}</i> : null;
-  const hovered = hover === undefined ? undefined : run.candidate.shoppers.find(shopper => shopper.id === hover);
-  const used = new Set(final.dots.map(dot => dot.kind));
+  const hovered = hover === undefined ? undefined : final.dots.find(dot => dot.id === hover);
 
   function updateSetting<K extends keyof PolicySettings>(key: K, value: PolicySettings[K]) {
     onDraft({ floorPct, askOwner, settings: { ...policy.settings, ...draft?.settings, [key]: value } });
@@ -123,24 +156,37 @@ export function Race({ products, policy, draft, saving, onDraft, onAdopt }: { pr
   return <section className="paper race" aria-labelledby="race-title">
     <div className="race-head">
       <div><h2 id="race-title">Try it on 300 shoppers</h2>
-        <label className="muted">Simulated on <select aria-label="Product" value={main.variantId} onChange={event => { setSelectedId(event.target.value); setRound(99); }}>{mains.map(item => <option key={item.variantId} value={item.variantId}>{item.title}{item.size ? ` · ${item.size}` : ""} · {money(item.list)}</option>)}</select> · never added to your real figures</label></div>
+        <label className="muted">Simulated on <select aria-label="Product" value={main.variantId} onChange={event => { setSelectedId(event.target.value); setSettled(true); }}>{mains.map(item => <option key={item.variantId} value={item.variantId}>{item.title} · {money(item.list)}</option>)}</select> · never added to your real figures</label></div>
       <div className="race-figures">
-        <p><b>{settled ? final.customersSaved : race.customersSaved}</b><span>customers saved {change(final.customersSaved, before.customersSaved, String)}</span></p>
+        <p><b>{final.customersSaved}</b><span>customers saved {change(final.customersSaved, before.customersSaved, String)}</span></p>
         <p><b className={now.profit < 0 ? "down" : undefined}>{money(now.profit)}</b><span>profit {change(now.profit, was.profit, money)}</span></p>
       </div>
     </div>
     <p className="race-versus"><span className={now.vsNoShopkeeper < 0 ? "down" : "up"}>{money(Math.abs(now.vsNoShopkeeper))} {now.vsNoShopkeeper < 0 ? "less" : "more"} than no shopkeeper</span> · <span className={now.vsBanner < 0 ? "down" : "up"}>{money(Math.abs(now.vsBanner))} {now.vsBanner < 0 ? "less" : "more"} than a 20% banner</span></p>
-    <svg className="race-stage" viewBox={`0 0 ${W} 372`} role="img" aria-label={`300 simulated shoppers. ${final.customersSaved} customers saved, profit ${money(now.profit)}.`} onMouseLeave={() => setHover(undefined)}>
-      <rect x={x(cost)} y={CLOUD_TOP - 14} width={Math.max(0, x(floor) - x(cost))} height={BASE - CLOUD_TOP + 14} fill="#e8d6b9" opacity=".5" />
-      <line x1="0" x2={W} y1={BASE} y2={BASE} stroke="#a49885" />
-      <text x="0" y="18">what each shopper would pay →</text><text x="0" y={BASE + 34}>price they paid →</text>
-      {[["cost", cost], ["floor", floor], ["list", list]].map(([label, cents]) => <text key={label} x={x(cents as number)} y={BASE + 18} textAnchor="middle">{label} {money(cents as number)}</text>)}
-      {race.dots.map(dot => { const at = place(dot), look = OUTCOMES[dot.kind];
-        return <circle key={dot.id} className="race-dot" r={hover === dot.id ? 6.5 : 4.2} fill={look.fill} stroke={look.stroke ?? "none"} strokeWidth="1.5" style={{ transform: `translate(${at.x}px, ${at.y}px)`, transitionDelay: `${Math.round(jitter(dot.id, 3) * 260)}ms` }} onMouseEnter={() => setHover(dot.id)} />; })}
-      <g className="race-ask" style={{ transform: `translateX(${x(race.typicalAsk)}px)` }}><line y1={CLOUD_TOP - 22} y2={BASE} stroke="#9c2a1f" strokeWidth="2.5" /><text y={CLOUD_TOP - 28} textAnchor="middle">{race.round === 0 ? `asking ${money(list)}` : `round ${race.round} · typical ask ${money(race.typicalAsk)}`}</text></g>
+    <svg className="race-stage" viewBox={`0 0 ${W} ${height}`} role="img" aria-label={`300 simulated shoppers. ${final.customersSaved} customers saved, profit ${money(now.profit)}.`} onMouseLeave={() => setHover(undefined)}>
+      {groups.map(group => {
+        const zx = zoneX.get(group.key)!, rectH = maxRows * DOT_DY + 8;
+        return <g key={group.key}>
+          <rect x={zx - 4} y={ZONE_TOP - 30} width={zoneWidth} height={rectH + 34} rx="12" fill={group.outline ? "#f3ead9" : group.fill} fillOpacity={group.outline ? 1 : 0.1} />
+          <text className="group-count" x={zx - 4 + zoneWidth / 2} y={ZONE_TOP - 10} textAnchor="middle" fill={group.outline ? "#5c503e" : group.fill}>{group.dots.length}</text>
+          <text className="group-title" x={zx - 4 + zoneWidth / 2} y={ZONE_TOP + rectH + 16} textAnchor="middle">{group.title}</text>
+          {group.key === "walked" && missedCount > 0 && <text className="group-note" x={zx - 4 + zoneWidth / 2} y={ZONE_TOP + rectH + 32} textAnchor="middle">{missedCount} would've paid more than your floor</text>}
+        </g>;
+      })}
+      {final.dots.map((dot, index) => {
+        const key = groupOf(dot);
+        const seat = groups.find(group => group.key === key)!.dots.indexOf(dot);
+        const at = posFor(dot, seat, key);
+        const look = GROUPS.find(group => group.key === key)!;
+        return <circle key={dot.id} className="race-dot" r={hover === dot.id ? 6 : 3.6} fill={look.fill} stroke={look.stroke ?? "none"} strokeWidth="1.4"
+          style={{ transform: `translate(${at.x}px, ${at.y}px)`, transitionDelay: `${Math.round(jitter(dot.id, 3) * 320)}ms` }}
+          onMouseEnter={() => setHover(dot.id)} />;
+      })}
     </svg>
-    <ul className="race-key" aria-label="Outcomes">{(Object.keys(OUTCOMES) as RaceDot["kind"][]).filter(kind => used.has(kind) || kind === "deciding").map(kind => <li key={kind} style={{ "--fill": OUTCOMES[kind].fill, "--ring": OUTCOMES[kind].stroke ?? "transparent" } as React.CSSProperties}>{OUTCOMES[kind].label}</li>)}</ul>
-    <p className="race-tip" role="status">{hovered ? <><b>{PERSONA_LABEL[hovered.persona]}</b> · would pay up to <b>{money(hovered.willingness)}</b> · {hovered.rounds.map((entry, index) => `round ${index + 1}: offered ${money(entry.offer)}, asked ${money(entry.ask)}`).join(" · ")} · {hovered.outcome === "bought" ? <>bought at <b>{money(hovered.agreed!)}</b>{hovered.agreed! < list && hovered.trade !== "bundle" ? " — a customer saved" : ""}</> : hovered.outcome === "would_ask_owner" ? "would ask you to decide" : hovered.missed ? "walked — a deal missed" : "walked away"}</> : "Point at a shopper to see what happened to them."}</p>
+    <div className="race-below">
+      <button className="quiet" onClick={play}>▶ Replay</button>
+      <p className="race-tip" role="status">{hovered ? outcomeLine(hovered, list) : "Point at a shopper to see what happened to them."}</p>
+    </div>
     <div className="race-strip">
       <div className="race-pill-row" role="tablist" aria-label="Setting">
         {PILLS.map(entry => <button key={entry.key} type="button" role="tab" aria-selected={pill === entry.key} className={`pill ${pill === entry.key ? "selected" : ""}`} onClick={() => setPill(entry.key)}>
@@ -148,8 +194,8 @@ export function Race({ products, policy, draft, saving, onDraft, onAdopt }: { pr
         </button>)}
       </div>
       <label className="race-slide" htmlFor={`race-${pill}`}><span><span>{PILLS.find(entry => entry.key === pill)!.label}</span><output>{active.valueLabel}</output></span>
-        <input id={`race-${pill}`} aria-label={active.ariaLabel} type="range" min={active.min} max={active.max} step="1" value={active.value} disabled={saving} onChange={event => { stop(); setRound(99); active.onChange(Number(event.target.value)); }} onMouseUp={play} onTouchEnd={play} onKeyUp={play} /></label>
-      <div className="race-actions"><button className="quiet" onClick={play}>▶ Play</button><button disabled={!dirty || saving} onClick={onAdopt}>{saving ? "Adopting…" : "Adopt"}</button></div>
+        <input id={`race-${pill}`} aria-label={active.ariaLabel} type="range" min={active.min} max={active.max} step="1" value={active.value} disabled={saving} onChange={event => { active.onChange(Number(event.target.value)); }} onMouseUp={play} onTouchEnd={play} onKeyUp={play} /></label>
+      <div className="race-actions"><button disabled={!dirty || saving} onClick={onAdopt}>{saving ? "Adopting…" : "Adopt"}</button></div>
       <p className="muted">{active.sentence}</p>
       <p className="race-state"><span className="saved-policy">Saved policy · cost + {policy.floorPct}%</span> · <span role="status">{dirty ? "Preview · not adopted" : "Your saved policy is active."}</span></p>
     </div>
