@@ -1,1 +1,13 @@
-/* V10 earcons and voice status for screen readers (docs/PLAN.md). */
+/* V10 earcons and voice status (docs/PLAN.md). The status line is heard, never seen: it also carries
+   .visually-hidden from critical.css, and these rules keep it hidden if that class ever moves. */
+.juniper-earcons__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

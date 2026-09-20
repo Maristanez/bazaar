@@ -1,1 +1,24 @@
-/* V9 one silent nudge per session (docs/PLAN.md). */
+/* V9 one silent nudge per session (docs/PLAN.md). The new label lands with the slap; the sticker wobbles once. */
+.juniper-nudge__live > span:last-child {
+  display: inline-block;
+  animation: ai-chat-slap 0.55s var(--ease) both;
+}
+
+.juniper-nudge__live .ai-chat__sticker {
+  animation: juniper-nudge__wobble 0.9s var(--ease) 0.15s both;
+}
+
+@keyframes juniper-nudge__wobble {
+  0% { rotate: 0deg; }
+  25% { rotate: -7deg; }
+  55% { rotate: 5deg; }
+  80% { rotate: -2deg; }
+  100% { rotate: 0deg; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .juniper-nudge__live > span:last-child,
+  .juniper-nudge__live .ai-chat__sticker {
+    animation: none !important;
+  }
+}
