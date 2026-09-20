@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Owner Console — redesign prototype (CR0)</title>
+<!-- Throwaway layout prototype for PLAN CR0. Figures are illustrative: a toy 300-shopper model, not packages/gym. -->
+<style>
+@font-face { font-family: Satoshi; src: url('../apps/web/public/fonts/satoshi-variable.woff2') format('woff2'); font-weight: 300 900; font-display: swap; }
+@font-face { font-family: Fredoka; src: url('../apps/web/public/fonts/fredoka-500.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: Fredoka; src: url('../apps/web/public/fonts/fredoka-600.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+:root {
+  --teal: #004c4c; --teal-deep: #003a3a; --cream: #fdf3e3; --cream-2: #f6e8d0; --coral: #f3675a; --coral-ink: #9c2a1f;
+  --sky: #ccffff; --bark: #2f1604; --bark-2: #5c503e; --sun: #f6d809; --amber: #e8d6b9; --trail: #a49885;
+  --teal-ink: #00605c;
+  --p1: #004c4c; --p2: #3a8f8a; --p3: #8a5a2b; --p4: #ff598b; --p5: #4d6a8f;
+  font-family: Satoshi, system-ui, sans-serif; color: var(--bark); background: var(--teal);
+  font-variant-numeric: tabular-nums; font-synthesis: none;
+}
+* { box-sizing: border-box; }
+body { margin: 0; line-height: 1.45; font-size: 15px; }
+h1, h2, h3 { font-family: Fredoka, sans-serif; font-weight: 550; margin: 0; text-wrap: balance; }
+h1 { font-size: 1.35rem; } h2 { font-size: 1.2rem; } h3 { font-size: .78rem; font-family: Satoshi, sans-serif; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--bark-2); }
+p { margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; border-radius: 8px; min-height: 44px; padding: .6rem 1rem; font-weight: 700; background: var(--teal); color: var(--cream); transition: filter 150ms ease-out, transform 150ms ease-out; }
+button:hover { filter: brightness(1.14); } button:active { transform: translateY(1px); }
+button:disabled { opacity: .5; cursor: not-allowed; filter: none; }
+button.quiet { background: transparent; color: var(--teal); box-shadow: inset 0 0 0 1.5px var(--teal); }
+button.small { min-height: 32px; padding: .25rem .6rem; font-size: .78rem; }
+:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; border-radius: 6px; }
+.topbar :focus-visible { outline-color: var(--sky); }
+::selection { background: var(--sky); color: var(--teal); }
+input, select { accent-color: var(--teal); caret-color: var(--teal); }
+* { scrollbar-color: #53716b transparent; scrollbar-width: thin; }
+
+.topbar { position: sticky; top: 0; z-index: 10; background: var(--teal); color: var(--cream); display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem max(24px, calc((100vw - 1360px) / 2 + 24px)); box-shadow: 0 6px 18px #002d2d40; }
+.brand { display: flex; align-items: center; gap: .8rem; min-width: 0; }
+.sticker { display: grid; place-items: center; width: 38px; height: 38px; flex: none; border: 3px solid #fff; border-radius: 12px; transform: rotate(-6deg); background: var(--cream); color: var(--teal); }
+.sticker svg { width: 22px; height: 22px; }
+.source { display: flex; align-items: center; gap: .45rem; font-size: .82rem; color: var(--sky); white-space: nowrap; }
+.source i { width: 8px; height: 8px; border-radius: 50%; background: #7dffb0; box-shadow: 0 0 0 3px #7dffb033; }
+.top-actions { display: flex; align-items: center; gap: .8rem; }
+.pill { border: 1px solid var(--sky); border-radius: 999px; padding: .35rem .75rem; font-weight: 700; font-size: .85rem; white-space: nowrap; }
+.pill.paused, .pause { background: var(--coral); color: var(--bark); border-color: var(--coral); }
+.pause { min-width: 104px; font-size: 1rem; }
+.proto { background: var(--sky); color: var(--teal); text-align: center; font-size: .78rem; padding: .25rem .5rem; }
+
+main { max-width: 1360px; margin: 0 auto; padding: 18px 24px 40px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.paper { background: var(--cream); border-radius: 14px; box-shadow: 0 8px 24px #002d2d33; }
+
+/* Ledger: one band, real deals only */
+.ledger { display: grid; grid-template-columns: auto repeat(4, minmax(0, 1fr)) auto; align-items: stretch; padding: 14px 22px; gap: 0; }
+.ledger > * { padding: 2px 22px; border-left: 1px dashed var(--trail); display: grid; align-content: center; gap: 1px; }
+.ledger > :first-child { border-left: 0; padding-left: 0; }
+.ledger .lead b { font-family: Fredoka, sans-serif; font-weight: 550; font-size: 1.05rem; }
+.ledger .lead span, .fig span, .ledger .aside span { font-size: .78rem; color: var(--bark-2); }
+.fig b { font-family: Fredoka, sans-serif; font-weight: 600; font-size: 1.9rem; line-height: 1.05; color: var(--teal); }
+.fig.bump b { animation: bump 700ms cubic-bezier(.16, 1, .3, 1); }
+@keyframes bump { 0% { transform: translateY(6px); filter: blur(3px); opacity: .3; } 100% { transform: none; filter: none; opacity: 1; } }
+.ledger .aside b { font-size: 1.05rem; font-weight: 800; }
+.pos { color: var(--teal-ink); } .neg { color: var(--coral-ink); }
+
+.cols { display: grid; grid-template-columns: 318px minmax(0, 1fr) 348px; gap: 18px; align-items: start; }
+
+/* Controls */
+.controls { display: grid; grid-template-rows: 1fr auto; max-height: calc(100vh - 190px); min-height: 520px; overflow: hidden; }
+.controls .scroll { overflow-y: auto; overscroll-behavior: contain; padding: 18px 20px 6px; }
+.group { padding: 14px 0; border-top: 1px dashed var(--trail); display: grid; gap: 12px; }
+.group:first-of-type { border-top: 0; padding-top: 10px; }
+.ctl { display: grid; gap: 3px; }
+.ctl .row { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; font-weight: 700; font-size: .9rem; }
+.ctl output { font-weight: 800; color: var(--teal); }
+.ctl.changed output::after { content: " · not adopted"; font-weight: 600; font-size: .72rem; color: var(--bark-2); }
+.ctl input[type=range] { width: 100%; height: 28px; margin: 0; }
+.ctl small, .hint { font-size: .76rem; color: var(--bark-2); }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border-radius: 8px; box-shadow: inset 0 0 0 1.5px var(--teal); overflow: hidden; }
+.seg label { text-align: center; padding: .5rem .2rem; font-size: .8rem; font-weight: 700; cursor: pointer; color: var(--teal); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:has(input:checked) { background: var(--teal); color: var(--cream); }
+.seg label:has(input:focus-visible) { outline: 3px solid var(--teal); outline-offset: -3px; }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-size: .88rem; font-weight: 700; }
+.switch input { appearance: none; width: 40px; height: 24px; flex: none; border-radius: 999px; background: #cdbfa6; position: relative; cursor: pointer; transition: background 160ms ease-out; margin: 0; }
+.switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0004; transition: transform 160ms cubic-bezier(.16, 1, .3, 1); }
+.switch input:checked { background: var(--teal); } .switch input:checked::after { transform: translateX(16px); }
+.badge { display: flex; align-items: center; gap: .5rem; font-size: .82rem; font-weight: 700; color: var(--teal-ink); }
+.badge svg { width: 18px; height: 18px; flex: none; }
+.blocked-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: .8rem; }
+.blocked-list li { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.products { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.products li { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 8px; padding: 6px 0; font-size: .84rem; }
+.products .meta { grid-column: 1 / -1; font-size: .72rem; color: var(--bark-2); display: flex; gap: .4rem; flex-wrap: wrap; }
+.tag { border-radius: 6px; padding: 0 .35rem; font-weight: 700; }
+.tag.binds { background: var(--cream-2); } .tag.miss-cost { background: var(--coral); color: var(--bark); } .tag.miss-date { background: var(--amber); }
+.adopt { padding: 12px 20px 16px; border-top: 1px dashed var(--trail); display: grid; gap: 6px; background: var(--cream); }
+.adopt .btns { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.adopt p { font-size: .78rem; color: var(--bark-2); min-height: 1.1em; }
+
+/* Forecast */
+.forecast { padding: 18px 22px 20px; display: grid; gap: 14px; }
+.fhead { display: flex; justify-content: space-between; align-items: end; gap: 1rem; flex-wrap: wrap; }
+.fhead p { font-size: .82rem; color: var(--bark-2); }
+.fhead select { border: 1.5px solid var(--teal); border-radius: 8px; background: transparent; padding: .45rem .6rem; min-height: 40px; font-weight: 700; max-width: 100%; }
+.stores { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px dashed var(--trail); border-bottom: 1px dashed var(--trail); }
+.store { padding: 12px 16px; border-left: 1px dashed var(--trail); display: grid; gap: 6px; align-content: start; }
+.store:first-child { border-left: 0; padding-left: 0; }
+.store.me { background: linear-gradient(#0000, #0000); }
+.store h4 { margin: 0; font-size: .86rem; font-weight: 800; }
+.store .sub { font-size: .74rem; color: var(--bark-2); margin-top: -4px; }
+.metric { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 6px; font-size: .82rem; }
+.metric .v { font-weight: 800; font-size: 1.02rem; text-align: right; white-space: nowrap; }
+.store.me .metric .v { font-size: 1.22rem; font-family: Fredoka, sans-serif; font-weight: 600; color: var(--teal); }
+.was { font-weight: 600; font-size: .78rem; color: var(--bark-2); text-decoration: line-through; text-decoration-thickness: 1px; margin-right: 4px; }
+.delta { display: inline-block; font-size: .74rem; font-weight: 800; margin-left: 4px; }
+.verdict { font-size: .95rem; font-weight: 700; }
+.verdict b { font-family: Fredoka, sans-serif; font-weight: 600; font-size: 1.1rem; }
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { font-family: Satoshi, sans-serif; font-size: 10.5px; fill: var(--bark-2); }
+.chart .ref { stroke: var(--bark); stroke-width: 1; stroke-dasharray: 3 3; opacity: .55; }
+.chart .reflabel { font-weight: 800; fill: var(--bark); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .76rem; color: var(--bark-2); }
+.legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--c); margin-right: 5px; }
+.legend .walk::before { background: transparent; box-shadow: inset 0 0 0 1.5px var(--trail); }
+
+/* Right rail */
+.rail { display: grid; gap: 18px; }
+.needs { background: var(--sun); color: var(--bark); border-radius: 14px; box-shadow: 0 8px 24px #002d2d33; padding: 16px 18px; display: grid; gap: 8px; }
+.needs h2 { font-size: 1.05rem; }
+.needs .offer { font-family: Fredoka, sans-serif; font-weight: 600; font-size: 1.7rem; line-height: 1; }
+.needs .line { display: flex; justify-content: space-between; font-size: .86rem; gap: .5rem; }
+.bar { height: 6px; border-radius: 999px; background: #2f160433; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--bark); transform-origin: left; animation: drain 45s linear forwards; }
+@keyframes drain { to { transform: scaleX(0); } }
+.needs .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.needs button { background: var(--bark); color: var(--cream); } .needs button.quiet { background: transparent; color: var(--bark); box-shadow: inset 0 0 0 1.5px var(--bark); }
+.needs.done { background: var(--cream); } .needs.done .bar, .needs.done .btns { display: none; }
+.feed { padding: 16px 18px 8px; }
+.feed .fh { display: flex; justify-content: space-between; align-items: baseline; }
+.feed .fh span { font-size: .78rem; color: var(--bark-2); }
+.rows { max-height: 372px; overflow-y: auto; overscroll-behavior: contain; margin-top: 8px; }
+.rows details { border-top: 1px dashed var(--trail); padding: 9px 0; font-size: .84rem; }
+.rows details:first-child { border-top: 0; }
+.rows summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: baseline; }
+.rows summary::-webkit-details-marker { display: none; }
+.rows summary b { font-weight: 800; }
+.rows summary time { font-size: .72rem; color: var(--bark-2); }
+.rows summary .what { grid-column: 1 / -1; color: var(--bark-2); }
+.rows .more { margin-top: 8px; display: grid; gap: 6px; font-size: .78rem; color: var(--bark-2); }
+.rows .more .acts { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.chip { border: 1px solid currentColor; border-radius: 999px; padding: 0 .45rem; font-size: .68rem; font-weight: 700; }
+.rows details.blocked { background: #f3675a24; margin: 0 -10px; padding: 9px 10px; border-radius: 8px; border-top-color: transparent; }
+.rows details.blocked summary b { color: var(--coral-ink); }
+.rows details.blocked + details { border-top-color: transparent; }
+
+@media (max-width: 1180px) {
+  .cols { grid-template-columns: 300px minmax(0, 1fr); }
+  .rail { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; align-items: start; }
+  .ledger { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 10px; }
+  .ledger .lead, .ledger .aside { grid-column: 1 / -1; border-left: 0; padding-left: 0; }
+  .ledger .lead + .fig { border-left: 0; padding-left: 0; }
+}
+@media (max-width: 760px) {
+  main { padding: 12px 12px 32px; gap: 12px; }
+  .topbar { padding: .6rem 12px; flex-wrap: wrap; } .brand { flex-wrap: wrap; } h1 { white-space: nowrap; } .source { order: 3; width: 100%; white-space: normal; } .console-label { display: none; }
+  .cols, .rail { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .ledger { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: 14px 16px; }
+  .ledger .fig { padding: 2px 12px; } .ledger .fig:nth-of-type(odd) { }
+  .ledger > .fig:nth-child(2), .ledger > .fig:nth-child(4) { border-left: 0; padding-left: 0; }
+  .fig b { font-size: 1.55rem; }
+  .controls { max-height: none; min-height: 0; } .controls .scroll { overflow: visible; }
+  .adopt { position: sticky; bottom: 0; border-radius: 0 0 14px 14px; box-shadow: 0 -6px 14px #002d2d1f; }
+  .stores { grid-template-columns: minmax(0, 1fr); } .store { border-left: 0; padding-left: 0; border-top: 1px dashed var(--trail); } .store:first-child { border-top: 0; }
+  .forecast { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 1ms !important; transition-duration: 1ms !important; } .bar i { animation: none; } }
+</style>
+</head>
+<body>
+<p class="proto">Layout prototype (CR0) · illustrative figures from a toy model · not connected to the store</p>
+<header class="topbar">
+  <div class="brand">
+    <span class="sticker" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21V3M5 6h12l3 3-3 3H5zM4 16h11"/></svg></span>
+    <h1>Trailhead Co.</h1>
+    <span class="source" title="Catalog source"><i aria-hidden="true"></i>Live from Shopify · 9 products · synced 12 s ago</span>
+  </div>
+  <div class="top-actions">
+    <span class="pill" id="livePill" role="status">Deals live</span>
+    <button class="pause" id="pauseBtn">PAUSE</button>
+  </div>
+</header>
+
+<main>
+  <section class="paper ledger" aria-label="Real deals">
+    <div class="lead"><b>What your shopkeeper earned</b><span id="ledgerCount">on 3 real deals · all products</span></div>
+    <div class="fig" id="kSaved"><b>2</b><span>customers saved</span></div>
+    <div class="fig" id="kRev"><b>$253</b><span>revenue recovered</span></div>
+    <div class="fig" id="kProfit"><b>$97</b><span>profit recovered</span></div>
+    <div class="fig" id="kCost"><b>$0.04</b><span>agent cost</span></div>
+    <div class="aside"><b class="pos" id="kBanner">+$14</b><span>vs a 20% banner</span><button class="quiet small" id="fakeDeal" style="margin-top:4px">Simulate a deal landing</button></div>
+  </section>
+
+  <div class="cols">
+    <section class="paper controls" aria-label="Shopkeeper controls">
+      <div class="scroll">
+        <h2>Your shopkeeper</h2>
+        <div class="group"><h3>Pricing</h3>
+          <label class="ctl" data-k="floor"><span class="row">Floor over cost <output></output></span><input type="range" min="0" max="60" value="25"><small>The lowest it may go alone.</small></label>
+          <label class="ctl" data-k="cap"><span class="row">Most it may take off list <output></output></span><input type="range" min="0" max="40" value="22"><small id="bindsHint"></small></label>
+        </div>
+        <div class="group"><h3>Behaviour</h3>
+          <label class="ctl" data-k="rounds"><span class="row">Rounds of haggling <output></output></span><input type="range" min="2" max="6" value="4"></label>
+          <div class="ctl"><span class="row">Voice</span>
+            <div class="seg" role="radiogroup" aria-label="Voice">
+              <label><input type="radio" name="tone" value="friendly" checked>Friendly</label>
+              <label><input type="radio" name="tone" value="brisk">Brisk</label>
+              <label><input type="radio" name="tone" value="playful">Playful</label>
+            </div>
+            <small id="toneSample"></small>
+          </div>
+          <label class="switch">Ask me about thin-margin deals<input type="checkbox" checked></label>
+        </div>
+        <div class="group"><h3>Guardrails</h3>
+          <label class="ctl" data-k="lowball"><span class="row">Lowball cutoff <output></output></span><input type="range" min="0" max="80" step="5" value="40"><small>Below this it counters without the AI, and the round doesn't count.</small></label>
+          <div class="ctl"><span class="row">Rate limit <output>30 / hour · 30 / min</output></span><small>Per network address. Changing a shopper id doesn't reset it.</small></div>
+          <div class="ctl"><span class="row">Blocked <output id="blockedCount">1</output></span>
+            <ul class="blocked-list" id="blockedList"><li><span>24.114.x.x · 6 lowballs in 2 min</span><button class="quiet small">Unblock</button></li></ul></div>
+          <p class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.500-1-8-4-8-9V6z"/><path d="M8.500 12l2.500 2.500 4.500-5"/></svg>20 attacks · 0 breaches</p>
+        </div>
+        <div class="group"><h3>Products</h3>
+          <ul class="products" id="products"></ul>
+        </div>
+      </div>
+      <div class="adopt">
+        <div class="btns"><button id="adopt" disabled>Adopt changes</button><button class="quiet" id="reset" disabled>Undo</button></div>
+        <p id="adoptNote" role="status">Live settings. Move a control to try it on 300 shoppers first.</p>
+      </div>
+    </section>
+
+    <section class="paper forecast" aria-label="Forecast">
+      <div class="fhead">
+        <div><h2>Forecast</h2><p>300 simulated shoppers · the same ones every run · never added to your real figures</p></div>
+        <select id="picker" aria-label="Product"><option>Trail Runner 2 · $149</option><option>Trail Runner 3 · $189</option><option>Race Vest · $129</option><option>All products (best-seller)</option></select>
+      </div>
+      <p class="verdict" id="verdict"></p>
+      <div class="stores">
+        <div class="store"><h4>No shopkeeper</h4><p class="sub">List price only. Anyone who won't pay it leaves.</p><div id="sNone"></div></div>
+        <div class="store"><h4>20% banner</h4><p class="sub">Everyone gets the sale, even those who'd pay full.</p><div id="sBanner"></div></div>
+        <div class="store me"><h4>Your shopkeeper</h4><p class="sub">Only shoppers who ask get a deal.</p><div id="sAgent"></div></div>
+      </div>
+      <div class="chart"><svg id="chart" viewBox="0 0 640 250" role="img" aria-label="One dot per simulated shopper, placed at the price they paid"></svg></div>
+      <div class="legend"><span style="--c:var(--p1)">Bargain hunter</span><span style="--c:var(--p2)">Budget runner</span><span style="--c:var(--p3)">Gear nerd</span><span style="--c:var(--p4)">Impatient</span><span style="--c:var(--p5)">Loyal</span><span class="walk">Walked</span></div>
+    </section>
+
+    <div class="rail">
+      <section class="needs" id="needs" aria-label="Needs you">
+        <h2>Needs you</h2>
+        <p>Trail Runner 2 · size 10 · storefront</p>
+        <p class="offer">$90 <span style="font-size:.9rem;font-family:Satoshi;font-weight:700">offered</span></p>
+        <p class="line"><span>Your profit</span><b>$12 · 15% over cost</b></p>
+        <p class="line"><span>Your floor</span><span>$98</span></p>
+        <div class="bar"><i></i></div>
+        <div class="btns"><button id="approve">Approve</button><button class="quiet" id="decline">Decline</button></div>
+        <p id="needsNote" role="status" style="font-size:.8rem"></p>
+      </section>
+      <section class="paper feed" aria-label="Live feed">
+        <div class="fh"><h2>Live</h2><span>newest first · click a row</span></div>
+        <div class="rows" id="rows"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = s => document.querySelector(s), money = n => (n < 0 ? "−$" : "$") + Math.abs(Math.round(n)).toLocaleString("en-CA");
+const LIST = 149, COST = 78, BANNER = LIST * 0.8;
+const PERSONAS = [{ share: .25, lo: 80, hi: 125, open: .5, pat: 4 }, { share: .25, lo: 95, hi: 140, open: .72, pat: 3 }, { share: .2, lo: 120, hi: 175, open: .85, pat: 5 }, { share: .15, lo: 100, hi: 165, open: .8, pat: 1 }, { share: .15, lo: 135, hi: 190, open: .93, pat: 2 }];
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const shoppers = (() => { const r = rng(42), out = []; PERSONAS.forEach((p, i) => { for (let n = 0; n < Math.round(p.share * 300); n++) out.push({ persona: i, w: p.lo + r() * (p.hi - p.lo), open: p.open * (.85 + r() * .3), pat: Math.max(1, p.pat + (r() < .3 ? 1 : 0)) }); }); return out; })();
+
+const live = { floor: 25, cap: 22, rounds: 4, lowball: 40, tone: "friendly" };
+let draft = { ...live };
+const minPrice = s => Math.max(Math.ceil(COST * (1 + s.floor / 100)), Math.ceil(LIST * (1 - s.cap / 100)));
+function run(s) {
+  const min = minPrice(s), paid = [];
+  let none = 0, banner = 0, saved = 0, profit = 0, missed = 0, lowballs = 0;
+  for (const p of shoppers) {
+    if (p.w >= LIST) none++; if (p.w >= BANNER) banner++;
+    let price = null;
+    if (p.w * p.open < LIST * s.lowball / 100) { lowballs++; if (p.w >= LIST) price = LIST; }
+    else for (let k = 1; k <= Math.min(s.rounds, p.pat + 1); k++) { const ask = Math.ceil(LIST - Math.pow((k - 1) / (s.rounds - 1), .7) * (LIST - min)); if (ask <= p.w) { price = ask; break; } }
+    paid.push(price);
+    if (price === null) { if (p.w >= min) missed++; } else { profit += price - COST; if (p.w < LIST) saved++; }
+  }
+  return { min, paid, saved, missed, lowballs, agent: { buyers: paid.filter(x => x !== null).length, profit }, none: { buyers: none, profit: none * (LIST - COST) }, banner: { buyers: banner, profit: banner * (BANNER - COST) } };
+}
+const cell = (label, now, was, fmt, goodUp = true) => { const d = now - was, show = Math.round(d) !== 0; return `<div class="metric"><span>${label}</span><span class="v">${show ? `<span class="was">${fmt(was)}</span>` : ""}${fmt(now)}${show ? `<span class="delta ${(d > 0) === goodUp ? "pos" : "neg"}">${d > 0 ? "▲" : "▼"} ${fmt(Math.abs(d)).replace("−", "")}</span>` : ""}</span></div>`; };
+const count = n => String(Math.round(n));
+
+function chart(res, s) {
+  const W = 640, H = 250, x0 = 112, x1 = 612, base = 216, TOP = 34, lo = COST - 4, hi = LIST + 4, X = v => x0 + (v - lo) / (hi - lo) * (x1 - x0), colors = ["--p1", "--p2", "--p3", "--p4", "--p5"];
+  const floor = Math.ceil(COST * (1 + s.floor / 100)), bins = new Map(); let walked = 0, out = "";
+  out += `<rect x="${X(COST)}" y="${TOP}" width="${Math.max(0, X(floor) - X(COST))}" height="${base - TOP}" fill="var(--amber)" opacity=".55"/>`;
+  res.paid.forEach((price, i) => {
+    if (price === null) { const c = walked++ % 11, r = Math.floor((walked - 1) / 11); out += `<circle cx="${4 + c * 8}" cy="${base - 5 - r * 8}" r="3" fill="none" stroke="var(--trail)" stroke-width="1.3"/>`; return; }
+    const b = Math.round(price / 6) * 6, n = bins.get(b) || 0; bins.set(b, n + 1);
+    const col = n % 4, row = Math.floor(n / 4);
+    out += `<circle cx="${X(b) - 11 + col * 7.4}" cy="${base - 5 - row * 7.4}" r="3" fill="var(${colors[shoppers[i].persona]})"/>`;
+  });
+  const refs = [[COST, "cost"], [floor, "floor"], [BANNER, "banner"], [LIST, "list"]];
+  if (res.min > floor) refs.splice(2, 0, [res.min, "cap"]);
+  let lastX = -99, up = false;
+  refs.forEach(([v, l]) => { const x = X(v); up = x - lastX < 46 ? !up : false; lastX = x; const y = up ? 12 : 26;
+    out += `<line class="ref" x1="${x}" x2="${x}" y1="${y + 4}" y2="${base}"/><text class="reflabel" x="${x}" y="${y}" text-anchor="middle">${l} $${Math.round(v)}</text>`; });
+  out += `<line x1="0" x2="${W}" y1="${base}" y2="${base}" stroke="var(--trail)"/><text x="0" y="${base + 16}">${walked} walked away</text><text x="${x1}" y="${base + 16}" text-anchor="end">price paid →</text>`;
+  $("#chart").innerHTML = out;
+}
+
+const TONES = { friendly: "“I can do $133 — it's been on the shelf a while.”", brisk: "“The price is $133.”", playful: "“Tell you what, $133 and it's yours.”" };
+const PRODUCTS = [["Trail Runner 2", "ok"], ["Trail Runner 3", "ok"], ["Race Vest", "ok"], ["Trail Socks", "ok"], ["Gaiters", "date"], ["Soft Flask 500", "ok"], ["Headlamp", "cost"], ["Trail Cap", "ok"], ["Poles", "ok"]];
+function render() {
+  const a = run(live), b = run(draft), dirty = JSON.stringify(live) !== JSON.stringify(draft);
+  document.querySelectorAll(".ctl[data-k]").forEach(el => { const k = el.dataset.k, v = draft[k]; el.querySelector("input").value = v; el.classList.toggle("changed", v !== live[k]);
+    el.querySelector("output").textContent = k === "rounds" ? v : k === "lowball" ? (v ? `${v}% of list · $${Math.round(LIST * v / 100)}` : "off") : k === "floor" ? `${v}% · $${Math.ceil(COST * (1 + v / 100))}` : `${v}% · $${Math.ceil(LIST * (1 - v / 100))}`; });
+  const floorP = Math.ceil(COST * (1 + draft.floor / 100)), capP = Math.ceil(LIST * (1 - draft.cap / 100));
+  $("#bindsHint").textContent = capP > floorP ? `This is the limit right now: $${capP} beats the $${floorP} floor.` : `The floor is the limit right now: $${floorP} beats $${capP}.`;
+  $("#toneSample").textContent = TONES[draft.tone] + " Wording only — never changes a price.";
+  $("#sNone").innerHTML = cell("Buy", b.none.buyers, a.none.buyers, count) + cell("Profit", b.none.profit, a.none.profit, money);
+  $("#sBanner").innerHTML = cell("Buy", b.banner.buyers, a.banner.buyers, count) + cell("Profit", b.banner.profit, a.banner.profit, money);
+  $("#sAgent").innerHTML = cell("Customers saved", b.saved, a.saved, count) + cell("Profit", b.agent.profit, a.agent.profit, money) + cell("Deals missed", b.missed, a.missed, count, false) + cell("Lowballs countered", b.lowballs, a.lowballs, count, false);
+  const vsNone = b.agent.profit - b.none.profit, vsBan = b.agent.profit - b.banner.profit;
+  $("#verdict").innerHTML = `${dirty ? "With these settings" : "As you're set up now"}, the shopkeeper makes <b class="${vsNone >= 0 ? "pos" : "neg"}">${money(vsNone)}</b> ${vsNone >= 0 ? "more" : "less"} than no shopkeeper, and <b class="${vsBan >= 0 ? "pos" : "neg"}">${money(Math.abs(vsBan))}</b> ${vsBan >= 0 ? "more" : "less"} than a 20% banner.`;
+  chart(b, draft);
+  $("#adopt").disabled = $("#reset").disabled = !dirty;
+  if (dirty) $("#adoptNote").textContent = "Not live yet. Shoppers still get your adopted settings.";
+  $("#products").innerHTML = PRODUCTS.map(([name, st], i) => `<li><span>${name}</span><label class="switch" style="font-size:.72rem;font-weight:600;gap:.4rem">Firm price<input type="checkbox" aria-label="Firm price for ${name}" ${i === 1 ? "checked" : ""}></label><span class="meta">${st === "cost" ? '<span class="tag miss-cost">No cost in Shopify · closed to offers</span>' : st === "date" ? '<span class="tag miss-date">No stock date · treated as new</span>' : `<span class="tag binds">${capP > floorP ? "cap" : "floor"} is the limit</span>`}</span></li>`).join("");
+}
+document.querySelectorAll(".ctl[data-k] input").forEach(i => i.addEventListener("input", e => { draft[e.target.closest(".ctl").dataset.k] = +e.target.value; render(); }));
+document.querySelectorAll("input[name=tone]").forEach(i => i.addEventListener("change", e => { draft.tone = e.target.value; render(); }));
+$("#adopt").onclick = () => { Object.assign(live, draft); render(); $("#adoptNote").textContent = "Adopted. Your shopkeeper uses this from the next shopper message."; };
+$("#reset").onclick = () => { draft = { ...live }; document.querySelector(`input[name=tone][value=${live.tone}]`).checked = true; render(); $("#adoptNote").textContent = "Back to your live settings."; };
+
+const FEED = [
+  { t: "20:14", head: "Picked B · TR2 + gaiters $158", what: "Offer $120 on Trail Runner 2 · round 2 of 4", more: "Floor $98 · ask $135 · menu A–D · last season's stock, can bend · gpt-4.1-mini · 1.1 s · $0.0004", surf: "Storefront" },
+  { t: "20:13", head: "Lowball · countered at $149", what: "Offer $12 on Trail Runner 2 · no AI call · round not used", more: "Under the 40% cutoff ($60). Code picked option A with the fact “ships today”.", surf: "Storefront" },
+  { t: "20:11", head: "Blocked by filter", what: "31 messages in a minute from 24.114.x.x", more: "Rate limit. No AI call was made.", surf: "Storefront", blocked: true },
+  { t: "20:09", head: "Settled · $133", what: "Trail Runner 2 · size 10 · profit $55", more: "Customer saved: asked for less than list. Code minted a single-use 15-minute discount.", surf: "ChatGPT" },
+  { t: "20:06", head: "Blocked by check", what: "The AI named $99, which isn't on the menu", more: "Fell back to option A and the template line. The shopper never saw $99.", surf: "Storefront", blocked: true },
+];
+$("#rows").innerHTML = FEED.map(r => `<details class="${r.blocked ? "blocked" : ""}"><summary><b>${r.head}</b><time>${r.t}</time><span class="what">${r.what}</span></summary><div class="more"><p>${r.more}</p><div class="acts"><span class="chip">${r.surf}</span><button class="quiet small">Block this shopper</button></div></div></details>`).join("");
+
+let deals = 3, saved = 2, rev = 253, prof = 97, cost = .04, ban = 14;
+$("#fakeDeal").onclick = () => { deals++; saved++; rev += 127; prof += 49; cost += .01; ban += 8;
+  [["#kSaved", saved], ["#kRev", money(rev)], ["#kProfit", money(prof)], ["#kCost", "$" + cost.toFixed(2)]].forEach(([id, v]) => { const el = $(id); el.querySelector("b").textContent = v; el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); });
+  $("#kBanner").textContent = "+" + money(ban); $("#ledgerCount").textContent = `on ${deals} real deals · all products`; };
+const resolve = msg => { $("#needs").classList.add("done"); $("#needsNote").textContent = msg; };
+$("#approve").onclick = () => resolve("Approved at $90. The shopper's card updated."); $("#decline").onclick = () => resolve("Declined. The shopkeeper restated its final offer of $133.");
+let paused = false; $("#pauseBtn").onclick = () => { paused = !paused; $("#livePill").textContent = paused ? "Paused" : "Deals live"; $("#livePill").classList.toggle("paused", paused); $("#pauseBtn").textContent = paused ? "Resume" : "PAUSE"; };
+render();
+</script>
+</body>
+</html>
