@@ -21,8 +21,7 @@ export function Feed({ events }: { events: ConsoleEvent[] }) {
 function FeedRow({ event }: { event: ConsoleEvent }) {
   const picked = event.menu?.find(option => option.id === event.picked);
   const blocked = event.kind === "blocked";
-  return <article className="feed-row" aria-label={blocked ? `blocked · ${event.blockedBy}` : event.kind}
-    style={blocked ? { backgroundColor: "#f3675a" } : undefined}>
+  return <article className={`feed-row${blocked ? " feed-row-blocked" : ""}`} aria-label={blocked ? `blocked · ${event.blockedBy}` : event.kind}>
     <div className="row-prices">{event.offer !== undefined && <span>Offer <b>{money(event.offer)}</b></span>}
       {event.floor !== undefined && <span>Floor <b>{money(event.floor)}</b></span>}
       {blocked && <strong>Blocked · {event.blockedBy}</strong>}</div>

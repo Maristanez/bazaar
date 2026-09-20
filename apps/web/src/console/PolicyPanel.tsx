@@ -23,7 +23,7 @@ export function PolicyPanel({ policy, products, port, onPolicy, onDraft, value }
     <label className="ask-switch"><span>Ask me about thin-margin deals</span><input type="checkbox" role="switch" checked={askOwner} disabled={saving} onChange={event => { const next = { floorPct, askOwner: event.target.checked }; setDraft(next); onDraft?.(next); }} /></label>
     {value === undefined && <div className="adopt-row"><div><p className="saved-policy">Saved policy · cost + {policy.floorPct}%</p><p className="preview-state" role="status">{dirty ? "Preview · not adopted" : "Your saved policy is active."}</p></div><button disabled={!dirty || saving} onClick={() => void adopt()}>{saving ? "Adopting…" : "Adopt"}</button></div>}
     {error && <p role="alert">{error}</p>}
-    <div className="product-flags"><h3>Product checks</h3><ul aria-label="Flagged products">{products.filter(product => product.missingCost || product.missingStockedAt).map(product => <li key={product.productId} aria-label={product.title} style={{ backgroundColor: product.missingCost ? "#f3675a" : "#e8d6b9" }}>
+    <div className="product-flags"><h3>Product checks</h3><ul aria-label="Flagged products">{products.filter(product => product.missingCost || product.missingStockedAt).map(product => <li key={product.productId} aria-label={product.title} className={product.missingCost ? "flag-red" : "flag-amber"}>
       <strong>{product.title}</strong>
       {product.missingCost && <span>missing cost — not open to offers</span>}
       {product.missingStockedAt && <span>no stock date — treated as new stock</span>}
