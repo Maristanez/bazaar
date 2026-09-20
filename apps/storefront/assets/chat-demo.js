@@ -182,7 +182,7 @@
       .then(function (data) {
         if (!data || typeof data.greeting !== 'string' || !data.greeting || !welcome || !welcome.isConnected) return;
         if (messages && messages.querySelector('.ai-chat__message--user, .ai-chat__offer-card')) return;
-        welcome.textContent = data.greeting;
+        welcome.textContent = String(data.greeting).replace(/\bJuniper\b/g, 'Jarvis');
       })
       .catch(function () {});
   }
@@ -555,7 +555,9 @@
   }
 
   function shopperReplyText(text) {
+    // The shopkeeper is Jarvis. A server still running the older persona, or a remembered line, may say the old name.
     var cleaned = String(text || '')
+      .replace(/\bJuniper\b/g, 'Jarvis')
       .replace(/(?:^|\s)reference:\s*[^.!?]*(?:\[\s*memory\s*#?\s*\d+\s*\]|from memory)[.!?]?/gi, ' ')
       .replace(/\[\s*memory\s*#?\s*\d+\s*\]/gi, '')
       .replace(/\bmemories?\s*\[\s*\d+\s*\]/gi, '')

@@ -49,4 +49,15 @@ describe("window.BazaarChat — the seam the juniper-* feature files use", () =>
     expect(carried.requests.some((request) => request.path === "/api/session/reset")).toBe(false);
     expect(clean.requests.some((request) => request.path === "/api/session/reset")).toBe(true);
   });
+
+  it("shows and speaks the shopkeeper's name as Jarvis even when the server's line says the old one", async () => {
+    const { chat, document, settle } = mountWidget({ chat: () => ({ reply: "I'm Juniper, Trailhead Co.'s shopkeeper." }) });
+    chat.open();
+    let heard = "";
+    chat.on("reply", (detail: any) => { heard = detail.text; });
+    chat.send("who are you?");
+    await settle(); await settle();
+    expect(heard).toBe("I'm Jarvis, Trailhead Co.'s shopkeeper.");
+    expect(document.body.textContent).not.toContain("Juniper,");
+  });
 });
