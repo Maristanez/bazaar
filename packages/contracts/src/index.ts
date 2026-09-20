@@ -23,7 +23,15 @@ export type ChatEvent = { t: "products"; items: ProductCard[] } | { t: "card"; c
                | { t: "settled"; settlement: Settlement } | { t: "paused" };
 
 // ── OWNER-ONLY: Console routes behind the Supabase token. May carry everything. ──
-export type Policy       = { floorPct: number; askOwner: boolean; paused: boolean; updatedAt: string };
+export type TonePreset   = "friendly"|"brisk"|"playful";
+export type PolicySettings = {                 // owner settings beyond the floor (SPEC §4.4.1). All optional: absent = the default.
+  discountCapPct?: number;                     // 0–40 off list, default 22
+  maxRounds?: number;                          // 2–6, default 4
+  lowballCutoffPct?: number;                   // 0–80 of list, default 40; 0 = off
+  tone?: TonePreset;                           // default "friendly"
+  firmPriceProductIds?: string[];
+};
+export type Policy       = { floorPct: number; askOwner: boolean; paused: boolean; updatedAt: string; settings?: PolicySettings };
 export type PausePersistence = "saved"|"pending";
 export type PauseResult = { policy: Policy; persistence: PausePersistence };
 export type OwnerProduct = ProductCard & { variants: { variantId: string; size?: string; price: number; unitCost: number|null; inStock: boolean }[];
