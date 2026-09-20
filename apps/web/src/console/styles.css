@@ -212,3 +212,9 @@ button.quiet { background: transparent; color: var(--color-teal); box-shadow: in
 .pill-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--color-teal); margin-left: 6px; vertical-align: 2px; }
 .pill.selected .pill-dot { background: var(--color-cream); }
 .feed-toggle { margin-top: 14px; width: 100%; }
+.other-figures { margin-top: 18px; border-top: 1px dashed #a49885; padding-top: 14px; }
+.other-figures h3 { font-size: .9rem; font-weight: 700; margin: 0 0 8px; }
+.other-figures ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 28px; }
+.other-figures li { display: flex; align-items: baseline; gap: 6px; font-size: .82rem; }
+.other-figures span { color: #5c503e; }
+.other-figures b { font-weight: 700; }
