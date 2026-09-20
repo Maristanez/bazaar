@@ -379,3 +379,55 @@
     animation: none;
   }
 }
+
+/* ---- at rest he is just his face: no tab, no label. The label stays for screen readers, and comes out as a small
+   bubble beside him only when V9 has something to say ("Too steep? Name a price."). ---- */
+.ai-chat .ai-chat__launcher {
+  position: relative;
+  gap: 0;
+  width: 4.25rem;
+  height: 4.25rem;
+  min-height: 0;
+  padding: 0;
+  border-radius: 999px;
+  background: transparent !important;
+  box-shadow: none;
+}
+
+.ai-chat .ai-chat__launcher .ai-chat__sticker--launcher {
+  width: 4.25rem;
+  height: 4.25rem;
+  margin: 0;
+  filter: drop-shadow(0 10px 12px rgb(47 22 4 / 38%));
+}
+
+.ai-chat .ai-chat__launcher:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.ai-chat .ai-chat__launcher > span:last-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ai-chat .ai-chat__launcher.juniper-nudge__live > span:last-child {
+  right: calc(100% + 0.5rem);
+  top: 50%;
+  translate: 0 -50%;
+  width: max-content;
+  height: auto;
+  max-width: min(15rem, calc(100vw - 7rem));
+  overflow: visible;
+  clip-path: none;
+  padding: 0.45rem 0.8rem;
+  border-radius: 1rem 1rem 0.25rem;
+  background: var(--teal);
+  box-shadow: 0 12px 26px -10px rgb(47 22 4 / 50%);
+  color: var(--cream);
+  font-size: 0.95rem;
+}
