@@ -258,6 +258,34 @@ details.more-settings { border-top: 1px dashed var(--trail); padding-top: 10px; 
 .dlow { display: grid; grid-template-columns: 348px minmax(0, 1fr); gap: 18px; align-items: start; }
 .dlow .rows { max-height: 210px; }
 @media (max-width: 900px) { .dcols, .dlow { grid-template-columns: minmax(0, 1fr); } .kept > div { padding: 6px 14px 6px 0; border-left: 0; } .focus { padding: 18px; min-height: 0; } .focus .moved { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- swarm visuals + comparison table (inside variant D) ---- */
+.swarm { display: grid; gap: 10px; border-top: 1px dashed var(--trail); padding-top: 16px; }
+.swarm .bar2 { display: flex; justify-content: space-between; align-items: center; gap: .8rem 1rem; flex-wrap: wrap; }
+.swarm .pick { display: inline-flex; border-radius: 8px; box-shadow: inset 0 0 0 1.5px #111; overflow: hidden; }
+.swarm .pick button { min-height: 32px; padding: .2rem .7rem; font-size: .76rem; border-radius: 0; background: transparent; color: #111; }
+.swarm .pick button[aria-pressed=true] { background: #111; color: #fff; }
+.swarm .play { display: flex; align-items: center; gap: .6rem; font-size: .82rem; font-weight: 700; }
+.swarm .play input { width: 150px; }
+.swarm svg { display: block; width: 100%; height: auto; overflow: visible; }
+.swarm svg text { font-family: Satoshi, sans-serif; font-size: 10.5px; fill: var(--bark-2); }
+.swarm circle { transition: fill 260ms ease-out, stroke 260ms ease-out; cursor: default; }
+.swarm .tip { min-height: 2.6em; font-size: .84rem; color: var(--bark-2); }
+.swarm .tip b { color: var(--bark); }
+.okey { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: .78rem; color: var(--bark-2); }
+.okey span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; background: var(--c); box-shadow: inset 0 0 0 1.5px var(--b, transparent); }
+.flowrow { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px; align-items: center; font-size: .8rem; font-weight: 700; padding: 3px 0; }
+.flowrow .track { display: flex; height: 24px; border-radius: 6px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--trail); }
+.flowrow .track span { display: grid; place-items: center; font-size: .7rem; font-weight: 800; white-space: nowrap; overflow: hidden; transition: flex-basis 320ms cubic-bezier(.16, 1, .3, 1); }
+table.cmp { width: 100%; border-collapse: collapse; font-size: .92rem; }
+table.cmp th { text-align: right; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--bark-2); padding: 0 0 6px 16px; }
+table.cmp th:first-child { text-align: left; padding-left: 0; }
+table.cmp td { padding: 9px 0 9px 16px; border-top: 1px dashed var(--trail); text-align: right; white-space: nowrap; }
+table.cmp td:first-child { text-align: left; padding-left: 0; white-space: normal; font-weight: 700; }
+table.cmp td:first-child small { display: block; font-weight: 500; font-size: .76rem; color: var(--bark-2); }
+table.cmp .now { color: var(--bark-2); } table.cmp .then { font-weight: 800; font-size: 1.08rem; }
+table.cmp .chg { font-weight: 800; min-width: 5.5em; } table.cmp .chg.flat { color: var(--bark-2); font-weight: 500; }
+table.cmp tr.key td { padding-top: 12px; padding-bottom: 12px; } table.cmp tr.key .then { font-family: Fredoka, sans-serif; font-weight: 600; font-size: 1.5rem; color: var(--teal); }
 </style>
 </head>
 <!-- PROTOTYPE (throwaway). Three structurally different Console layouts on one page, switchable via ?variant=A|B|C and the floating bar (or arrow keys). Figures: toy model, illustrative. -->
@@ -289,18 +317,20 @@ const live = { floor: 25, cap: 22, rounds: 4, lowball: 40, tone: "friendly" };
 let draft = { ...live };
 const minPrice = s => Math.max(Math.ceil(COST * (1 + s.floor / 100)), Math.ceil(LIST * (1 - s.cap / 100)));
 function run(s) {
-  const min = minPrice(s), paid = [];
-  let none = 0, banner = 0, saved = 0, profit = 0, missed = 0, lowballs = 0;
+  const min = minPrice(s), paid = [], when = [], low = [];
+  let none = 0, banner = 0, saved = 0, profit = 0, revenue = 0, missed = 0, lowballs = 0;
   for (const p of shoppers) {
     if (p.w >= LIST) none++; if (p.w >= BANNER) banner++;
-    let price = null;
-    if (p.w * p.open < LIST * s.lowball / 100) { lowballs++; if (p.w >= LIST) price = LIST; }
-    else for (let k = 1; k <= Math.min(s.rounds, p.pat + 1); k++) { const ask = Math.ceil(LIST - Math.pow((k - 1) / (s.rounds - 1), .7) * (LIST - min)); if (ask <= p.w) { price = ask; break; } }
-    paid.push(price);
-    if (price === null) { if (p.w >= min) missed++; } else { profit += price - COST; if (p.w < LIST) saved++; }
+    let price = null, round = 1; const isLow = p.w * p.open < LIST * s.lowball / 100;
+    if (isLow) { lowballs++; if (p.w >= LIST) price = LIST; }
+    else { const last = Math.min(s.rounds, p.pat + 1); round = last; for (let k = 1; k <= last; k++) { const ask = askAt(k, s, min); if (ask <= p.w) { price = ask; round = k; break; } } }
+    paid.push(price); when.push(round); low.push(isLow);
+    if (price === null) { if (p.w >= min) missed++; } else { profit += price - COST; revenue += price; if (p.w < LIST) saved++; }
   }
-  return { min, paid, saved, missed, lowballs, agent: { buyers: paid.filter(x => x !== null).length, profit }, none: { buyers: none, profit: none * (LIST - COST) }, banner: { buyers: banner, profit: banner * (BANNER - COST) } };
+  const buyers = paid.filter(x => x !== null).length;
+  return { min, paid, when, low, saved, missed, lowballs, avg: buyers ? revenue / buyers : 0, agent: { buyers, profit }, none: { buyers: none, profit: none * (LIST - COST) }, banner: { buyers: banner, profit: banner * (BANNER - COST) } };
 }
+const askAt = (k, s, min) => Math.ceil(LIST - Math.pow((k - 1) / (s.rounds - 1), .7) * (LIST - min));
 const cell = (label, now, was, fmt, goodUp = true) => { const d = now - was, show = Math.round(d) !== 0; return `<div class="metric"><span>${label}</span><span class="v">${show ? `<span class="was">${fmt(was)}</span>` : ""}${fmt(now)}${show ? `<span class="delta ${(d > 0) === goodUp ? "pos" : "neg"}">${d > 0 ? "▲" : "▼"} ${fmt(Math.abs(d)).replace("−", "")}</span>` : ""}</span></div>`; };
 const count = n => String(Math.round(n));
 
@@ -400,7 +430,7 @@ function renderList() {
 }
 function renderFocus() {
   const r = SETTINGS.find(x => x[0] === focusKey), range = { floor: [0, 60, 1], cap: [0, 40, 1], rounds: [2, 6, 1], lowball: [0, 80, 5] }[focusKey];
-  const forecast = `<h3 class="if">If you adopt this · 300 simulated shoppers</h3><p class="verdict" data-role="verdict"></p><div class="lanes" data-role="lanes"></div><div class="moved" data-role="moved"></div><details class="dots"><summary>Show all 300 shoppers</summary><div class="chart"><svg data-role="chart" viewBox="0 0 640 250" role="img" aria-label="One dot per simulated shopper"></svg></div></details>`;
+  const forecast = `<h3 class="if">If you adopt this · 300 simulated shoppers</h3><p class="verdict" data-role="verdict"></p><div class="lanes" data-role="lanes"></div><table class="cmp" data-role="cmp"></table><div class="swarm" data-role="swarm"></div>`;
   const head = `<div class="fh2"><h2>${r[1]}</h2><select aria-label="Product"><option>Trail Runner 2 · $149</option><option>Trail Runner 3 · $189</option><option>All products (best-seller)</option></select></div>`;
   let body;
   if (range) body = `${head}<p class="explain">${r[2]}</p><div class="big"><label class="ctl" data-k="${focusKey}"><span class="row"><span ${focusKey === "floor" || focusKey === "cap" ? 'data-role="bindsHint"' : ""} style="font-weight:600;font-size:.82rem;color:var(--bark-2)"></span><output></output></span><input type="range" min="${range[0]}" max="${range[1]}" step="${range[2]}" aria-label="${r[1]}"></label><div class="ends"><span>${r[3][0]}</span><span>${r[3][1]}</span></div></div>${forecast}`;
@@ -418,6 +448,58 @@ render = function () { _render(); if (!root.querySelector(".vD")) return; render
 const _mount = mount;
 mount = function (key) { _mount(key); if (key === "D") { renderFocus(); render(); } };
 root.addEventListener("click", e => { const f = e.target.closest("[data-focus]"); if (!f) return; focusKey = f.dataset.focus; renderFocus(); render(); });
+
+// ---- comparison table: now vs if adopted, one row per figure, the focused setting's figures first ----
+let allFigures = false;
+function drawCmp() {
+  const el = root.querySelector("[data-role=cmp]"); if (!el) return;
+  const a = run(live), b = run(draft), r = SETTINGS.find(x => x[0] === focusKey), first = (r && r[4]) || [];
+  const rows = { profit: ["Profit from these 300 shoppers", "after what the items cost you", a.agent.profit, b.agent.profit, money, true], saved: ["Customers saved", "would have left a list-price store", a.saved, b.saved, count, true], missed: ["Deals missed", "walked, though they'd have paid above your limit", a.missed, b.missed, count, false], lowballs: ["Lowballs countered without AI", "no AI call, no round used", a.lowballs, b.lowballs, count, true], avg: ["Average price paid", `list is $${LIST}`, a.avg, b.avg, money, true] };
+  const full = ["profit", ...first.filter(k => k !== "profit"), ...Object.keys(rows).filter(k => k !== "profit" && !first.includes(k))], order = allFigures ? full : full.slice(0, 3);
+  el.innerHTML = `<thead><tr><th></th><th>Now</th><th>If adopted</th><th>Change</th></tr></thead><tbody>` + order.map((k, n) => { const [label, sub2, was, now, fmt, goodUp] = rows[k], d = Math.round(now) - Math.round(was);
+    return `<tr class="${n === 0 ? "key" : ""}"><td>${label}<small>${sub2}</small></td><td class="now">${fmt(was)}</td><td class="then">${fmt(now)}</td><td class="chg ${d === 0 ? "flat" : (d > 0) === goodUp ? "pos" : "neg"}">${d === 0 ? "no change" : (d > 0 ? "▲ " : "▼ ") + fmt(Math.abs(d)).replace("−", "")}</td></tr>`; }).join("") + `</tbody><tfoot><tr><td colspan="4" style="text-align:left;border-top:1px dashed var(--trail);padding-top:8px"><button class="quiet small" data-act="figures">${allFigures ? "Fewer figures" : "All figures"}</button></td></tr></tfoot>`;
+}
+// ---- swarm: three structurally different pictures of the same 300 shoppers ----
+let swarmKind = "crowd", playRound = 99, playTimer = null, hoverIdx = -1;
+const ORDER = shoppers.map((p, i) => i).sort((a, b) => shoppers[a].w - shoppers[b].w);
+const OUT = { list: ["Paid list", "var(--teal)"], saved: ["Saved by your shopkeeper", "#19c3c3"], low: ["Lowballed, countered by code", "var(--amber)", "var(--bark-2)"], walk: ["Walked away", "transparent", "var(--trail)"], wait: ["Still haggling", "#cdbfa6"] };
+const outcome = (b, i, upTo) => b.low[i] ? (b.paid[i] === null ? "low" : "list") : b.when[i] > upTo ? "wait" : b.paid[i] === null ? "walk" : shoppers[i].w >= LIST ? "list" : "saved";
+function drawSwarm() {
+  const el = root.querySelector("[data-role=swarm]"); if (!el) return;
+  const b = run(draft), N = draft.rounds, upTo = Math.min(playRound, N);
+  const kinds = [["crowd", "Crowd"], ["race", "Price race"], ["flow", "Round by round"]];
+  let pic = "";
+  if (swarmKind === "crowd") {
+    const cols = 30, gap = 20; let dots = "";
+    ORDER.forEach((i, n) => { const [, fill, stroke] = OUT[outcome(b, i, upTo)]; dots += `<circle data-i="${i}" cx="${14 + (n % cols) * gap}" cy="${14 + Math.floor(n / cols) * gap}" r="${i === hoverIdx ? 8.5 : 6.2}" fill="${fill}" stroke="${stroke || "none"}" stroke-width="1.6"/>`; });
+    pic = `<svg viewBox="0 0 612 232" role="img" aria-label="300 shoppers, each in a fixed seat, coloured by what happened to them">${dots}<text x="4" y="226">← would pay least</text><text x="608" y="226" text-anchor="end">would pay most →</text></svg>`;
+  } else if (swarmKind === "race") {
+    const x0 = 60, x1 = 600, base = 196, lo = COST - 4, hi = LIST + 4, X = v => x0 + (v - lo) / (hi - lo) * (x1 - x0), bins = new Map(); let dots = "", waitN = 0, walkN = 0;
+    shoppers.forEach((p, i) => { const o = outcome(b, i, upTo), [, fill, stroke] = OUT[o]; let cx, cy;
+      if (o === "wait") { cx = 8 + (waitN % 6) * 8; cy = 24 + Math.floor(waitN / 6) * 8; waitN++; }
+      else if (b.paid[i] === null) { cx = 8 + (walkN % 6) * 8; cy = base - 5 - Math.floor(walkN / 6) * 8; walkN++; }
+      else { const k = Math.round(b.paid[i] / 6) * 6, n = bins.get(k) || 0; bins.set(k, n + 1); cx = X(k) - 11 + (n % 4) * 7.4; cy = base - 5 - Math.floor(n / 4) * 7.4; }
+      dots += `<circle data-i="${i}" cx="${cx}" cy="${cy}" r="${i === hoverIdx ? 5 : 3.1}" fill="${fill}" stroke="${stroke || "none"}" stroke-width="1.2"/>`; });
+    const ask = askAt(Math.max(1, upTo), draft, b.min), floor = Math.ceil(COST * (1 + draft.floor / 100));
+    pic = `<svg viewBox="0 0 612 226" role="img" aria-label="Shoppers dropping in at the price they paid as the ask steps down"><rect x="${X(COST)}" y="30" width="${Math.max(0, X(floor) - X(COST))}" height="${base - 30}" fill="var(--amber)" opacity=".5"/>${dots}
+      <line x1="${X(ask)}" x2="${X(ask)}" y1="18" y2="${base}" stroke="var(--coral-ink)" stroke-width="2"/><text x="${X(ask)}" y="12" text-anchor="middle" style="font-weight:800;fill:var(--coral-ink)">asking $${ask}</text>
+      <line x1="0" x2="612" y1="${base}" y2="${base}" stroke="var(--trail)"/><text x="${X(COST)}" y="${base + 14}" text-anchor="middle">cost $${COST}</text><text x="${X(floor)}" y="${base + 14}" text-anchor="middle">floor $${floor}</text><text x="${X(LIST)}" y="${base + 14}" text-anchor="middle">list $${LIST}</text><text x="0" y="${base + 14}">walked</text><text x="0" y="12">haggling</text></svg>`;
+  } else {
+    const row = (label, parts) => `<div class="flowrow"><span>${label}</span><span class="track">${parts.map(([n, k]) => `<span style="flex:0 0 ${n / 3}%;background:${OUT[k][1] === "transparent" ? "var(--cream)" : OUT[k][1]};color:${k === "list" ? "var(--cream)" : "var(--bark)"}">${n > 14 ? n : ""}</span>`).join("")}</span></div>`;
+    const tally = r => { const c = { list: 0, saved: 0, low: 0, walk: 0, wait: 0 }; shoppers.forEach((p, i) => c[outcome(b, i, r)]++); return [[c.list, "list"], [c.saved, "saved"], [c.wait, "wait"], [c.low, "low"], [c.walk, "walk"]]; };
+    pic = row("Arrive", [[300, "wait"]]) + Array.from({ length: N }, (_, k) => k + 1).filter(k => k <= upTo).map(k => row(`After round ${k}`, tally(k))).join("");
+  }
+  const h = hoverIdx >= 0 ? shoppers[hoverIdx] : null, names = ["Bargain hunter", "Budget runner", "Gear nerd", "Impatient", "Loyal"];
+  const tip = h ? `<b>${names[h.persona]}</b> · would pay up to <b>$${Math.round(h.w)}</b> · opened at $${Math.round(h.w * h.open)} · ${b.low[hoverIdx] ? "lowball: countered by code, no AI call" : b.paid[hoverIdx] === null ? `walked after round ${b.when[hoverIdx]}${h.w >= b.min ? " — a deal missed: they'd have paid above your limit" : ""}` : `bought at <b>$${b.paid[hoverIdx]}</b> in round ${b.when[hoverIdx]}${h.w < LIST ? " — a customer saved" : ""}`}` : "Point at a shopper to see what happened to them.";
+  el.innerHTML = `<div class="bar2"><h3>The 300 shoppers</h3><span class="pick" role="group" aria-label="Swarm picture (prototype choice)">${kinds.map(([k, l]) => `<button data-swarm="${k}" aria-pressed="${k === swarmKind}">${l}</button>`).join("")}</span>
+    <span class="play"><button class="quiet small" data-act="play">${playTimer ? "Playing…" : "▶ Play the rounds"}</button><input type="range" min="0" max="${N}" value="${Math.min(upTo, N)}" data-scrub aria-label="Round"><span>${upTo >= N ? "all rounds" : upTo === 0 ? "arriving" : "round " + upTo}</span></span></div>${pic}
+    <div class="okey">${Object.values(OUT).map(([l, c, bd]) => `<span style="--c:${c};--b:${bd || "transparent"}">${l}</span>`).join("")}</div><p class="tip">${tip}</p>`;
+}
+const _render2 = render; render = function () { _render2(); drawCmp(); drawSwarm(); };
+root.addEventListener("click", e => { if (e.target.closest("[data-act=figures]")) { allFigures = !allFigures; drawCmp(); } const k = e.target.closest("[data-swarm]"); if (k) { swarmKind = k.dataset.swarm; drawSwarm(); }
+  if (e.target.closest("[data-act=play]")) { clearInterval(playTimer); playRound = 0; playTimer = setInterval(() => { playRound++; if (playRound >= draft.rounds) { clearInterval(playTimer); playTimer = null; playRound = 99; } drawSwarm(); }, 900); drawSwarm(); } });
+root.addEventListener("input", e => { if (e.target.matches("[data-scrub]")) { e.stopPropagation(); clearInterval(playTimer); playTimer = null; playRound = +e.target.value >= draft.rounds ? 99 : +e.target.value; drawSwarm(); } }, true);
+root.addEventListener("mouseover", e => { const c = e.target.closest("circle[data-i]"), i = c ? +c.dataset.i : -1; if (i !== hoverIdx && root.querySelector(".swarm")) { hoverIdx = i; drawSwarm(); } });
 const keys = Object.keys(VARIANTS); let current = new URLSearchParams(location.search).get("variant"); if (!keys.includes(current)) current = "D";
 function go(d) { current = keys[(keys.indexOf(current) + d + keys.length) % keys.length]; history.replaceState(null, "", "?variant=" + current); mount(current); window.scrollTo(0, 0); }
 document.querySelector("[data-sw=prev]").onclick = () => go(-1); document.querySelector("[data-sw=next]").onclick = () => go(1);
