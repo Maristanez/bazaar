@@ -55,12 +55,16 @@ describe("V11 — spoken filler while the shopkeeper picks", () => {
     expect(plays()).toBe(0);
   });
 
-  it("prefetches three short lines once voice turns on, none with a figure in it", async () => {
-    const { voice, spoken } = mount();
+  it("fetches nothing just from voice turning on — only lazily, on the first turn", async () => {
+    const { chat, voice, spoken } = mount();
     voice(true, "listening");
     await vi.advanceTimersByTimeAsync(10);
     voice(true, "thinking");
     voice(true, "listening");
+    await vi.advanceTimersByTimeAsync(200);
+    expect(spoken().length).toBe(0);
+
+    chat.send("Could you do better?");
     await vi.advanceTimersByTimeAsync(10);
     const lines = spoken().map((request) => request.body.text);
     expect(lines.length).toBe(3);
@@ -131,6 +135,19 @@ describe("V11 — spoken filler while the shopkeeper picks", () => {
     expect(plays()).toBe(1);
   });
 
+  it("cuts a playing filler the instant setSpokenReplies(false) fires the seam's spoken-replies event — no click needed", async () => {
+    const { chat, timing, plays, fillers } = mount({ voiceConfig: true });
+    await vi.advanceTimersByTimeAsync(10);
+    chat.setSpokenReplies(true);
+    timing.chatDelay = 6000;
+    chat.send("Could you do better?");
+    await vi.advanceTimersByTimeAsync(1600);
+    expect(plays()).toBe(1);
+    const playing = fillers().find((audio) => audio.playing) as FakeAudio;
+    chat.setSpokenReplies(false);
+    expect(playing.playing).toBe(false);
+  });
+
   it("works from the speaker toggle alone, with no hands-free in the page", async () => {
     const { chat, timing, spoken, plays } = mount({ voiceConfig: true });
     await vi.advanceTimersByTimeAsync(10);
@@ -160,7 +177,7 @@ describe("V11 — spoken filler while the shopkeeper picks", () => {
     voice(false, "off");
     voice(true, "listening");
     await vi.advanceTimersByTimeAsync(10);
-    expect(spoken().length).toBe(6);
+    expect(spoken().length).toBe(0); // nothing before the shopper has said anything
     timing.chatDelay = 4000;
     chat.send("Could you do better?");
     await vi.advanceTimersByTimeAsync(6000);

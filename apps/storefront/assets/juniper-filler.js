@@ -84,16 +84,18 @@
       } catch (error) { active = null; }
     }
 
+    // Voice turning on is not the shopper saying anything yet: fetching now would spend three requests before a
+    // page in autoListen 'always' mode has heard a word. Prefetching waits for the first turn (below); these
+    // listeners only need to cut the filler off the moment voice goes fully off.
+    function reactToVoiceChange() {
+      if (!voiceOn()) stop();
+    }
     document.addEventListener('bazaar-voice:state', function (event) {
       handsfree = Boolean(event && event.detail && event.detail.on);
-      if (handsfree) prefetch(); else if (!voiceOn()) stop();
+      reactToVoiceChange();
     });
-    // The seam has no event for the speaker toggle, so a click inside the widget is the cue to look again.
-    if (chat.elements && chat.elements.widget) {
-      chat.elements.widget.addEventListener('click', function () {
-        window.setTimeout(function () { if (voiceOn()) prefetch(); else stop(); }, 0);
-      });
-    }
+    // The seam now tells us exactly when the speaker toggle changes.
+    chat.on('spoken-replies', reactToVoiceChange);
 
     chat.on('turn:start', function () {
       endTurn();
