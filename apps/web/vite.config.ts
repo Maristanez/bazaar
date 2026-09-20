@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => {
   }
   return {
     plugins: [react(), tailwindcss()],
-    server: { proxy: { "/api": "http://127.0.0.1:3000" } },
+    // BAZAAR_API_TARGET lets a second checkout run beside another server already on :3000.
+    server: { proxy: { "/api": env.BAZAAR_API_TARGET || "http://127.0.0.1:3000" } },
   };
 });

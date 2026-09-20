@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Console } from "./Console";
 import type { ConsoleAuth, ConsolePort } from "./data/port";
+import "./login.css";
 export function ConsoleApp({ port, auth }: { port: ConsolePort; auth: ConsoleAuth }) {
   const [signedIn, setSignedIn] = useState<boolean>();
   const [error, setError] = useState("");
@@ -25,10 +26,23 @@ export function ConsoleApp({ port, auth }: { port: ConsolePort; auth: ConsoleAut
   }
   if (signedIn === undefined) return <p className="loading" role="status">Opening Console…</p>;
   if (signedIn) return <><Console port={port} onSignOut={() => void signOut()} />{error && <p role="alert">{error}</p>}</>;
-  return <main className="login"><form className="paper login-form" onSubmit={event => void signIn(event)}>
-    <h1>Trailhead Co.</h1><h2>Owner sign in</h2><p>Your shop. Your rules.</p>
-    <label>Email<input type="email" name="email" autoComplete="username" required /></label>
-    <label>Password<input type="password" name="password" autoComplete="current-password" required /></label>
-    {error && <p role="alert">{error}</p>}<button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-  </form></main>;
+  return <main className="login">
+    <section className="login-story" aria-label="Trailhead Co. Owner Console">
+      <svg className="login-trail" viewBox="0 0 600 800" preserveAspectRatio="none" aria-hidden="true"><path d="M-20 790 C 120 760, 260 700, 380 690 S 560 640, 540 520 S 470 330, 560 200 S 600 60, 640 20" /></svg>
+      <p className="login-brand"><span className="sticker" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21V3M5 6h12l3 3-3 3H5zM4 16h11" /></svg></span>Trailhead Co.</p>
+      <h1>Your shop. Your rules.</h1>
+      <ul>
+        <li>See what your shopkeeper earned you, deal by deal.</li>
+        <li>Try a rule on 300 shoppers before a real one meets it.</li>
+        <li>One button stops every deal, everywhere.</li>
+      </ul>
+    </section>
+    <form className="login-form" onSubmit={event => void signIn(event)}>
+      <h2>Owner sign in</h2>
+      <label>Email<input type="email" name="email" autoComplete="username" required /></label>
+      <label>Password<input type="password" name="password" autoComplete="current-password" required /></label>
+      {error && <p role="alert">{error}</p>}<button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+      <p className="login-note">Only the shop owner can sign in. Shoppers never see this page.</p>
+    </form>
+  </main>;
 }

@@ -1,0 +1,27 @@
+/* Owner sign-in. Tokens come from styles.css; this file only lays out the page. */
+main.login { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(360px, 1fr); padding: 0; place-items: stretch; }
+main.login .login-story { position: relative; overflow: hidden; color: var(--color-cream); display: grid; align-content: center; gap: 28px; padding: 64px clamp(32px, 7vw, 112px); }
+main.login .login-trail { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+main.login .login-trail path { fill: none; stroke: var(--color-sky); stroke-width: 2.5; stroke-dasharray: 3 12; stroke-linecap: round; opacity: .35; vector-effect: non-scaling-stroke; }
+main.login .login-story > :not(.login-trail) { position: relative; }
+main.login .login-brand { margin: 0; display: flex; align-items: center; gap: .8rem; font-family: var(--font-heading); font-weight: 550; font-size: 1.35rem; }
+main.login .login-story h1 { font-size: clamp(2.4rem, 4.6vw, 4rem); line-height: 1.04; letter-spacing: -.02em; max-width: 12ch; }
+main.login .login-story ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; max-width: 40ch; font-size: 1.05rem; line-height: 1.45; color: #d9f2ee; }
+main.login .login-story li { padding-left: 22px; position: relative; }
+main.login .login-story li::before { content: ""; position: absolute; left: 0; top: .62em; width: 10px; border-top: 2px dashed var(--color-sky); }
+main.login .login-form { width: auto; max-width: none; border-radius: 0; background: var(--color-cream); display: grid; align-content: center; gap: 18px; padding: 64px clamp(28px, 6vw, 88px); box-shadow: -18px 0 40px #002d2d40; }
+main.login .login-form h2 { font-size: 2rem; margin-bottom: 8px; }
+main.login .login-form label { display: grid; gap: 8px; font-weight: 700; font-size: .92rem; max-width: 420px; }
+main.login .login-form input { width: 100%; border: 1.5px solid #796b59; border-radius: 8px; background: #fffaf2; padding: 13px 14px; min-height: 48px; transition: border-color 150ms ease-out, box-shadow 150ms ease-out; }
+main.login .login-form input:hover { border-color: var(--color-teal); }
+main.login .login-form input:focus-visible { outline: none; border-color: var(--color-teal); box-shadow: 0 0 0 3px #004c4c33; }
+main.login .login-form button { max-width: 420px; min-height: 50px; font-size: 1.02rem; margin-top: 4px; }
+main.login .login-form [role=alert] { margin: 0; max-width: 420px; padding: 10px 12px; border-radius: 8px; background: #f3675a24; color: #9c2a1f; font-weight: 600; font-size: .9rem; }
+main.login .login-note { margin: 0; font-size: .82rem; color: #5c503e; max-width: 420px; }
+@media (max-width: 860px) {
+    main.login { grid-template-columns: minmax(0, 1fr); }
+  main.login .login-story { padding: 40px 24px 32px; gap: 18px; } .login-story ul { display: none; }
+  main.login .login-form { padding: 32px 24px 48px; box-shadow: none; border-radius: 22px 22px 0 0; align-content: start; }
+}
+/* The half-second session check before either the sign-in page or the Console appears. */
+p.loading { min-height: 100vh; margin: 0; display: grid; place-items: center; font-family: var(--font-heading); font-weight: 550; font-size: 1.2rem; color: var(--color-sky); }
