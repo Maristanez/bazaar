@@ -1,0 +1,217 @@
+/* V12 the chat keeps its shape out of the conversation's way (docs/PLAN.md): a panel the shopper resizes, one way
+   out that minimises, a reply that peeks while minimised, and suggestions on a single scrolling rail. */
+
+/* ---- size: desktop only; a phone keeps critical.css's full-screen sheet ---- */
+@media (min-width: 481px) {
+  .ai-chat__panel {
+    width: min(var(--juniper-shape-w, 25.25rem), calc(100vw - 2.5rem));
+    height: min(var(--juniper-shape-h, 45rem), calc(100svh - 2.5rem));
+  }
+
+  .ai-chat__panel:not([hidden]) {
+    position: relative;
+  }
+}
+
+.juniper-shape--dragging,
+.juniper-shape--dragging * {
+  cursor: nwse-resize !important;
+  user-select: none;
+}
+
+.juniper-shape--dragging .ai-chat__panel {
+  transition: none;
+}
+
+/* The corner the panel grows from. Quiet until it is wanted. */
+.ai-chat .juniper-shape__grip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 1rem 0 0.6rem;
+  background: transparent;
+  color: var(--cream);
+  opacity: 0.45;
+  cursor: nwse-resize;
+  touch-action: none;
+  transition: opacity 0.2s var(--ease), background 0.2s var(--ease);
+}
+
+.ai-chat .juniper-shape__grip svg {
+  width: 0.7rem;
+  height: 0.7rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.ai-chat .juniper-shape__grip:hover,
+.ai-chat .juniper-shape__grip:focus-visible,
+.juniper-shape--dragging .juniper-shape__grip {
+  opacity: 1;
+  background: rgb(255 255 255 / 14%);
+}
+
+.ai-chat .juniper-shape__grip:focus-visible {
+  outline: 2.5px solid var(--sun);
+  outline-offset: -2.5px;
+}
+
+@media (max-width: 480px) {
+  .ai-chat .juniper-shape__grip,
+  .ai-chat .juniper-shape__size {
+    display: none;
+  }
+}
+
+/* ---- a reply that lands while the chat is minimised ---- */
+.ai-chat .juniper-shape__peek {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.6rem);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  width: max-content;
+  max-width: min(19rem, calc(100vw - 2.5rem));
+  padding: 0.6rem 0.8rem;
+  border-radius: 1rem 1rem 0.25rem;
+  background: #fff;
+  box-shadow: 0 1px 0 var(--paper-edge), 0 14px 34px -12px rgb(47 22 4 / 40%);
+  color: var(--bark);
+  font-size: 0.92rem;
+  line-height: 1.4;
+  text-align: left;
+  animation: ai-chat-slap 0.45s var(--ease) both;
+}
+
+.ai-chat .juniper-shape__peek[hidden],
+.ai-chat .juniper-shape__dot[hidden],
+.ai-chat__panel:not([hidden]) ~ .juniper-shape__peek,
+.ai-chat__panel:not([hidden]) ~ .juniper-shape__dot {
+  display: none;
+}
+
+.ai-chat .juniper-shape__peek:focus-visible {
+  outline: 2.5px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.juniper-shape__dot {
+  position: absolute;
+  top: -0.2rem;
+  right: -0.2rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 2px solid var(--cream);
+  border-radius: 999px;
+  background: var(--coral);
+  pointer-events: none;
+}
+
+.juniper-shape__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- the suggestion rail: one line, never more ---- */
+.juniper-shape__rail-host {
+  position: relative;
+  min-width: 0;
+}
+
+.ai-chat__prompts.juniper-shape__rail,
+.ai-chat__prompts.juniper-chips__row.juniper-shape__rail {
+  flex-wrap: nowrap;
+  min-height: 2.75rem;
+  margin-block: -0.3rem;
+  padding-block: 0.3rem;   /* room for a landing chip's tilt; overflow-x would otherwise clip it */
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.ai-chat__prompts.juniper-shape__rail::-webkit-scrollbar {
+  display: none;
+}
+
+.ai-chat__prompts.juniper-shape__rail > button {
+  scroll-snap-align: start;
+}
+
+.ai-chat__prompts.juniper-shape__rail--more {
+  -webkit-mask-image: linear-gradient(to left, transparent 1.6rem, #000 4.2rem);
+  mask-image: linear-gradient(to left, transparent 1.6rem, #000 4.2rem);
+}
+
+.ai-chat__prompts.juniper-shape__rail--before {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 1.6rem);
+  mask-image: linear-gradient(to right, transparent 0, #000 1.6rem);
+}
+
+.ai-chat__prompts.juniper-shape__rail--more.juniper-shape__rail--before {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 1.6rem, #000 calc(100% - 4.2rem), transparent calc(100% - 1.6rem));
+  mask-image: linear-gradient(to right, transparent 0, #000 1.6rem, #000 calc(100% - 4.2rem), transparent calc(100% - 1.6rem));
+}
+
+.ai-chat .juniper-shape__more {
+  position: absolute;
+  top: 50%;
+  right: -0.35rem;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1.5px var(--hairline);
+  color: var(--teal);
+}
+
+.ai-chat .juniper-shape__more[hidden] {
+  display: none;
+}
+
+.ai-chat .juniper-shape__more svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ai-chat .juniper-shape__more:hover {
+  background: var(--sky);
+}
+
+.ai-chat .juniper-shape__more:focus-visible {
+  outline: 2.5px solid var(--teal);
+  outline-offset: 2px;
+}
+
+/* A panel dragged short gives the whole height to the conversation. */
+.juniper-shape--short .juniper-shape__rail-host {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-chat .juniper-shape__peek {
+    animation: none;
+  }
+}
