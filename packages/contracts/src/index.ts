@@ -13,7 +13,7 @@ export type PublicOption = Pick<Option, "id" | "kind" | "items" | "listTotal" | 
 export type ProductCard = { productId: string; title: string; image: string; listPrice: number; sizes?: string[]; openToOffers: boolean };
 export type OfferCard = { negotiationId: string; offerId: string;
                    status: "live"|"pending_owner"|"superseded"|"accepted"|"expired"|"declined"|"paused";
-                   round: number; maxRounds: 4; option: PublicOption; line: string; mood: "idle"|"thinking"|"offended"|"tempted"|"deal";
+                   round: number; maxRounds: number /* owner-set, 2–6 */; option: PublicOption; line: string; mood: "idle"|"thinking"|"offended"|"tempted"|"deal";
                    badges: string[];                 // ready-made display strings ("＋ socks", "last season's") — the card never gets facts
                    trail: { label: string; amount: number; by: "shopper"|"shop" }[];
                    expiresAt: string; pendingUntil?: string;   // pendingUntil drives the 45 s bar on a pending_owner card

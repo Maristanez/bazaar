@@ -44,6 +44,9 @@ importers:
       '@bazaar/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@bazaar/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@bazaar/gym':
         specifier: workspace:*
         version: link:../../packages/gym

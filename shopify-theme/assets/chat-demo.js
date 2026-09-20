@@ -537,27 +537,6 @@
     messages.scrollTop = messages.scrollHeight;
   }
 
-  function addPreviewOfferCard() {
-    var product = getPrimaryProduct();
-    var list = product && (product.listPrice || parseMoney(product.price)) ? normalizeCents(product.listPrice || parseMoney(product.price) * 100) : 10000;
-    addOfferCard({
-      offerId: 'preview',
-      status: 'live',
-      round: 1,
-      maxRounds: 4,
-      option: {
-        listTotal: list,
-        total: Math.ceil(list * 0.88 / 100) * 100,
-        items: [{ title: product ? product.title : 'Selected item' }]
-      },
-      line: 'Preview only. The live server mints the real Shopify discount code.',
-      badges: ['preview'],
-      trail: [{ label: 'List', amount: list }, { label: 'Shop', amount: Math.ceil(list * 0.88 / 100) * 100 }],
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-      disclosure: ['Preview', 'Only server-generated cards are binding.']
-    });
-  }
-
   function startCountdown(node, expires, button, pending) {
     var previous = countdownTimers.get(node);
     if (previous) window.clearTimeout(previous);
@@ -777,7 +756,6 @@
       addMessage(reply, 'bot');
       speakReply(reply);
       addProductCard(getTurnProduct(text));
-      if (/offer|deal|discount|checkout|haggle|\$/i.test(text)) addPreviewOfferCard();
     }, 350);
   });
 

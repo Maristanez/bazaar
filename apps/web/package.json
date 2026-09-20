@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@bazaar/contracts": "workspace:*",
+    "@bazaar/engine": "workspace:*",
     "@bazaar/gym": "workspace:*",
     "@supabase/supabase-js": "2.57.4",
     "react": "^19.1.1",

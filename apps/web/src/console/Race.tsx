@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { GymResult, OwnerProduct, Policy, PolicySettings } from "@bazaar/contracts";
-import { runLiveGym, type LiveGymInput } from "../../../../packages/gym/src/live";
-import { raceLayout, type RaceDot } from "../../../../packages/gym/src/race";
-import { SETTING_RANGES, resolveSettings } from "../../../../packages/engine/src/settings";
-import { invalidReason, items } from "./Gym";
+import { raceLayout, runLiveGym, type LiveGymInput, type RaceDot } from "@bazaar/gym";
+import { SETTING_RANGES, resolveSettings } from "@bazaar/engine";
+import { invalidReason, items } from "./gymItems";
 
 type Draft = Pick<Policy, "floorPct" | "askOwner"> & { settings?: PolicySettings };
 const W = 980, X0 = 60, X1 = 950, CLOUD_TOP = 46, CLOUD_BOTTOM = 150, BASE = 330, PER_ROW = 6, STEP_MS = 1050;

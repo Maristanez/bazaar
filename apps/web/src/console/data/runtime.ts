@@ -1,5 +1,3 @@
-import { createFixtureAuth } from "./auth";
-import { createFixturePort } from "./fixturePort";
 import { createHttpPort } from "./httpPort";
 import type { ConsoleAuth, ConsolePort } from "./port";
 type Environment = { DEV?: boolean; VITE_CONSOLE_PORT?: string; VITE_SUPABASE_URL?: string; VITE_SUPABASE_ANON_KEY?: string };
@@ -17,7 +15,11 @@ function validPublicConfig(input: unknown): input is PublicConfigResponse {
   try { return JSON.parse(atob(value.supabaseAnonKey.split(".")[1] || "")).role === "anon"; } catch { return false; }
 }
 export async function createRuntime(env: Environment, fetchImpl: typeof fetch = globalThis.fetch): Promise<{ port: ConsolePort; auth: ConsoleAuth; fixture: boolean }> {
-  if (env.VITE_CONSOLE_PORT === "fixture" || (env.DEV === true && env.VITE_CONSOLE_PORT !== "http")) return { port: createFixturePort(), auth: createFixtureAuth(env.DEV === true), fixture: true };
+  if (env.VITE_CONSOLE_PORT === "fixture" || (env.DEV === true && env.VITE_CONSOLE_PORT !== "http")) {
+    // The fixture adapter loads on demand, so its canned state stays out of the production bundle's entry chunk.
+    const [{ createFixturePort }, { createFixtureAuth }] = await Promise.all([import("./fixturePort"), import("./auth")]);
+    return { port: createFixturePort(), auth: createFixtureAuth(env.DEV === true), fixture: true };
+  }
   let supabaseUrl = env.VITE_SUPABASE_URL;
   let supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnonKey) {
