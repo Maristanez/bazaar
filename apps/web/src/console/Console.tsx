@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import type { ConsoleEvent, ConsoleState, Policy } from "@bazaar/contracts";
+import type { ConsoleEvent, ConsoleState, Policy, PolicySettings } from "@bazaar/contracts";
 import type { ConsolePort } from "./data/port";
 import { Approvals } from "./Approvals";
 import { PolicyPanel } from "./PolicyPanel";
@@ -15,7 +15,7 @@ export function Console({ port, onSignOut }: { port: ConsolePort; onSignOut?: ()
   const [streamMessage, setStreamMessage] = useState("");
   const [error, setError] = useState("");
   const [events, setEvents] = useState<ConsoleEvent[]>([]);
-  const [gymDraft, setGymDraft] = useState<Pick<Policy, "floorPct" | "askOwner">>();
+  const [gymDraft, setGymDraft] = useState<(Pick<Policy, "floorPct" | "askOwner"> & { settings?: PolicySettings })>();
   const [adopting, setAdopting] = useState(false);
   useEffect(() => {
     let active = true;

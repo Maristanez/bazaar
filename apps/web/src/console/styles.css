@@ -206,3 +206,8 @@ button.quiet { background: transparent; color: var(--color-teal); box-shadow: in
 @media (max-width: 1000px) { .console-columns, .more-settings .more-grid { grid-template-columns: minmax(0, 1fr); } .kept-band p { border-left: 0; padding: 6px 18px 6px 0; } .race { padding: 18px; } .race-strip { grid-template-columns: minmax(0, 1fr); } }
 @media (prefers-reduced-motion: reduce) { .race-dot, .race-ask { transition-duration: 1ms; } }
 .race-state { font-size: .8rem; color: #5c503e; }
+.race-pill-row { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { position: relative; min-height: 44px; padding: .5rem 1.1rem; background: transparent; color: var(--color-teal); box-shadow: inset 0 0 0 1.5px var(--color-teal); font-weight: 700; font-size: .82rem; }
+.pill.selected { background: var(--color-teal); color: var(--color-cream); }
+.pill-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--color-teal); margin-left: 6px; vertical-align: 2px; }
+.pill.selected .pill-dot { background: var(--color-cream); }

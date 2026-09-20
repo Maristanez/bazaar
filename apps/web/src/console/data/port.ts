@@ -1,9 +1,9 @@
-import type { ConsoleEvent, ConsoleState, PauseResult, Policy } from "@bazaar/contracts";
+import type { ConsoleEvent, ConsoleState, PauseResult, Policy, PolicySettings } from "@bazaar/contracts";
 export type Connection = "connected" | "reconnecting" | "unauthorized";
 export type ConsolePort = {
   load(): Promise<ConsoleState>;
   subscribe(onEvent: (event: ConsoleEvent) => void, onConnection?: (state: Connection) => void): () => void;
-  setPolicy(next: Pick<Policy, "floorPct" | "askOwner">): Promise<Policy>;
+  setPolicy(next: Pick<Policy, "floorPct" | "askOwner"> & { settings?: PolicySettings }): Promise<Policy>;
   setPaused(paused: boolean): Promise<PauseResult>;
   resolveApproval(id: string, decision: "approved" | "declined"): Promise<void>;
 };

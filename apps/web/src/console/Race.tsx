@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import type { GymResult, OwnerProduct, Policy } from "@bazaar/contracts";
+import type { GymResult, OwnerProduct, Policy, PolicySettings } from "@bazaar/contracts";
 import { runLiveGym, type LiveGymInput } from "../../../../packages/gym/src/live";
 import { raceLayout, type RaceDot } from "../../../../packages/gym/src/race";
+import { SETTING_RANGES, resolveSettings } from "../../../../packages/engine/src/settings";
 import { invalidReason, items } from "./Gym";
 
-type Draft = Pick<Policy, "floorPct" | "askOwner">;
+type Draft = Pick<Policy, "floorPct" | "askOwner"> & { settings?: PolicySettings };
 const W = 980, X0 = 60, X1 = 950, CLOUD_TOP = 46, CLOUD_BOTTOM = 150, BASE = 330, PER_ROW = 6, STEP_MS = 1050;
+type PillKey = "floor" | "maxOff" | "rounds" | "lowball";
+const PILLS: { key: PillKey; label: string }[] = [{ key: "floor", label: "Floor" }, { key: "maxOff", label: "Max off" }, { key: "rounds", label: "Rounds" }, { key: "lowball", label: "Lowball" }];
 const OUTCOMES: Record<RaceDot["kind"], { label: string; fill: string; stroke?: string }> = {
   list: { label: "Paid list", fill: "var(--color-teal)" },
   saved: { label: "Saved by your shopkeeper", fill: "#19c3c3" },
@@ -35,20 +38,26 @@ export function Race({ products, policy, draft, saving, onDraft, onAdopt }: { pr
   const [selectedId, setSelectedId] = useState<string>();
   const [round, setRound] = useState(99);
   const [hover, setHover] = useState<number | undefined>(undefined);
+  const [pill, setPill] = useState<PillKey>("floor");
   const [runAt] = useState(() => Date.now());
   const timer = useRef<number | undefined>(undefined);
   const main = mains.find(item => item.variantId === selectedId) ?? mains[0];
   const floorPct = draft?.floorPct ?? policy.floorPct, askOwner = draft?.askOwner ?? policy.askOwner;
-  const dirty = floorPct !== policy.floorPct || askOwner !== policy.askOwner;
+  const settings = resolveSettings({ ...policy.settings, ...draft?.settings });
+  const savedSettings = resolveSettings(policy.settings);
+  const settingsDirty = settings.discountCapPct !== savedSettings.discountCapPct || settings.maxRounds !== savedSettings.maxRounds || settings.lowballCutoffPct !== savedSettings.lowballCutoffPct;
+  const dirty = floorPct !== policy.floorPct || askOwner !== policy.askOwner || settingsDirty;
 
   const run = useMemo(() => {
     if (!main) return undefined;
-    const input: LiveGymInput = { main, catalog, floorPct, askOwner, seed: 42, n: 300, now: new Date(runAt) };
+    // INTEGRATION: settings reach the engine once LiveGymInput accepts them
+    const input = { main, catalog, floorPct, askOwner, seed: 42, n: 300, now: new Date(runAt), settings } as LiveGymInput;
     try {
       const candidate = runLiveGym(input);
-      return { candidate, saved: dirty ? runLiveGym({ ...input, floorPct: policy.floorPct, askOwner: policy.askOwner }) : candidate };
+      const savedInput = { ...input, floorPct: policy.floorPct, askOwner: policy.askOwner, settings: savedSettings } as LiveGymInput;
+      return { candidate, saved: dirty ? runLiveGym(savedInput) : candidate };
     } catch { return undefined; }
-  }, [askOwner, catalog, dirty, floorPct, main, policy.askOwner, policy.floorPct, runAt]);
+  }, [askOwner, catalog, dirty, floorPct, main, policy.askOwner, policy.floorPct, runAt, settings.discountCapPct, settings.lowballCutoffPct, settings.maxRounds, savedSettings.discountCapPct, savedSettings.lowballCutoffPct, savedSettings.maxRounds]);
 
   const stop = () => { if (timer.current !== undefined) window.clearInterval(timer.current); timer.current = undefined; };
   function play() {
@@ -76,6 +85,43 @@ export function Race({ products, policy, draft, saving, onDraft, onAdopt }: { pr
   const hovered = hover === undefined ? undefined : run.candidate.shoppers.find(shopper => shopper.id === hover);
   const used = new Set(final.dots.map(dot => dot.kind));
 
+  function updateSetting<K extends keyof PolicySettings>(key: K, value: PolicySettings[K]) {
+    onDraft({ floorPct, askOwner, settings: { ...policy.settings, ...draft?.settings, [key]: value } });
+  }
+  const offAfter = (pct: number) => money(Math.round(list * (1 - pct / 100)));
+  const shareOfList = (pct: number) => money(Math.round(list * (pct / 100)));
+  const pillConfig: Record<PillKey, { valueLabel: string; sentence: string; min: number; max: number; value: number; dirty: boolean; ariaLabel: string; onChange(value: number): void }> = {
+    floor: {
+      valueLabel: `${floorPct}% · ${money(floor)}`,
+      sentence: "The lowest price your shopkeeper may agree to on its own. Raise it and each sale earns more, but more shoppers walk.",
+      min: 0, max: 60, value: floorPct, dirty: floorPct !== policy.floorPct,
+      ariaLabel: `Floor: cost + ${floorPct}%`,
+      onChange: value => onDraft({ floorPct: value, askOwner, settings: draft?.settings }),
+    },
+    maxOff: {
+      valueLabel: `${settings.discountCapPct}% · ${offAfter(settings.discountCapPct)}`,
+      sentence: "The steepest cut off list your shopkeeper will ever offer, no matter how hard someone haggles.",
+      min: SETTING_RANGES.discountCapPct[0], max: SETTING_RANGES.discountCapPct[1], value: settings.discountCapPct, dirty: settings.discountCapPct !== savedSettings.discountCapPct,
+      ariaLabel: `Max off: ${settings.discountCapPct}% off list`,
+      onChange: value => updateSetting("discountCapPct", value),
+    },
+    rounds: {
+      valueLabel: `${settings.maxRounds}`,
+      sentence: "How many rounds of back-and-forth your shopkeeper will haggle before settling or walking away.",
+      min: SETTING_RANGES.maxRounds[0], max: SETTING_RANGES.maxRounds[1], value: settings.maxRounds, dirty: settings.maxRounds !== savedSettings.maxRounds,
+      ariaLabel: `Rounds: ${settings.maxRounds}`,
+      onChange: value => updateSetting("maxRounds", value),
+    },
+    lowball: {
+      valueLabel: settings.lowballCutoffPct === 0 ? "off" : `${settings.lowballCutoffPct}% · ${shareOfList(settings.lowballCutoffPct)}`,
+      sentence: "Offers below this share of list are turned away as lowballs outright. Set it to off to consider every offer.",
+      min: SETTING_RANGES.lowballCutoffPct[0], max: SETTING_RANGES.lowballCutoffPct[1], value: settings.lowballCutoffPct, dirty: settings.lowballCutoffPct !== savedSettings.lowballCutoffPct,
+      ariaLabel: `Lowball cutoff: ${settings.lowballCutoffPct}% of list`,
+      onChange: value => updateSetting("lowballCutoffPct", value),
+    },
+  };
+  const active = pillConfig[pill];
+
   return <section className="paper race" aria-labelledby="race-title">
     <div className="race-head">
       <div><h2 id="race-title">Try it on 300 shoppers</h2>
@@ -98,10 +144,15 @@ export function Race({ products, policy, draft, saving, onDraft, onAdopt }: { pr
     <ul className="race-key" aria-label="Outcomes">{(Object.keys(OUTCOMES) as RaceDot["kind"][]).filter(kind => used.has(kind) || kind === "deciding").map(kind => <li key={kind} style={{ "--fill": OUTCOMES[kind].fill, "--ring": OUTCOMES[kind].stroke ?? "transparent" } as React.CSSProperties}>{OUTCOMES[kind].label}</li>)}</ul>
     <p className="race-tip" role="status">{hovered ? <><b>{PERSONA_LABEL[hovered.persona]}</b> · would pay up to <b>{money(hovered.willingness)}</b> · {hovered.rounds.map((entry, index) => `round ${index + 1}: offered ${money(entry.offer)}, asked ${money(entry.ask)}`).join(" · ")} · {hovered.outcome === "bought" ? <>bought at <b>{money(hovered.agreed!)}</b>{hovered.agreed! < list && hovered.trade !== "bundle" ? " — a customer saved" : ""}</> : hovered.outcome === "would_ask_owner" ? "would ask you to decide" : hovered.missed ? "walked — a deal missed" : "walked away"}</> : "Point at a shopper to see what happened to them."}</p>
     <div className="race-strip">
-      <label className="race-slide" htmlFor="race-floor"><span><span>Floor over cost</span><output>{floorPct}% · {money(floor)}</output></span>
-        <input id="race-floor" aria-label={`Floor: cost + ${floorPct}%`} type="range" min="0" max="60" step="1" value={floorPct} disabled={saving} onChange={event => { stop(); setRound(99); onDraft({ floorPct: Number(event.target.value), askOwner }); }} onMouseUp={play} onTouchEnd={play} onKeyUp={play} /></label>
+      <div className="race-pill-row" role="tablist" aria-label="Setting">
+        {PILLS.map(entry => <button key={entry.key} type="button" role="tab" aria-selected={pill === entry.key} className={`pill ${pill === entry.key ? "selected" : ""}`} onClick={() => setPill(entry.key)}>
+          {entry.label}{pillConfig[entry.key].dirty && <span className="pill-dot" aria-hidden="true" />}
+        </button>)}
+      </div>
+      <label className="race-slide" htmlFor={`race-${pill}`}><span><span>{PILLS.find(entry => entry.key === pill)!.label}</span><output>{active.valueLabel}</output></span>
+        <input id={`race-${pill}`} aria-label={active.ariaLabel} type="range" min={active.min} max={active.max} step="1" value={active.value} disabled={saving} onChange={event => { stop(); setRound(99); active.onChange(Number(event.target.value)); }} onMouseUp={play} onTouchEnd={play} onKeyUp={play} /></label>
       <div className="race-actions"><button className="quiet" onClick={play}>▶ Play</button><button disabled={!dirty || saving} onClick={onAdopt}>{saving ? "Adopting…" : "Adopt"}</button></div>
-      <p className="muted">The lowest price your shopkeeper may agree to on its own. Raise it and each sale earns more, but more shoppers walk.</p>
+      <p className="muted">{active.sentence}</p>
       <p className="race-state"><span className="saved-policy">Saved policy · cost + {policy.floorPct}%</span> · <span role="status">{dirty ? "Preview · not adopted" : "Your saved policy is active."}</span></p>
     </div>
   </section>;
