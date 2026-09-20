@@ -1,29 +1,16 @@
 /* V6 suggestion chips that change (docs/PLAN.md).
-   The row is one line that scrolls sideways, so its height never moves when the chips change. New chips land one by
-   one with the card's slap; the old ones leave underneath them; a tapped chip lifts toward the messages. */
+   The row wraps — its usual two lines' worth of height is reserved so the form below does not jump for that common
+   case — instead of scrolling sideways, where a shopper had no way to notice or reach a chip past the edge by
+   mouse, touch or keyboard. Nothing is ever clipped: a rare longer set (a long label on a narrow phone) just makes
+   the foot a little taller instead of hiding a chip; the message list above is what scrolls, not this row. New
+   chips land one by one with the card's slap; the old ones leave underneath them; a tapped chip lifts toward the
+   messages. */
 
 .ai-chat__prompts.juniper-chips__row {
   position: relative;
-  /* The foot is a grid: without this a long row would widen the whole panel instead of scrolling. */
   min-width: 0;
-  flex-wrap: nowrap;
-  align-items: center;
-  /* Room for the focus ring and the slap, which a scrolling box would otherwise clip. */
-  min-height: calc(2.75rem + 10px);
-  margin: -5px -0.75rem;
-  padding: 5px 0.75rem;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  scroll-padding-inline: 0.75rem;
-  scrollbar-width: none;
-  /* The fade sits over the side padding only, so a chip cut by it reads as "more this way". */
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%);
-  mask-image: linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%);
-}
-
-.ai-chat__prompts.juniper-chips__row::-webkit-scrollbar {
-  display: none;
+  align-content: flex-start;
+  min-height: calc(2 * 2.75rem + 0.4rem);
 }
 
 /* The space stays reserved while the owner decides, so the form below does not jump. */
@@ -72,7 +59,10 @@
 
 .juniper-chips__ghosts {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  /* top and height are set inline, clipped to the row's reserved footprint (plus headroom for a chip to rise). */
+  overflow: hidden;
   pointer-events: none;
 }
 

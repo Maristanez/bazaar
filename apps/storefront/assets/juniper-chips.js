@@ -68,7 +68,7 @@
       hasSizes: Boolean(product && Array.isArray(product.variants) && product.variants.length > 1),
       plural: !goods.trim() || PLURAL_GOODS.test(goods),
       cartCount: cartCount(cart),
-      cartTitle: cartTitle(cart, product, raw.products),
+      cartTitle: cartTitle(cart, product),
       collectionTitle: cleanTitle(page && page.collection && typeof page.collection === 'object' ? page.collection.title : ''),
       card: card,
       optionKind: typeof option.kind === 'string' ? option.kind : '',
@@ -81,29 +81,23 @@
     };
   }
 
+  // V5 (juniper-page.js) is the only source of page.cart, and it always publishes { itemCount, items: [{ title, ... }] }
+  // — no snake_case, no handles, no titles array. Read that shape only; a length fallback covers a cart with no count.
   function cartCount(cart) {
     if (!cart) return 0;
-    var count = Number(cart.itemCount !== undefined ? cart.itemCount : cart.item_count);
-    if (count > 0) return count;
-    return Array.isArray(cart.items) ? cart.items.length : Array.isArray(cart.handles) ? cart.handles.length : 0;
+    var count = Number(cart.itemCount);
+    if (count >= 0) return count;
+    return Array.isArray(cart.items) ? cart.items.length : 0;
   }
 
   // The first thing in the cart that is not the product on this page, by its real title.
-  function cartTitle(cart, product, products) {
+  function cartTitle(cart, product) {
     if (!cart) return '';
-    var titles = [];
-    (Array.isArray(cart.items) ? cart.items : []).forEach(function (item) {
-      if (item && typeof item === 'object') titles.push(item.product_title || item.productTitle || item.title);
-    });
-    (Array.isArray(cart.titles) ? cart.titles : []).forEach(function (title) { titles.push(title); });
-    (Array.isArray(cart.handles) ? cart.handles : []).forEach(function (handle) {
-      (Array.isArray(products) ? products : []).forEach(function (entry) {
-        if (entry && entry.handle === handle) titles.push(entry.title);
-      });
-    });
+    var items = Array.isArray(cart.items) ? cart.items : [];
     var own = product ? String(product.title || '').toLowerCase() : '';
-    for (var index = 0; index < titles.length; index += 1) {
-      var title = cleanTitle(titles[index]);
+    for (var index = 0; index < items.length; index += 1) {
+      var item = items[index];
+      var title = item && typeof item === 'object' ? cleanTitle(item.title) : '';
       if (title && title.toLowerCase() !== own) return title;
     }
     return '';
@@ -388,7 +382,31 @@
 
   var QUANTITY = 'input[name="quantity"], input[id^="Quantity-"], input[data-quantity-input]';
   var VARIANT = 'select[name="id"], select[id^="ProductSelect-"]';
-  var used = {};
+  var CHAT_KEY = 'bazaar:chat';
+  var USED_KEY = 'bazaar:chips-used';
+
+  // Every page here is a full load (V2 persist.js), so a used chip only stays gone across it if it is written down.
+  // No carried conversation means a clean visit: start empty, and drop whatever an earlier tab left behind.
+  function loadUsed() {
+    try {
+      if (!window.sessionStorage.getItem(CHAT_KEY)) {
+        window.sessionStorage.removeItem(USED_KEY);
+        return {};
+      }
+      var parsed = JSON.parse(window.sessionStorage.getItem(USED_KEY) || 'null');
+      var out = {};
+      if (parsed && typeof parsed === 'object') Object.keys(parsed).forEach(function (id) { if (parsed[id]) out[id] = true; });
+      return out;
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function saveUsed() {
+    try { window.sessionStorage.setItem(USED_KEY, JSON.stringify(used)); } catch (error) { /* storage blocked: this page just forgets on the next one */ }
+  }
+
+  var used = loadUsed();
   var turn = 0;
   var voiceOn = false;
   var page = chat.page || null;
@@ -439,7 +457,7 @@
   function gather(hint, card) {
     var state = chat.state ? chat.state() : {};
     var offer = card || state.card || null;
-    return { stage: stageOf(offer, hint), page: chat.page || page, product: selection(state), products: state.products, card: offer, used: used, turn: turn, voiceOn: voiceOn, suggestions: suggestions };
+    return { stage: stageOf(offer, hint), page: chat.page || page, product: selection(state), card: offer, used: used, turn: turn, voiceOn: voiceOn, suggestions: suggestions };
   }
 
   function clearGhosts() {
@@ -448,28 +466,49 @@
     ghosts = null;
   }
 
+  // How tall the row is guaranteed to stay for the common set: read live, so a change to the CSS constant never
+  // drifts out of step with this. A rarer, longer set may grow the row past this — the ghost layer stops there
+  // regardless, so an old, taller layout's chip can never spill onto whatever sits below the row.
+  function reservedHeight() {
+    try {
+      var value = parseFloat(window.getComputedStyle(box).minHeight);
+      return value > 0 ? value : 94;
+    } catch (error) {
+      return 94;
+    }
+  }
+
   // The outgoing chips, copied as plain text where they stood, so they can leave while the new ones land.
   function snapshot() {
     clearGhosts();
     if (stillMotion()) return;
     var buttons = box.querySelectorAll('button[data-ai-chat-prompt]');
     if (!buttons.length) return;
-    // The layer sits over the foot, not inside the scrolling row, so the tapped chip can rise past the row's edge.
+    // The layer sits over the foot, not inside the row, so the tapped chip can rise past the row's edge — but it is
+    // itself clipped to the row's reserved footprint, so a chip from an old, taller-than-reserved layout (the set
+    // changed how many lines it needs) cannot spill onto the hands-free bar or the form below.
     var host = box.parentNode && box.parentNode !== widget ? box.parentNode : box;
     var frame = host.getBoundingClientRect ? host.getBoundingClientRect() : { left: 0, top: 0 };
-    var row = box.getBoundingClientRect ? box.getBoundingClientRect() : { left: 0, right: 0 };
+    var row = box.getBoundingClientRect ? box.getBoundingClientRect() : { top: 0, left: 0 };
+    var rise = 48; // clearance above the row for the sent chip's lift toward the messages
+    var reserved = reservedHeight();
+    var clipTop = row.top - frame.top - rise;
+    var clipBottom = row.top - frame.top + reserved;
     ghosts = document.createElement('span');
     ghosts.className = 'juniper-chips__ghosts';
     ghosts.setAttribute('aria-hidden', 'true');
+    ghosts.style.top = clipTop + 'px';
+    ghosts.style.height = (clipBottom - clipTop) + 'px';
     Array.prototype.forEach.call(buttons, function (button) {
       var rect = button.getBoundingClientRect ? button.getBoundingClientRect() : { left: 0, top: 0, right: 0, width: 0, height: 0 };
-      if (row.right > row.left && (rect.right <= row.left || rect.left >= row.right)) return;
+      var top = rect.top - frame.top - (host.clientTop || 0);
+      if (top >= clipBottom) return;
       var ghost = document.createElement('span');
       var sent = tapped !== null && button.getAttribute('data-ai-chat-prompt') === tapped;
       ghost.className = 'juniper-chips__ghost' + (sent ? ' juniper-chips__ghost--sent' : '');
       ghost.textContent = button.textContent;
       ghost.style.left = (rect.left - frame.left - (host.clientLeft || 0)) + 'px';
-      ghost.style.top = (rect.top - frame.top - (host.clientTop || 0)) + 'px';
+      ghost.style.top = (top - clipTop) + 'px';
       if (rect.width) ghost.style.width = rect.width + 'px';
       if (rect.height) ghost.style.height = rect.height + 'px';
       ghosts.appendChild(ghost);
@@ -518,9 +557,6 @@
       }
     });
     refocus = null;
-    if (landing) {
-      try { box.scrollLeft = 0; } catch (error) { /* a row that cannot scroll stays where it is */ }
-    }
     landing = false;
     markSpoken();
   }
@@ -570,7 +606,7 @@
       var index = matchSpoken(said, current);
       if (index !== -1) hit = current[index];
     }
-    if (hit && hit.id) used[hit.id] = true;
+    if (hit && hit.id) { used[hit.id] = true; saveUsed(); }
   }
 
   chat.setChipProvider(provide);
@@ -589,6 +625,13 @@
     renderSoon();
   }));
   chat.on('card', guarded(renderSoon));
+  // V5 fetches the cart only once the panel opens, and asynchronously, with no event once it lands (a seam gap) —
+  // so the first render on open has no cart yet. Re-render right away, then once more shortly after, to pick it up.
+  chat.on('open', guarded(function () {
+    render();
+    window.setTimeout(guarded(render), 300);
+    window.setTimeout(guarded(render), 900);
+  }));
 
   // Runs before the chat's own click handler sends the chip, so the render that follows knows which one was tapped.
   document.addEventListener('click', guarded(function (event) {

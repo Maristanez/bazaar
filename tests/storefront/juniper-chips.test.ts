@@ -33,6 +33,14 @@ function withQuantity(value: string) {
   };
 }
 
+function withQuantityAndStorage(value: string, chatKey: string | undefined, used: Record<string, boolean> | undefined) {
+  return (window: any) => {
+    withQuantity(value)(window);
+    if (chatKey !== undefined) window.sessionStorage.setItem("bazaar:chat", chatKey);
+    if (used) window.sessionStorage.setItem("bazaar:chips-used", JSON.stringify(used));
+  };
+}
+
 function shown(document: Document) {
   return Array.from(document.querySelectorAll("[data-ai-chat-prompts] > button[data-ai-chat-prompt]")).map((button) => button.textContent || "");
 }
@@ -243,5 +251,34 @@ describe("V6 suggestion chips that change", () => {
     }
     expect(Array.isArray(chat.chips.build({}))).toBe(true);
     expect(Array.isArray(chat.chips.build(undefined))).toBe(true);
+  });
+
+  it("does not resurrect a used chip on a carried conversation, but forgets it on a clean visit", () => {
+    const carried = mount({ before: withQuantityAndStorage("2", "{\"v\":1,\"entries\":[]}", { "qty-buying": true }) });
+    expect(shown(carried.document)).not.toContain("I'm buying two");
+
+    const clean = mount({ before: withQuantityAndStorage("2", undefined, { "qty-buying": true }) });
+    expect(shown(clean.document)).toContain("I'm buying two");
+    // A clean visit (no bazaar:chat) drops whatever an earlier tab left in bazaar:chips-used.
+    expect(clean.window.sessionStorage.getItem("bazaar:chips-used")).toBeNull();
+  });
+
+  it("writes a tapped chip's id to sessionStorage, so a full page reload cannot bring it back", () => {
+    const { document, window } = mount({ chat: () => ({ reply: "Tell me more." }) });
+    const tapped = document.querySelector("[data-ai-chat-prompts] > button[data-ai-chat-prompt]") as HTMLButtonElement;
+    tapped.click();
+    const stored = JSON.parse(window.sessionStorage.getItem("bazaar:chips-used") || "{}");
+    expect(Object.keys(stored).length).toBeGreaterThan(0);
+  });
+
+  it("re-renders shortly after the chat opens, to pick up the cart once V5 fetches it asynchronously", async () => {
+    vi.useFakeTimers();
+    const { chat, document } = mount({ page: { pageType: "product" } });
+    // Simulate V5's page object gaining a cart after the panel opens, with no event to say so.
+    (chat as any).page = { pageType: "product", cart: { itemCount: 1, items: [{ title: "Trail Socks" }] } };
+    (document.querySelector(".ai-chat__launcher") as HTMLButtonElement)?.click();
+    await vi.advanceTimersByTimeAsync(1000);
+    const texts = shown(document).join(" ");
+    expect(texts).toContain("Trail Socks");
   });
 });
