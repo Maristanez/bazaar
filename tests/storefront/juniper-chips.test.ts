@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mountWidget } from "./widget.ts";
+import { mountWidget, must } from "./widget.ts";
 
 type Chip = [string, string];
 
@@ -132,9 +132,10 @@ describe("V6 suggestion chips that change", () => {
       const candidates = chat.chips.candidates(context({ stage: "offer", card: card(), used, turn }));
       const chips: Chip[] = chat.chips.build(context({ stage: "offer", card: card(), used, turn }));
       if (!chips.length) break;
-      expect(seen).not.toContain(chips[0][0]);
-      seen.push(chips[0][0]);
-      used.push(candidates.find((candidate: any) => candidate.label === chips[0][0]).id);
+      const top = must(chips[0], "chip");
+      expect(seen).not.toContain(top[0]);
+      seen.push(top[0]);
+      used.push(must(candidates.find((candidate: any) => candidate.label === top[0]), "candidate").id);
     }
     expect(seen.length).toBeGreaterThan(4);
 

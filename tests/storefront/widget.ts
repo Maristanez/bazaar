@@ -24,6 +24,11 @@ export type MountOptions = {
   routes?: Record<string, (body: any) => unknown>;
 };
 
+export function must<T>(value: T | undefined | null, what = "value"): T {
+  if (value == null) throw new Error(`${what} is missing`);
+  return value;
+}
+
 export function widgetMarkup(): string {
   const liquid = readFileSync(`${repo}apps/storefront/layout/theme.liquid`, "utf8");
   const start = liquid.indexOf('<div\n      class="ai-chat"');

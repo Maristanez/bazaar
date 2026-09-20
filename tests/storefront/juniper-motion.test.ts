@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { mountWidget } from "./widget.ts";
+import { mountWidget, must } from "./widget.ts";
 
 const css = readFileSync(fileURLToPath(new URL("../../apps/storefront/assets/juniper-motion.css", import.meta.url)), "utf8");
 
@@ -152,7 +152,7 @@ describe("juniper-motion — the voice pill", () => {
     expect(waveIndex).toBe(haloIndex + 1);
     expect(textIndex).toBe(waveIndex + 1);
 
-    const wave = children[waveIndex];
+    const wave = must(children[waveIndex], "wave");
     expect(wave.getAttribute("aria-hidden")).toBe("true");
     const bars = wave.querySelectorAll("i");
     expect(bars.length).toBeGreaterThanOrEqual(12);

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mountWidget, type MountOptions } from "./widget.ts";
+import { mountWidget, must, type MountOptions } from "./widget.ts";
 
 // A stand-in for Chrome's SpeechRecognition: it records what the feature asks of it and lets the test play the shopper.
 type FakeRecognition = {
@@ -34,7 +34,7 @@ function fakeSpeech(options: { startThrows?: boolean | (() => boolean) } = {}) {
     instances.push(self);
   }
   const running = () => instances.filter((instance) => instance.calls.includes("start") && !instance.calls.includes("abort") && !instance.calls.includes("stop"));
-  return { Recognition, instances, running, latest: () => instances[instances.length - 1] };
+  return { Recognition, instances, running, latest: () => must(instances[instances.length - 1], "recognition instance") };
 }
 
 // Draining the microtask queue a handful of times settles the voice-config fetch chain (fetch -> .then -> .json()
@@ -102,14 +102,14 @@ describe("juniper-handsfree — V1 hands-free conversation", () => {
     expect(states[states.length - 1]).toEqual({ on: true, state: "listening" });
 
     first.hear("could you do");
-    expect(states[states.length - 1].state).toBe("hearing");
+    expect(must(states[states.length - 1], "state").state).toBe("hearing");
     await tick(1000);
     first.hear(["Could you do better on two pairs?", true]);
     await tick(1199);
     expect(chatRequests()).toHaveLength(0);
     await tick(1);
     expect(chatRequests()).toHaveLength(1);
-    expect(JSON.stringify(chatRequests()[0].body)).toContain("Could you do better on two pairs?");
+    expect(JSON.stringify(must(chatRequests()[0], "chat request").body)).toContain("Could you do better on two pairs?");
     expect(first.calls).toContain("abort");
     expect(states.map((entry) => entry.state)).toContain("thinking");
 
@@ -123,7 +123,7 @@ describe("juniper-handsfree — V1 hands-free conversation", () => {
     second.hear(["What about a student discount?", true]);
     await tick(1200);
     expect(chatRequests()).toHaveLength(2);
-    expect(JSON.stringify(chatRequests()[1].body)).toContain("What about a student discount?");
+    expect(JSON.stringify(must(chatRequests()[1], "chat request").body)).toContain("What about a student discount?");
     await tick(0);
     expect(speech.running()).toHaveLength(1);
   });
@@ -200,7 +200,7 @@ describe("juniper-handsfree — V1 hands-free conversation", () => {
     const lines = () => Array.from(document.querySelectorAll(".ai-chat__message--bot")).filter((node) => /Chrome/.test(node.textContent || ""));
     mic()!.click();
     expect(lines()).toHaveLength(1);
-    expect(lines()[0].textContent).toMatch(/Esc/);
+    expect(must(lines()[0], "notice line").textContent).toMatch(/Esc/);
     mic()!.click();
     mic()!.click();
     expect(lines()).toHaveLength(1);
@@ -218,7 +218,7 @@ describe("juniper-handsfree — V1 hands-free conversation", () => {
     expect(chatRequests()).toHaveLength(0);
     await tick(300);
     expect(chatRequests()).toHaveLength(1);
-    expect(JSON.stringify(chatRequests()[0].body)).toContain("And free socks?");
+    expect(JSON.stringify(must(chatRequests()[0], "chat request").body)).toContain("And free socks?");
   });
 
   it("restarts recognition when Chrome ends it, and backs off when it ends at once three times running", async () => {
@@ -248,7 +248,7 @@ describe("juniper-handsfree — V1 hands-free conversation", () => {
     speech.latest().end();
     speech.latest().hear(["so what can you do?", true]);
     await tick(1200);
-    expect(JSON.stringify(chatRequests()[0].body)).toContain("I'm buying two, so what can you do?");
+    expect(JSON.stringify(must(chatRequests()[0], "chat request").body)).toContain("I'm buying two, so what can you do?");
   });
 
   it("restores hands-free on load when the session flag is set, without a click or a second notice", async () => {

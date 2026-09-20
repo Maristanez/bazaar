@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mountWidget } from "./widget.ts";
+import { mountWidget, must } from "./widget.ts";
 
 const NUDGE = "Too steep? Name a price.";
 const PRODUCT = { id: 1, title: "Trail Runner 2", handle: "trail-runner-2", price: "$140" };
@@ -28,7 +28,7 @@ function mount(options: { nudged?: string | null; product?: boolean; form?: bool
     },
   });
   const launcher = mounted.chat.elements.launcher as HTMLElement;
-  const label = () => launcher.querySelectorAll("span")[1].textContent;
+  const label = () => must(launcher.querySelectorAll("span")[1], "launcher label span").textContent;
   const seePrice = () => observers.forEach((observer) => observer.callback(observer.targets.map((target) => ({ target, isIntersecting: true }))));
   return { ...mounted, launcher, label, seePrice };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mountWidget } from "./widget.ts";
+import { mountWidget, must } from "./widget.ts";
 
 type Tone = { type: string; start: number; stop: number; peak: number };
 
@@ -54,8 +54,9 @@ describe("V10 — earcons and the spoken voice status", () => {
     expect(chat.elements.messages.getAttribute("aria-live")).toBe("polite");
     const lines = document.querySelectorAll('[role="status"].juniper-earcons__status');
     expect(lines.length).toBe(1);
-    expect(chat.elements.widget.contains(lines[0])).toBe(true);
-    expect(lines[0].classList.contains("visually-hidden")).toBe(true);
+    const line = must(lines[0], "status line");
+    expect(chat.elements.widget.contains(line)).toBe(true);
+    expect(line.classList.contains("visually-hidden")).toBe(true);
   });
 
   it('announces "Listening", "Thinking", "Juniper is speaking" and "Voice off" in words', () => {

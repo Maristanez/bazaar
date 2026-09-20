@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mountWidget, type ChatReply } from "./widget.ts";
+import { mountWidget, must, type ChatReply } from "./widget.ts";
+
+type Card = HTMLElement & { scrollIntoView: ReturnType<typeof vi.fn> };
+function cardFor(cards: Record<string, Card>, handle: string): Card {
+  return must(cards[handle], handle);
+}
 
 const RING = "juniper-pointer__ring";
 const COLLECTION = "https://trailhead.test/collections/all";
@@ -59,7 +64,7 @@ describe("juniper-pointer — Juniper points at the page", () => {
     const { cards, say } = mountPage(products, () => ({ reply: "The ridge vest carries water on long days." }));
     await say("what carries water?");
 
-    const card = cards["ridge-vest"];
+    const card = cardFor(cards, "ridge-vest");
     expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
     expect(card.scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "center" });
     expect(card.classList.contains(RING)).toBe(true);
@@ -70,9 +75,9 @@ describe("juniper-pointer — Juniper points at the page", () => {
   });
 
   it("does nothing on a page that does not show the product", async () => {
-    const { cards, say, document } = mountPage([products[0]], () => ({ reply: "Try the Ridge Vest." }));
+    const { cards, say, document } = mountPage([must(products[0], "product")], () => ({ reply: "Try the Ridge Vest." }));
     await say("what carries water?");
-    expect(cards["trail-runner-2"].scrollIntoView).not.toHaveBeenCalled();
+    expect(cardFor(cards, "trail-runner-2").scrollIntoView).not.toHaveBeenCalled();
     expect(document.querySelector("." + RING)).toBeNull();
   });
 
@@ -85,7 +90,7 @@ describe("juniper-pointer — Juniper points at the page", () => {
     link.href = "/products/ridge-vest";
     chat.elements.messages.appendChild(link);
     await say("is it good?");
-    expect(cards["trail-runner-2"].scrollIntoView).not.toHaveBeenCalled();
+    expect(cardFor(cards, "trail-runner-2").scrollIntoView).not.toHaveBeenCalled();
     expect(document.querySelector("." + RING)).toBeNull();
     expect(chat.pointer.point("trail-runner-2")).toBe(false);
   });
@@ -93,19 +98,19 @@ describe("juniper-pointer — Juniper points at the page", () => {
   it("matches the whole title: Trail Runner 2 does not ring Trail Runner", async () => {
     const { cards, say } = mountPage(products, () => ({ reply: "Last season's TRAIL RUNNER 2 has the same fit." }));
     await say("anything cheaper?");
-    expect(cards["trail-runner-2"].classList.contains(RING)).toBe(true);
-    expect(cards["trail-runner"].classList.contains(RING)).toBe(false);
-    expect(cards["trail-runner"].scrollIntoView).not.toHaveBeenCalled();
+    expect(cardFor(cards, "trail-runner-2").classList.contains(RING)).toBe(true);
+    expect(cardFor(cards, "trail-runner").classList.contains(RING)).toBe(false);
+    expect(cardFor(cards, "trail-runner").scrollIntoView).not.toHaveBeenCalled();
   });
 
   it("moves the ring when a second reply names another product", async () => {
     const replies = ["Try the Ridge Vest.", "Or the Trail Runner, plain and light."];
     const { cards, say, document } = mountPage(products, () => ({ reply: replies.shift() || "Noted." }));
     await say("one");
-    expect(cards["ridge-vest"].classList.contains(RING)).toBe(true);
+    expect(cardFor(cards, "ridge-vest").classList.contains(RING)).toBe(true);
     await say("two");
-    expect(cards["ridge-vest"].classList.contains(RING)).toBe(false);
-    expect(cards["trail-runner"].classList.contains(RING)).toBe(true);
+    expect(cardFor(cards, "ridge-vest").classList.contains(RING)).toBe(false);
+    expect(cardFor(cards, "trail-runner").classList.contains(RING)).toBe(true);
     expect(document.querySelectorAll("." + RING).length).toBe(1);
 
     await vi.advanceTimersByTimeAsync(2600);
@@ -116,14 +121,14 @@ describe("juniper-pointer — Juniper points at the page", () => {
     const card = { negotiationId: "n1", status: "live", round: 1, option: { id: "A", items: [{ title: "Ridge Vest", quantity: 1 }], total: 100, listTotal: 120 }, line: "Held for 15 minutes." };
     const { cards, say } = mountPage(products, () => ({ reply: "Here is what I can do.", card, negotiationId: "n1" }));
     await say("best price on the vest?");
-    expect(cards["ridge-vest"].classList.contains(RING)).toBe(true);
-    expect(cards["ridge-vest"].scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(cardFor(cards, "ridge-vest").classList.contains(RING)).toBe(true);
+    expect(cardFor(cards, "ridge-vest").scrollIntoView).toHaveBeenCalledTimes(1);
   });
 
   it("does not throw on titles with regex-special characters", async () => {
     const { cards, say, chat } = mountPage(products, () => ({ reply: "Add the summit gaiters (pair) [v2.0] and we can talk. (.*)+ [" }));
     await say("bundle?");
-    expect(cards["summit-gaiters"].classList.contains(RING)).toBe(true);
+    expect(cardFor(cards, "summit-gaiters").classList.contains(RING)).toBe(true);
     expect(() => chat.pointer.point("a[b](c)*\"'\\")).not.toThrow();
     expect(chat.pointer.point("a[b](c)*\"'\\")).toBe(false);
   });
@@ -134,7 +139,7 @@ describe("juniper-pointer — Juniper points at the page", () => {
     });
     chat.elements.input.focus();
     await say("what carries water?");
-    expect(cards["ridge-vest"].scrollIntoView).toHaveBeenCalledWith({ behavior: "auto", block: "center" });
+    expect(cardFor(cards, "ridge-vest").scrollIntoView).toHaveBeenCalledWith({ behavior: "auto", block: "center" });
     expect(document.activeElement).toBe(chat.elements.input);
   });
 
@@ -144,7 +149,7 @@ describe("juniper-pointer — Juniper points at the page", () => {
     });
     chat.open();
     await say("what carries water?");
-    const card = cards["ridge-vest"];
+    const card = cardFor(cards, "ridge-vest");
     expect(card.classList.contains(RING)).toBe(true);
     expect(card.scrollIntoView).not.toHaveBeenCalled();
 
@@ -163,16 +168,16 @@ describe("juniper-pointer — Juniper points at the page", () => {
     chat.elements.input.focus();
     chat.elements.input.value = "and what about";
     expect(chat.pointer.point("ridge-vest")).toBe(true);
-    expect(cards["ridge-vest"].classList.contains(RING)).toBe(true);
-    expect(cards["ridge-vest"].scrollIntoView).not.toHaveBeenCalled();
+    expect(cardFor(cards, "ridge-vest").classList.contains(RING)).toBe(true);
+    expect(cardFor(cards, "ridge-vest").scrollIntoView).not.toHaveBeenCalled();
   });
 
   it("does not scroll the page out from under a shopper who scrolled it themselves in the last 600ms, but still rings", async () => {
     const { cards, say, window } = mountPage(products, () => ({ reply: "Try the Ridge Vest." }));
     window.dispatchEvent(new window.Event("scroll"));
     await say("what carries water?");
-    expect(cards["ridge-vest"].classList.contains(RING)).toBe(true);
-    expect(cards["ridge-vest"].scrollIntoView).not.toHaveBeenCalled();
+    expect(cardFor(cards, "ridge-vest").classList.contains(RING)).toBe(true);
+    expect(cardFor(cards, "ridge-vest").scrollIntoView).not.toHaveBeenCalled();
   });
 
   it("scrolls again once the shopper's own scroll is more than 600ms old", async () => {
@@ -180,22 +185,22 @@ describe("juniper-pointer — Juniper points at the page", () => {
     const { cards, say, window } = mountPage(products, () => ({ reply: replies.shift() || "Noted." }));
     window.dispatchEvent(new window.Event("scroll"));
     await say("one");
-    expect(cards["ridge-vest"].scrollIntoView).not.toHaveBeenCalled();
+    expect(cardFor(cards, "ridge-vest").scrollIntoView).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(700);
     await say("two");
-    expect(cards["trail-runner"].scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(cardFor(cards, "trail-runner").scrollIntoView).toHaveBeenCalledTimes(1);
   });
 
   it("does not mistake its own smooth scroll for the shopper scrolling", async () => {
     const { cards, say, window, chat } = mountPage(products, () => ({ reply: "Try the Ridge Vest." }));
     await say("what carries water?");
-    expect(cards["ridge-vest"].scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(cardFor(cards, "ridge-vest").scrollIntoView).toHaveBeenCalledTimes(1);
     // The scrollIntoView call we just triggered would fire real 'scroll' events in a browser; simulate one
     // landing right after. A later point() should still scroll — this was never the shopper scrolling.
     window.dispatchEvent(new window.Event("scroll"));
     expect(chat.pointer.point("trail-runner")).toBe(true);
-    expect(cards["trail-runner"].scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(cardFor(cards, "trail-runner").scrollIntoView).toHaveBeenCalledTimes(1);
   });
 
   it("names two products in one reply: rings only the first one on this page, with a single scroll", async () => {
@@ -203,10 +208,10 @@ describe("juniper-pointer — Juniper points at the page", () => {
       reply: "For muddy trails I would look at the Trail Runner 2 — deeper lugs — and the Ridge Vest to keep the wind out.",
     }));
     await say("what's good for muddy trails?");
-    expect(cards["trail-runner-2"].classList.contains(RING)).toBe(true);
-    expect(cards["trail-runner-2"].scrollIntoView).toHaveBeenCalledTimes(1);
-    expect(cards["ridge-vest"].classList.contains(RING)).toBe(false);
-    expect(cards["ridge-vest"].scrollIntoView).not.toHaveBeenCalled();
+    expect(cardFor(cards, "trail-runner-2").classList.contains(RING)).toBe(true);
+    expect(cardFor(cards, "trail-runner-2").scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(cardFor(cards, "ridge-vest").classList.contains(RING)).toBe(false);
+    expect(cardFor(cards, "ridge-vest").scrollIntoView).not.toHaveBeenCalled();
   });
 
   it("does not ring or scroll for a card that arrives outside a live turn (V2 restoring a saved offer on load)", async () => {
@@ -221,8 +226,8 @@ describe("juniper-pointer — Juniper points at the page", () => {
     };
     chat.addOfferCard(card);
     await vi.advanceTimersByTimeAsync(50);
-    expect(cards["ridge-vest"].classList.contains(RING)).toBe(false);
-    expect(cards["ridge-vest"].scrollIntoView).not.toHaveBeenCalled();
+    expect(cardFor(cards, "ridge-vest").classList.contains(RING)).toBe(false);
+    expect(cardFor(cards, "ridge-vest").scrollIntoView).not.toHaveBeenCalled();
     expect(document.querySelector("." + RING)).toBeNull();
   });
 
@@ -231,7 +236,7 @@ describe("juniper-pointer — Juniper points at the page", () => {
     chat.open();
     // Real desktop geometry: the panel is fixed to the bottom-right corner; this card's column falls under it.
     (chat.elements.panel as any).getBoundingClientRect = () => ({ left: 800, right: 1200, top: 100, bottom: 800, width: 400, height: 700 });
-    const card = cards["ridge-vest"];
+    const card = cardFor(cards, "ridge-vest");
     (card as any).getBoundingClientRect = () => ({ left: 850, right: 1050, top: 300, bottom: 600, width: 200, height: 300 });
     await say("what carries water?");
     expect(card.classList.contains(RING)).toBe(true);
@@ -245,7 +250,7 @@ describe("juniper-pointer — Juniper points at the page", () => {
     const { cards, say, chat } = mountPage(products, () => ({ reply: "Try the Ridge Vest." }));
     chat.open();
     (chat.elements.panel as any).getBoundingClientRect = () => ({ left: 800, right: 1200, top: 100, bottom: 800, width: 400, height: 700 });
-    const card = cards["ridge-vest"];
+    const card = cardFor(cards, "ridge-vest");
     (card as any).getBoundingClientRect = () => ({ left: 50, right: 250, top: 300, bottom: 600, width: 200, height: 300 });
     await say("what carries water?");
     expect(card.classList.contains(RING)).toBe(true);

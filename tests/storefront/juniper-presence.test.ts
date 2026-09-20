@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mountWidget } from "./widget.ts";
+import { mountWidget, must } from "./widget.ts";
 
 // A fake Web Audio + mic + frame clock. `rig.mic` and `rig.reply` are the loudness (0..1) the analysers report.
 function fakeAudio(options: { throwOnElementSource?: boolean; suspendedContext?: boolean } = {}) {
@@ -172,8 +172,8 @@ describe("juniper-presence — the halo, the wave and the mouth follow real audi
     expect(level()).toBeGreaterThan(0);
 
     voice(false, "off");
-    expect(rig.tracks[0].stopped).toBe(true);
-    expect(rig.contexts[0].state).not.toBe("running");
+    expect(must(rig.tracks[0], "track").stopped).toBe(true);
+    expect(must(rig.contexts[0], "context").state).not.toBe("running");
     expect(level()).toBe(0);
     expect(widget.classList.contains("juniper-presence--listening")).toBe(false);
     expect(chat.elements.wave.classList.contains("juniper-presence--live")).toBe(false);
@@ -197,7 +197,7 @@ describe("juniper-presence — the halo, the wave and the mouth follow real audi
     await settle();
     expect(rig.getUserMediaCalls).toBe(1);
     chat.setMood("idle");
-    expect(rig.tracks[0].stopped).toBe(true);
+    expect(must(rig.tracks[0], "track").stopped).toBe(true);
   });
 
   it("picks up hands-free that was already turned on before this file loaded, without ever seeing the state event", async () => {
@@ -292,9 +292,9 @@ describe("juniper-presence — the halo, the wave and the mouth follow real audi
     expect(rig.pendingResumes.length).toBe(2); // audio 2's resume is pending too, audio 1's still unresolved
 
     // Audio 2's resume arrives first (the realistic order); audio 1's arrives late, after being superseded.
-    rig.pendingResumes[1]();
+    must(rig.pendingResumes[1], "pending resume")();
     await settle();
-    rig.pendingResumes[0]();
+    must(rig.pendingResumes[0], "pending resume")();
     await settle();
 
     expect(rig.elementSources).toBe(1); // only the reply actually playing was ever wired
