@@ -7,6 +7,11 @@
   min-width: 0;
 }
 
+/* Where hands-free can run, the push-to-talk record button is retired. The speaker toggle stays. */
+.juniper-handsfree--supported [data-ai-chat-mic] {
+  display: none !important;
+}
+
 /* Off: one clear, labelled button across the foot. On: it shrinks to the way out, beside the bar. */
 .juniper-handsfree__toggle {
   display: inline-flex;

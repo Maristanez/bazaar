@@ -11,9 +11,12 @@
   var BACKOFF_MS = 1000;
   var RETRY_SEND_MS = 250;
   var RETRY_SEND_LIMIT = 40;
+  var MIN_WORDS_BEFORE_FIRST_TURN = 3; // auto-listen only: an open mic does not send room noise as the opening turn
   var STOP_WORDS = /^\s*(stop|wait|hold on)\b/i;
   var FLAG_KEY = 'bazaar:handsfree';
   var TOLD_KEY = 'bazaar:handsfree:told';
+  var OFF_KEY = 'bazaar:handsfree:off';   // the shopper turned it off: no auto-start for the rest of the session
+  var SUPPORTED_CLASS = 'juniper-handsfree--supported';
   var STATE_WORDS = { off: '', listening: 'Listening', hearing: 'Hearing you', thinking: 'Juniper is thinking', speaking: 'Juniper is talking' };
   var MIC_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" /></svg>';
 
@@ -29,6 +32,10 @@
   var pending = '';             // a finished turn the chat could not take yet
   var pendingTries = 0;
   var quiet = false;            // a start nobody clicked for: fail without a word
+  var autoListen = Boolean(window.BazaarChatFlags && window.BazaarChatFlags.autoListen === 'always');
+  var autoTrying = false;       // the start in progress is the auto-start; a refusal arms one retry
+  var gestureRetryUsed = false;
+  var shopperTurns = 0;         // turns on this page load, typed or spoken
   var spokenRepliesBefore = false;
   var endTimer = null;
   var restartTimer = null;
@@ -115,7 +122,7 @@
     session.continuous = true;
     session.interimResults = true;
     session.lang = 'en-US';
-    session.onstart = function () { if (session === recognition) quiet = false; };
+    session.onstart = function () { if (session === recognition) guarded(reallyStarted); };
     session.onresult = function (event) { if (session === recognition) guarded(onResult, event); };
     session.onerror = function (event) { if (session === recognition) guarded(onError, event); };
     session.onend = function () { if (session === recognition) guarded(onEnd); };
@@ -125,8 +132,44 @@
       session.start();
     } catch (error) {
       recognition = null;
-      turnOff(quiet ? '' : 'I could not open the microphone, so hands-free is off. The mic button and typing still work.');
+      refused('I could not open the microphone, so hands-free is off. Typing still works.');
     }
+  }
+
+  // The browser let the recogniser open (or results are arriving, which proves the same thing).
+  function reallyStarted() {
+    var unannounced = quiet;
+    quiet = false;
+    autoTrying = false;
+    if (unannounced) tellOnce();
+  }
+
+  function refused(message) {
+    var silently = quiet;
+    var retry = autoTrying && !gestureRetryUsed;
+    turnOff(silently ? '' : message);
+    if (retry) armGestureRetry();
+  }
+
+  // Chrome may refuse a start nobody clicked for. The first touch or key anywhere is a gesture: try once more.
+  function armGestureRetry() {
+    gestureRetryUsed = true;
+    function retry(event) {
+      if (event.type === 'keydown' && event.key === 'Escape') return;
+      document.removeEventListener('pointerdown', retry, true);
+      document.removeEventListener('keydown', retry, true);
+      // A press on our own button is already the shopper asking; the click handles it.
+      if (root && event.target && root.contains(event.target)) return;
+      if (on || stored(OFF_KEY) === '1') return;
+      guarded(function () { autoStart(); });
+    }
+    document.addEventListener('pointerdown', retry, true);
+    document.addEventListener('keydown', retry, true);
+  }
+
+  function autoStart() {
+    autoTrying = true;
+    try { start({ quiet: true }); } catch (error) { turnOff(''); }
   }
 
   function stopRecognition() {
@@ -165,7 +208,7 @@
       return;
     }
     if (!isListening()) return;
-    quiet = false;
+    if (quiet || autoTrying) reallyStarted();
     var text = join(join(carried, said.finals), said.interim);
     if (!text) return;
     heard = text;
@@ -179,7 +222,7 @@
   function onError(event) {
     var reason = event && event.error;
     if (reason === 'not-allowed' || reason === 'service-not-allowed') {
-      turnOff(quiet ? '' : 'The browser would not let me use the microphone, so hands-free is off. Allow the microphone for this shop and tap Talk to Juniper again. Typing still works.');
+      refused('The browser would not let me use the microphone, so hands-free is off. Allow the microphone for this shop and tap Talk to Juniper again. Typing still works.');
     }
     // no-speech, aborted, network and the rest end the session; onend decides whether to reopen it.
   }
@@ -212,6 +255,11 @@
     endTimer = null;
     var text = String(heard || '').trim();
     if (!on || !text) return;
+    if (autoListen && shopperTurns === 0 && text.split(/\s+/).length < MIN_WORDS_BEFORE_FIRST_TURN) {
+      // Too little to be someone talking to Juniper. A fresh session, so these words do not pad the next ones.
+      listen();
+      return;
+    }
     announce('bazaar-voice:caption', { text: text, final: true });
     resetTurn();
     pending = join(pending, text);
@@ -265,6 +313,7 @@
     quiet = Boolean(options && options.quiet);
     on = true;
     store(FLAG_KEY, '1');
+    if (!quiet) store(OFF_KEY, null);
     quickEnds = 0;
     pending = '';
     spokenRepliesBefore = Boolean(chat.state().spokenReplies);
@@ -276,7 +325,9 @@
     return on;
   }
 
+  // The shopper's own off switch (button, Esc, a pill's stop): remembered, so auto-listen stays away this session.
   function stop() {
+    if (on) store(OFF_KEY, '1');
     turnOff('');
   }
 
@@ -285,6 +336,7 @@
     var wasSpeaking = state === 'speaking';
     on = false;
     quiet = false;
+    autoTrying = false;
     endTimer = clearTimer(endTimer);
     pendingTimer = clearTimer(pendingTimer);
     stopRecognition();
@@ -330,8 +382,11 @@
   }
 
   if (!build()) return;
+  // Manual recording is retired wherever hands-free can run; the stylesheet hides [data-ai-chat-mic] under this class.
+  chat.elements.widget.classList.add(SUPPORTED_CLASS);
 
   chat.on('turn:start', function () {
+    shopperTurns += 1;
     if (!on) return;
     // Any turn — spoken, typed or a chip — shuts the mic until Juniper has answered.
     pending = '';
@@ -383,7 +438,10 @@
   };
 
   // The mic grant lasts for the origin, so a shopper who was talking on the last page keeps talking on this one.
-  if (stored(FLAG_KEY) === '1') {
+  // With BazaarChatFlags.autoListen === 'always' she listens from the first page too, unless the shopper said no.
+  if (autoListen && stored(OFF_KEY) !== '1') {
+    autoStart();
+  } else if (stored(FLAG_KEY) === '1') {
     try { start({ quiet: true }); } catch (error) { turnOff(''); }
   }
 })();

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { mountWidget, type MountOptions } from "./widget.ts";
 
 // A stand-in for Chrome's SpeechRecognition: it records what the feature asks of it and lets the test play the shopper.
@@ -8,15 +9,16 @@ type FakeRecognition = {
   onstart?: () => void; onresult?: (event: unknown) => void; onend?: () => void; onerror?: (event: unknown) => void;
   hear: (...parts: (string | [string, boolean])[]) => void;
   end: () => void;
+  started: () => void;
   fail: (error: string) => void;
 };
 
-function fakeSpeech(options: { startThrows?: boolean } = {}) {
+function fakeSpeech(options: { startThrows?: boolean | (() => boolean) } = {}) {
   const instances: FakeRecognition[] = [];
   function Recognition(this: FakeRecognition) {
     const self = this;
     self.calls = [];
-    (self as any).start = () => { self.calls.push("start"); if (options.startThrows) throw new Error("not-allowed"); };
+    (self as any).start = () => { self.calls.push("start"); if (typeof options.startThrows === "function" ? options.startThrows() : options.startThrows) throw new Error("not-allowed"); };
     (self as any).stop = () => { self.calls.push("stop"); };
     (self as any).abort = () => { self.calls.push("abort"); };
     // Each part is one SpeechRecognitionResult: a string is interim, [text, true] is final.
@@ -28,6 +30,7 @@ function fakeSpeech(options: { startThrows?: boolean } = {}) {
       self.onresult?.({ resultIndex: 0, results });
     };
     self.end = () => self.onend?.();
+    self.started = () => self.onstart?.();
     self.fail = (error) => { self.onerror?.({ error }); self.onend?.(); };
     instances.push(self);
   }
@@ -264,6 +267,165 @@ describe("juniper-handsfree — V1 hands-free conversation", () => {
     withPill.chat.handsfree.start();
     expect(withPill.chat.isOpen()).toBe(false);
     expect(withPill.chat.handsfree.isOn()).toBe(true);
+  });
+
+  describe("with the autoListen flag set to always", () => {
+    const always = (extra?: (win: any) => void) => ({ before: (win: any) => { win.BazaarChatFlags = { autoListen: "always" }; extra?.(win); } });
+    const addPill = (win: any) => {
+      const pill = win.document.createElement("div");
+      pill.setAttribute("data-juniper-pill", "");
+      win.document.querySelector(".ai-chat").appendChild(pill);
+    };
+    const notices = (document: Document) => Array.from(document.querySelectorAll(".ai-chat__message--bot")).filter((node) => /Chrome/.test(node.textContent || ""));
+
+    it("starts listening on load with no click, leaves the panel closed beside a pill, and gives the notice once it really starts", () => {
+      const speech = fakeSpeech();
+      const { chat, document, states, window } = mount(speech, always(addPill));
+      expect(chat.handsfree.isOn()).toBe(true);
+      expect(speech.latest().calls).toEqual(["start"]);
+      expect(chat.isOpen()).toBe(false);
+      expect(states[states.length - 1]).toEqual({ on: true, state: "listening" });
+      expect(window.sessionStorage.getItem("bazaar:handsfree")).toBe("1");
+      expect(notices(document)).toHaveLength(0);
+      speech.latest().started();
+      expect(notices(document)).toHaveLength(1);
+    });
+
+    it("opens the panel when there is no pill to show the state", () => {
+      const { chat } = mount(fakeSpeech(), always());
+      expect(chat.isOpen()).toBe(true);
+    });
+
+    it("does nothing by itself for any other flag value", () => {
+      for (const value of [undefined, "keyword", "never", true]) {
+        const speech = fakeSpeech();
+        const { chat } = mount(speech, { before: (win) => { win.BazaarChatFlags = { autoListen: value }; } });
+        expect(chat.handsfree.isOn()).toBe(false);
+        expect(speech.instances).toHaveLength(0);
+      }
+    });
+
+    it("falls back without a word when the browser refuses, and tries once more on the first gesture", () => {
+      const speech = fakeSpeech();
+      const { chat, document, window, button } = mount(speech, always(addPill));
+      const bubbles = document.querySelectorAll(".ai-chat__message--bot").length;
+      speech.latest().fail("not-allowed");
+      expect(chat.handsfree.isOn()).toBe(false);
+      expect(document.querySelectorAll(".ai-chat__message--bot").length).toBe(bubbles);
+      expect(button()!.getAttribute("aria-pressed")).toBe("false");
+      expect(window.sessionStorage.getItem("bazaar:handsfree:off")).toBeNull();
+      expect(speech.instances).toHaveLength(1);
+
+      document.body.dispatchEvent(new window.Event("pointerdown", { bubbles: true }));
+      expect(speech.instances).toHaveLength(2);
+      expect(chat.handsfree.isOn()).toBe(true);
+
+      // Refused again: no third try, and still not a word about it.
+      speech.latest().fail("service-not-allowed");
+      document.body.dispatchEvent(new window.Event("pointerdown", { bubbles: true }));
+      document.body.dispatchEvent(new window.KeyboardEvent("keydown", { key: "a", bubbles: true }));
+      expect(speech.instances).toHaveLength(2);
+      expect(document.querySelectorAll(".ai-chat__message--bot").length).toBe(bubbles);
+    });
+
+    it("retries on a first key press when start() throws on load", () => {
+      let refuse = true;
+      const speech = fakeSpeech({ startThrows: () => refuse });
+      const { chat, document, window } = mount(speech, always(addPill));
+      expect(chat.handsfree.isOn()).toBe(false);
+      refuse = false;
+      document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
+      expect(chat.handsfree.isOn()).toBe(true);
+      speech.latest().started();
+      expect(notices(document)).toHaveLength(1);
+    });
+
+    it("leaves a first gesture on the Talk to Juniper button to the button", () => {
+      const speech = fakeSpeech();
+      const { chat, window, button } = mount(speech, always(addPill));
+      speech.latest().fail("not-allowed");
+      button()!.dispatchEvent(new window.Event("pointerdown", { bubbles: true }));
+      button()!.click();
+      expect(chat.handsfree.isOn()).toBe(true);
+      expect(speech.instances).toHaveLength(2);
+    });
+
+    it("remembers for the session that the shopper turned it off", () => {
+      const speech = fakeSpeech();
+      const first = mount(speech, always(addPill));
+      first.button()!.click();
+      expect(first.chat.handsfree.isOn()).toBe(false);
+      expect(first.window.sessionStorage.getItem("bazaar:handsfree:off")).toBe("1");
+
+      const later = fakeSpeech();
+      const next = mount(later, always((win) => { addPill(win); win.sessionStorage.setItem("bazaar:handsfree:off", "1"); }));
+      expect(next.chat.handsfree.isOn()).toBe(false);
+      expect(later.instances).toHaveLength(0);
+      next.document.body.dispatchEvent(new next.window.Event("pointerdown", { bubbles: true }));
+      expect(later.instances).toHaveLength(0);
+
+      // Asking for it again lifts the opt-out.
+      next.button()!.click();
+      expect(next.chat.handsfree.isOn()).toBe(true);
+      expect(next.window.sessionStorage.getItem("bazaar:handsfree:off")).toBeNull();
+    });
+
+    it("does not send fewer than three words before the conversation has started, and sends anything after", async () => {
+      const speech = fakeSpeech();
+      const { chat, chatRequests, tick } = mount(speech, always(addPill));
+      speech.latest().hear(["Excuse me", true]);
+      await tick(1200);
+      expect(chatRequests()).toHaveLength(0);
+      expect(chat.handsfree.isOn()).toBe(true);
+      expect(speech.running()).toHaveLength(1);
+
+      // The dropped words are gone: they do not pad out the next utterance.
+      speech.latest().hear(["Over here", true]);
+      await tick(1200);
+      expect(chatRequests()).toHaveLength(0);
+
+      speech.latest().hear(["Any deal on these?", true]);
+      await tick(1200);
+      expect(chatRequests()).toHaveLength(1);
+      await tick(0);
+      speech.latest().hear(["Sixty?", true]);
+      await tick(1200);
+      expect(chatRequests()).toHaveLength(2);
+    });
+
+    it("sends a short first utterance when hands-free is not in always mode", async () => {
+      const speech = fakeSpeech();
+      const { button, chatRequests, tick } = mount(speech);
+      button()!.click();
+      speech.latest().hear(["Sixty?", true]);
+      await tick(1200);
+      expect(chatRequests()).toHaveLength(1);
+    });
+  });
+
+  describe("the push-to-talk record button", () => {
+    const withStyles = (win: any) => {
+      const style = win.document.createElement("style");
+      style.textContent = readFileSync(new URL("../../apps/storefront/assets/juniper-handsfree.css", import.meta.url), "utf8");
+      win.document.head.appendChild(style);
+    };
+    // chat-demo.js hides the button itself until the voice config says recording is available; pretend it has.
+    const shown = (document: Document) => { const mic = document.querySelector<HTMLElement>("[data-ai-chat-mic]")!; mic.hidden = false; return mic; };
+
+    it("is hidden while hands-free is supported, and the speaker toggle stays", () => {
+      const { chat, document, window } = mount(fakeSpeech(), { before: withStyles });
+      expect(chat.elements.widget.classList.contains("juniper-handsfree--supported")).toBe(true);
+      expect(window.getComputedStyle(shown(document)).display).toBe("none");
+      const speaker = document.querySelector<HTMLElement>("[data-ai-chat-voice-toggle]")!;
+      speaker.hidden = false;
+      expect(window.getComputedStyle(speaker).display).not.toBe("none");
+    });
+
+    it("stays as it is without SpeechRecognition", () => {
+      const { chat, document, window } = mount(null, { before: withStyles });
+      expect(chat.elements.widget.classList.contains("juniper-handsfree--supported")).toBe(false);
+      expect(window.getComputedStyle(shown(document)).display).not.toBe("none");
+    });
   });
 
   describe("while Juniper is speaking", () => {
