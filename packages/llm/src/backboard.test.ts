@@ -4,6 +4,7 @@ import {
   BackboardError,
   BackboardTimeoutError,
   createBackboardShopkeeper,
+  parseBackboardOfferUnderstanding,
   parseBackboardPick,
   validateBackboardAnswer,
 } from "./backboard";
@@ -211,6 +212,83 @@ describe("Backboard choose and say", () => {
     const fetchImpl = vi.fn(async () => new Response("rate limited", { status: 429 })) as unknown as typeof fetch;
     const client = createBackboardShopkeeper({ apiKey: "key", assistantId: "assistant", fetchImpl });
     await expect(client.chooseAndSay([option], context)).rejects.toThrow("HTTP 429");
+  });
+});
+
+describe("Backboard offer understanding", () => {
+  it("extracts cart totals, quantities, requested items, and relative discounts with memory disabled", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    let call = 0;
+    const fetchImpl = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      bodies.push(body);
+      call += 1;
+      const result = call === 1
+        ? {
+            productHint: "Everyday Heavyweight Tee",
+            quantity: 5,
+            amount: 250,
+            priceMode: "total",
+            currency: "CAD",
+            items: [{ productHint: "Everyday Heavyweight Tee", quantity: 5, requestedFree: false }],
+            reasonTags: ["quantity intent"],
+            confidence: 0.98,
+          }
+        : {
+            productHint: "Everyday Heavyweight Tee",
+            quantity: 5,
+            amount: 5,
+            priceMode: "relative_discount",
+            currency: "CAD",
+            items: [],
+            reasonTags: [],
+            confidence: 0.99,
+          };
+      return completed(JSON.stringify(result), `understand-thread-${call}`);
+    }) as unknown as typeof fetch;
+    const client = createBackboardShopkeeper({
+      apiKey: "key",
+      assistantId: "assistant",
+      memory: "Auto",
+      isolateMemoryByShopper: true,
+      fetchImpl,
+    });
+    const input = {
+      shopperId: "shopper-1",
+      negotiationId: "negotiation-1",
+      shopperMessage: "Hey if I do 5 Tee can you sell me fot 250?",
+      currentProduct: { productId: "tee", title: "Everyday Heavyweight Tee", listPrice: 5800 },
+      products: [{ productId: "tee", title: "Everyday Heavyweight Tee", listPrice: 5800 }],
+      latestShopTotal: null,
+    };
+
+    const total = await client.understandOffer(input);
+    const relative = await client.understandOffer({
+      ...input,
+      shopperMessage: "Could you make this $5 cheaper?",
+      latestShopTotal: 273,
+    });
+
+    expect(total).toMatchObject({ quantity: 5, amount: 250, priceMode: "total", currency: "CAD" });
+    expect(relative).toMatchObject({ amount: 5, priceMode: "relative_discount" });
+    expect(bodies).toHaveLength(2);
+    expect(bodies.every(body => body.memory === "off")).toBe(true);
+    expect(bodies.every(body => body.thread_id === undefined)).toBe(true);
+    expect(String(bodies[1]?.content)).toContain('"latestShopTotal":273');
+  });
+
+  it("rejects malformed or internally inconsistent price analysis", () => {
+    expect(() => parseBackboardOfferUnderstanding("not json")).toThrow(BackboardError);
+    expect(() => parseBackboardOfferUnderstanding(JSON.stringify({
+      productHint: null,
+      quantity: 5,
+      amount: 5,
+      priceMode: "none",
+      currency: "CAD",
+      items: [],
+      reasonTags: [],
+      confidence: 0.8,
+    }))).toThrow(BackboardError);
   });
 });
 

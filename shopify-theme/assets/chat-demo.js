@@ -10,6 +10,8 @@
   var mode = widget.querySelector('[data-ai-chat-mode]');
   var form = widget.querySelector('[data-ai-chat-form]');
   var input = widget.querySelector('[data-ai-chat-input]');
+  var voiceToggle = widget.querySelector('[data-ai-chat-voice-toggle]');
+  var micButton = widget.querySelector('[data-ai-chat-mic]');
   var promptButtons = widget.querySelectorAll('[data-ai-chat-prompt]');
   var productSource = document.querySelector('[data-ai-chat-products]');
   var currentProductSource = document.querySelector('[data-ai-chat-current-product]');
@@ -27,6 +29,14 @@
   var offerArticles = new Map();
   var offerPollers = new WeakMap();
   var countdownTimers = new WeakMap();
+  var voiceAvailable = false;
+  var voiceEnabled = false;
+  var recording = false;
+  var mediaRecorder = null;
+  var audioChunks = [];
+  var activeAudio = null;
+  var activeAudioUrl = null;
+  var defaultPlaceholder = input.getAttribute('placeholder') || 'Ask about outfits...';
 
   if (currentProduct) setNegotiationForProduct(selectedProduct());
 
@@ -34,6 +44,7 @@
 
   if (welcome) welcome.textContent = getWelcomeMessage();
   if (mode && endpoint) mode.textContent = 'Live AI + offers';
+  if (voiceToggle || micButton) loadVoiceConfig();
 
   function normalizeEndpoint(value) {
     return String(value || '').trim().replace(/\/$/, '');
@@ -188,6 +199,138 @@
     return endpoint + '/api/chat';
   }
 
+  function apiUrl(path) {
+    if (!endpoint) return '';
+    if (/\/api\/(?:chat|accept|offers)$/i.test(endpoint)) return endpoint.replace(/\/api\/(?:chat|accept|offers)$/i, path);
+    return endpoint + path;
+  }
+
+  function loadVoiceConfig() {
+    syncVoiceUi();
+    if (!endpoint) return;
+    window.fetch(apiUrl('/api/voice/config'), { headers: { Accept: 'application/json' } })
+      .then(function (response) {
+        if (!response.ok) throw new Error('Voice config returned ' + response.status);
+        return response.json();
+      })
+      .then(function (config) {
+        voiceAvailable = Boolean(config && config.enabled && window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        syncVoiceUi();
+      })
+      .catch(function () {
+        voiceAvailable = false;
+        syncVoiceUi();
+      });
+  }
+
+  function syncVoiceUi() {
+    if (voiceToggle) {
+      voiceToggle.setAttribute('aria-pressed', voiceEnabled ? 'true' : 'false');
+      voiceToggle.setAttribute('aria-disabled', voiceAvailable ? 'false' : 'true');
+      voiceToggle.setAttribute('aria-label', voiceEnabled ? 'Turn voice mode off' : 'Turn voice mode on');
+      voiceToggle.textContent = voiceEnabled ? 'Voice on' : voiceAvailable ? 'Voice off' : 'Voice needs setup';
+    }
+    if (micButton) {
+      micButton.disabled = !voiceAvailable || !voiceEnabled || sending;
+      micButton.classList.toggle('is-recording', recording);
+      micButton.textContent = recording ? 'Stop' : 'Mic';
+      micButton.setAttribute('aria-label', recording ? 'Stop voice input' : 'Start voice input');
+      micButton.setAttribute('title', recording ? 'Stop voice input' : 'Start voice input');
+    }
+  }
+
+  function stopSpeaking() {
+    if (activeAudio) {
+      activeAudio.pause();
+      activeAudio = null;
+    }
+    if (activeAudioUrl) {
+      window.URL.revokeObjectURL(activeAudioUrl);
+      activeAudioUrl = null;
+    }
+  }
+
+  function speakReply(text) {
+    if (!voiceEnabled || !voiceAvailable || !text) return Promise.resolve();
+    stopSpeaking();
+    return window.fetch(apiUrl('/api/voice/speak'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: String(text).slice(0, 600) })
+    }).then(function (response) {
+      if (!response.ok) throw new Error('Voice reply returned ' + response.status);
+      return response.blob();
+    }).then(function (blob) {
+      if (!voiceEnabled) return;
+      activeAudioUrl = window.URL.createObjectURL(blob);
+      activeAudio = new window.Audio(activeAudioUrl);
+      activeAudio.addEventListener('ended', stopSpeaking, { once: true });
+      return activeAudio.play();
+    }).catch(function () {
+      stopSpeaking();
+    });
+  }
+
+  function preferredRecordingType() {
+    if (!window.MediaRecorder || typeof window.MediaRecorder.isTypeSupported !== 'function') return '';
+    var candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
+    return candidates.find(function (type) { return window.MediaRecorder.isTypeSupported(type); }) || '';
+  }
+
+  function startRecording() {
+    if (!voiceEnabled || !voiceAvailable || recording) return;
+    stopSpeaking();
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      var mimeType = preferredRecordingType();
+      mediaRecorder = mimeType ? new window.MediaRecorder(stream, { mimeType: mimeType }) : new window.MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.addEventListener('dataavailable', function (event) {
+        if (event.data && event.data.size) audioChunks.push(event.data);
+      });
+      mediaRecorder.addEventListener('stop', function () {
+        stream.getTracks().forEach(function (track) { track.stop(); });
+        var audio = new Blob(audioChunks, { type: mediaRecorder.mimeType || mimeType || 'audio/webm' });
+        recording = false;
+        input.setAttribute('placeholder', 'Transcribing...');
+        syncVoiceUi();
+        transcribeAudio(audio);
+      }, { once: true });
+      recording = true;
+      input.setAttribute('placeholder', 'Listening...');
+      mediaRecorder.start();
+      syncVoiceUi();
+    }).catch(function () {
+      addMessage('I could not access the microphone. Check the browser microphone permission and try again.', 'bot');
+      recording = false;
+      input.setAttribute('placeholder', defaultPlaceholder);
+      syncVoiceUi();
+    });
+  }
+
+  function stopRecording() {
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+    mediaRecorder.stop();
+  }
+
+  function transcribeAudio(audio) {
+    window.fetch(apiUrl('/api/voice/transcribe'), {
+      method: 'POST',
+      headers: { 'Content-Type': audio.type || 'audio/webm' },
+      body: audio
+    }).then(function (response) {
+      if (!response.ok) throw new Error('Voice transcription returned ' + response.status);
+      return response.json();
+    }).then(function (result) {
+      input.value = String(result.text || '').trim();
+      if (input.value) form.requestSubmit();
+    }).catch(function () {
+      addMessage('I could not transcribe that recording. Please try again.', 'bot');
+    }).finally(function () {
+      input.setAttribute('placeholder', defaultPlaceholder);
+      syncVoiceUi();
+    });
+  }
+
   function acceptUrl() {
     if (/\/api\/chat$/i.test(endpoint)) return endpoint.replace(/\/api\/chat$/i, '/api/accept');
     if (/\/api\/accept$/i.test(endpoint)) return endpoint;
@@ -231,6 +374,8 @@
   }
 
   function closeChat() {
+    if (recording) stopRecording();
+    stopSpeaking();
     panel.hidden = true;
     toggle.setAttribute('aria-expanded', 'false');
     toggle.focus();
@@ -441,6 +586,7 @@
     form.classList.toggle('is-loading', isLoading);
     input.disabled = isLoading;
     form.querySelector('button[type="submit"]').disabled = isLoading;
+    syncVoiceUi();
   }
 
   function getScriptedResponse(text) {
@@ -549,6 +695,28 @@
     });
   }
 
+  if (voiceToggle) {
+    voiceToggle.addEventListener('click', function () {
+      if (!voiceAvailable) {
+        addMessage('Voice mode needs ELEVENLABS_API_KEY on the server and microphone permission in this browser.', 'bot');
+        return;
+      }
+      voiceEnabled = !voiceEnabled;
+      if (!voiceEnabled) {
+        if (recording) stopRecording();
+        stopSpeaking();
+      }
+      syncVoiceUi();
+    });
+  }
+
+  if (micButton) {
+    micButton.addEventListener('click', function () {
+      if (recording) stopRecording();
+      else startRecording();
+    });
+  }
+
   document.addEventListener('click', function (event) {
     if (event.target && event.target.closest && event.target.closest('[data-ai-chat-close]')) {
       event.preventDefault();
@@ -581,7 +749,9 @@
       var thinking = addMessage('Thinking...', 'bot');
       askEndpoint(text).then(function (data) {
         var context = getContextProduct();
-        replaceMessage(thinking, data.reply || data.text || data.message || 'Here is what I found.');
+        var reply = data.reply || data.text || data.message || 'Here is what I found.';
+        replaceMessage(thinking, reply);
+        speakReply(reply);
         var turnProduct = getTurnProduct(text, data.products, data.card);
         addProductCard(turnProduct);
         if (data && data.negotiationId) {
@@ -603,7 +773,9 @@
     }
 
     window.setTimeout(function () {
-      addMessage(getScriptedResponse(text), 'bot');
+      var reply = getScriptedResponse(text);
+      addMessage(reply, 'bot');
+      speakReply(reply);
       addProductCard(getTurnProduct(text));
       if (/offer|deal|discount|checkout|haggle|\$/i.test(text)) addPreviewOfferCard();
     }, 350);

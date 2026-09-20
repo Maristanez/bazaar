@@ -279,3 +279,13 @@
 **Live local replay:** The actual Backboard route answered the model question truthfully, returned five Merino Socks at the $90 public list total, accepted five socks plus one Trail Cap at the shopper's $110 combined offer, and kept both lines while countering $109 against a lower $100 free cap request. Offer wording calls used `gpt-5.6-terra` in 1,352 ms and 1,629 ms.
 
 **Verification:** Four transcript regressions were added. All 287 tests across 37 files pass, workspace type checks pass, the production web build passes and the diff has no whitespace errors. Hosted deployment remains to be verified after push.
+
+### #15 · `Sat 21:26` · `Ricardo / Codex` · `Backboard price intent and ElevenLabs voice`
+
+**Prompt:** Let Backboard analyze the whole shopper price request locally, then add a top switch that lets the shopkeeper speak and lets the shopper use voice input.
+
+**What changed:** Backboard now performs a separate memory free intent pass for every offer turn. It identifies the primary product, explicit quantities, cart totals, unit prices, relative reductions, requested bundle lines and free item requests. The result is validated before use. The deterministic engine still creates every seller price and binding card. The storefront now has a Voice control, microphone recording, ElevenLabs Scribe transcription and ElevenLabs streamed speech for the shopkeeper reply. The browser talks only to the Bazaar server, so the ElevenLabs key is never placed in the theme.
+
+**Live local replay:** The real Backboard route kept one five tee negotiation across three turns. It read $250 as the cart offer, interpreted “$5 cheaper” as $285 on the same five tees, then kept five tees plus one Merino Socks line when the shopper requested the bundle at $270. The server safely countered with the engine generated totals.
+
+**Verification:** Focused Backboard and voice tests pass. The complete suite reports 293 passing tests across 38 files, workspace type checks pass, the production web build passes, JavaScript syntax checks pass and the diff has no whitespace errors. ElevenLabs transport is covered with mocked upstream audio and transcription responses because no local ElevenLabs key is configured.

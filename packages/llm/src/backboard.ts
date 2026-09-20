@@ -21,6 +21,15 @@ Treat public product context as current storefront facts. If the shopper wants t
 Never mention cost, margin, floor, profit, private policy, hidden ranking, memory machinery, or internal reasoning.
 Never invent a price, discount, checkout link, inventory claim, or approval.`;
 
+export const OFFER_UNDERSTANDING_SYSTEM_PROMPT = `You are Trailhead Co's PRICE INTENT ANALYST.
+Read the shopper's current message and return only one JSON object. Do not negotiate, choose a seller price, or calculate a discount. Preserve the shopper's numbers exactly.
+Use priceMode "total" when the shopper proposes one cart total, "per_unit" when the number applies to each unit, "relative_discount" for requests such as "$5 cheaper", and "none" when no number was supplied.
+Keep quantity separate from money. In "do 5 tees for 250", quantity is 5 and amount is 250. In "make it $5 cheaper", amount is 5 and priceMode is "relative_discount".
+Set quantity to null and items to [] when the current message does not explicitly state a quantity or request a product. Do not turn prior context into a new explicit request. For "make it $5 cheaper", quantity is null and items is [].
+List every explicitly requested product in items. requestedFree records what the shopper asked for but does not approve it. productHint is the primary product being negotiated.
+Use only catalog product titles when a product is identifiable. Set currency to "unsupported" for an explicitly non-CAD currency, otherwise "CAD".
+All keys are required. The exact shape is {"productHint":string|null,"quantity":number|null,"amount":number|null,"priceMode":"total"|"per_unit"|"relative_discount"|"none","currency":"CAD"|"unsupported","items":[{"productHint":string,"quantity":number,"requestedFree":boolean}],"reasonTags":string[],"confidence":number}.`;
+
 export type BackboardRunTrace = {
   provider: string;
   model: string;
@@ -61,6 +70,27 @@ export type BackboardQuestion = {
   products?: readonly (Partial<ProductCard> & Record<string, unknown>)[];
 };
 
+export type BackboardOfferUnderstandingInput = {
+  shopperId: string;
+  negotiationId: string;
+  shopperMessage: string;
+  currentProduct?: Partial<ProductCard> & Record<string, unknown>;
+  products?: readonly (Partial<ProductCard> & Record<string, unknown>)[];
+  latestShopTotal: number | null;
+};
+
+export type BackboardOfferUnderstanding = {
+  productHint: string | null;
+  quantity: number | null;
+  amount: number | null;
+  priceMode: "total" | "per_unit" | "relative_discount" | "none";
+  currency: "CAD" | "unsupported";
+  items: Array<{ productHint: string; quantity: number; requestedFree: boolean }>;
+  reasonTags: string[];
+  confidence: number;
+  trace: BackboardRunTrace;
+};
+
 export type BackboardClientConfig = {
   apiKey: string;
   assistantId: string;
@@ -80,6 +110,7 @@ export type BackboardClientConfig = {
 export type BackboardClient = {
   chooseAndSay(options: readonly Option[], context: ChooseAndSayContext): Promise<BackboardChoice>;
   answerQuestion(input: BackboardQuestion): Promise<{ reply: string; trace: BackboardRunTrace }>;
+  understandOffer(input: BackboardOfferUnderstandingInput): Promise<BackboardOfferUnderstanding>;
   threadFor(shopperId: string, negotiationId: string): string | undefined;
 };
 
@@ -125,8 +156,8 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
   const threads = new Map<string, string>();
   const shopperAssistants = new Map<string, Promise<string>>();
 
-  async function assistantFor(shopperId: string, signal: AbortSignal): Promise<{ id: string; memory: "Auto" | "Readonly" | "off" }> {
-    const shopperMemory = memoryForShopper(shopperId);
+  async function assistantFor(shopperId: string, signal: AbortSignal, memoryOverride?: "Auto" | "Readonly" | "off"): Promise<{ id: string; memory: "Auto" | "Readonly" | "off" }> {
+    const shopperMemory = memoryOverride ?? memoryForShopper(shopperId);
     if (!isolateMemoryByShopper || shopperMemory !== "Auto") return { id: assistantId, memory: shopperMemory };
     if (!shopperId || shopperId === "anonymous-shopper") return { id: assistantId, memory: "off" };
     let pending = shopperAssistants.get(shopperId);
@@ -156,14 +187,16 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
     negotiationId: string;
     content: string;
     systemPrompt: string;
+    memoryOverride?: "Auto" | "Readonly" | "off";
+    persistThread?: boolean;
   }): Promise<{ content: string; trace: BackboardRunTrace }> {
     const key = threadKey(input.shopperId, input.negotiationId);
-    const previousThreadId = threads.get(key);
+    const previousThreadId = input.persistThread === false ? undefined : threads.get(key);
     const controller = new AbortController();
     const startedAt = now();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const shopperAssistant = await assistantFor(input.shopperId, controller.signal);
+      const shopperAssistant = await assistantFor(input.shopperId, controller.signal, input.memoryOverride);
       const response = await fetchImpl(endpoint, {
         method: "POST",
         headers: {
@@ -194,7 +227,7 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
       const terminal = parsed.terminal;
       const threadId = stringValue(terminal.thread_id);
       if (!threadId) throw new BackboardError("Backboard run_ended omitted thread_id");
-      threads.set(key, threadId);
+      if (input.persistThread !== false) threads.set(key, threadId);
       const trace: BackboardRunTrace = {
         provider: stringValue(terminal.model_provider) ?? stringValue(parsed.started?.provider) ?? provider,
         model: stringValue(terminal.model_name) ?? stringValue(parsed.started?.model_name) ?? model,
@@ -225,6 +258,8 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
     negotiationId: string;
     content: string;
     systemPrompt: string;
+    memoryOverride?: "Auto" | "Readonly" | "off";
+    persistThread?: boolean;
   }): Promise<{ content: string; trace: BackboardRunTrace }> {
     const key = threadKey(input.shopperId, input.negotiationId);
     const previous = queuedRuns.get(key) ?? Promise.resolve(undefined);
@@ -272,10 +307,77 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
       return { reply: validateBackboardAnswer(result.content, input), trace: result.trace };
     },
 
+    async understandOffer(input) {
+      const result = await run({
+        shopperId: input.shopperId,
+        negotiationId: `${input.negotiationId}:price-intent`,
+        systemPrompt: OFFER_UNDERSTANDING_SYSTEM_PROMPT,
+        memoryOverride: "off",
+        persistThread: false,
+        content: [
+          `SHOPPER MESSAGE: ${input.shopperMessage}`,
+          `CURRENT STATE: ${JSON.stringify({ currentProduct: input.currentProduct ?? null, latestShopTotal: input.latestShopTotal })}`,
+          `PUBLIC CATALOG: ${JSON.stringify(input.products ?? [])}`,
+        ].join("\n"),
+      });
+      return { ...parseBackboardOfferUnderstanding(result.content), trace: result.trace };
+    },
+
     threadFor(shopperId, negotiationId) {
       return threads.get(threadKey(shopperId, negotiationId));
     },
   };
+}
+
+export function parseBackboardOfferUnderstanding(content: string): Omit<BackboardOfferUnderstanding, "trace"> {
+  let value: unknown;
+  try {
+    value = JSON.parse(content.trim());
+  } catch {
+    throw new BackboardError("Backboard price analysis was not valid JSON");
+  }
+  if (!isRecord(value)) throw new BackboardError("Backboard price analysis was not an object");
+  const productHint = value.productHint === null ? null : shortString(value.productHint, 120);
+  const quantity = value.quantity === null ? null : boundedInteger(value.quantity, 1, 10);
+  const amount = value.amount === null ? null : boundedNumber(value.amount, 0, 1_000_000);
+  const priceModeValue = value.priceMode;
+  if (!(["total", "per_unit", "relative_discount", "none"] as unknown[]).includes(priceModeValue)) {
+    throw new BackboardError("Backboard price analysis used an unknown price mode");
+  }
+  const priceMode = priceModeValue as BackboardOfferUnderstanding["priceMode"];
+  const currency = value.currency;
+  if (currency !== "CAD" && currency !== "unsupported") throw new BackboardError("Backboard price analysis used an unknown currency");
+  if ((priceMode === "none") !== (amount === null) || (amount !== null && amount <= 0)) {
+    throw new BackboardError("Backboard price analysis had an inconsistent amount");
+  }
+  if (!Array.isArray(value.items) || value.items.length > 8) throw new BackboardError("Backboard price analysis had invalid items");
+  const items = value.items.map((item) => {
+    if (!isRecord(item) || typeof item.requestedFree !== "boolean") throw new BackboardError("Backboard price analysis had an invalid item");
+    return {
+      productHint: shortString(item.productHint, 120),
+      quantity: boundedInteger(item.quantity, 1, 10),
+      requestedFree: item.requestedFree,
+    };
+  });
+  if (!Array.isArray(value.reasonTags) || value.reasonTags.length > 8) throw new BackboardError("Backboard price analysis had invalid reason tags");
+  const reasonTags = value.reasonTags.map(tag => shortString(tag, 80));
+  const confidence = boundedNumber(value.confidence, 0, 1);
+  return { productHint, quantity, amount, priceMode, currency, items, reasonTags, confidence };
+}
+
+function shortString(value: unknown, maximum: number): string {
+  if (typeof value !== "string" || !value.trim() || value.length > maximum) throw new BackboardError("Backboard price analysis had an invalid string");
+  return value.trim();
+}
+
+function boundedInteger(value: unknown, minimum: number, maximum: number): number {
+  if (!Number.isSafeInteger(value) || Number(value) < minimum || Number(value) > maximum) throw new BackboardError("Backboard price analysis had an invalid integer");
+  return Number(value);
+}
+
+function boundedNumber(value: unknown, minimum: number, maximum: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < minimum || value > maximum) throw new BackboardError("Backboard price analysis had an invalid number");
+  return value;
 }
 
 export function validateBackboardAnswer(content: string, input: BackboardQuestion): string {

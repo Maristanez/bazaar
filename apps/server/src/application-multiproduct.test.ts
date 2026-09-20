@@ -64,6 +64,74 @@ function productPayload(product: PublicProduct, shopperId: string, message: stri
 }
 
 describe("multi-product shopper API integration", () => {
+  it("uses Backboard to distinguish quantity, total, relative discount, and a free bundle item", async () => {
+    const analyses = [
+      {
+        productHint: "Everyday Heavyweight Tee", quantity: 5, amount: 250, priceMode: "total", currency: "CAD",
+        items: [{ productHint: "Everyday Heavyweight Tee", quantity: 5, requestedFree: false }],
+        reasonTags: ["quantity intent"], confidence: 0.99,
+      },
+      {
+        productHint: "Everyday Heavyweight Tee", quantity: 5, amount: 5, priceMode: "relative_discount", currency: "CAD",
+        items: [], reasonTags: [], confidence: 0.99,
+      },
+      {
+        productHint: "Everyday Heavyweight Tee", quantity: 5, amount: 270, priceMode: "total", currency: "CAD",
+        items: [
+          { productHint: "Everyday Heavyweight Tee", quantity: 5, requestedFree: false },
+          { productHint: "Merino Socks", quantity: 1, requestedFree: true },
+        ],
+        reasonTags: ["quantity intent", "add-on intent"], confidence: 0.99,
+      },
+    ];
+    let analysisIndex = 0;
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      if (String(input).includes("myshopify.com/admin/api")) {
+        const query = String(body.query || "");
+        if (!query.includes("BazaarProducts")) throw new Error("Unexpected Shopify request");
+        return Response.json({ data: { products: { nodes: [
+          shopifyProduct("10", "Everyday Heavyweight Tee", "everyday-heavyweight-tee", "T-Shirts", "58.00", "20.00", 20),
+          shopifyProduct("11", "Merino Socks", "merino-socks", "Accessories", "18.00", "6.00", 20),
+        ] } } });
+      }
+      if (String(body.system_prompt).includes("PRICE INTENT ANALYST")) {
+        return backboardCompleted(JSON.stringify(analyses[analysisIndex++]));
+      }
+      const content = String(body.content);
+      const menu = JSON.parse(content.slice(content.indexOf("MENU: ") + 6)) as Array<{ id: string; total: string }>;
+      return backboardCompleted(`OPTION: ${menu[0]!.id}\nI can do ${menu[0]!.total}.`);
+    };
+    const base = await start({
+      env: {
+        BACKBOARD_API_KEY: "test",
+        BACKBOARD_MEMORY_MODE: "off",
+        SHOPIFY_SHOP: "test-shop",
+        SHOPIFY_ADMIN_ACCESS_TOKEN: "test-token",
+      },
+      fetchImpl,
+    });
+    const tee = (await products(base)).find(product => product.title === "Everyday Heavyweight Tee")!;
+    const shopperId = "backboard-price-reader";
+
+    const first = await chat(base, productPayload(tee, shopperId, "Hey if I do 5 Tee can you sell me fot 250?"));
+    expect(first.body.card.option.items[0]).toMatchObject({ title: "Everyday Heavyweight Tee", qty: 5 });
+    expect(first.body.card.trail[1].amount).toBe(25000);
+
+    const relative = await chat(base, productPayload(tee, shopperId, "Could you make this $5 cheaper?", { negotiationId: first.body.negotiationId }));
+    expect(relative.body.card.trail[1].amount).toBe(first.body.card.option.total - 500);
+
+    const bundle = await chat(base, productPayload(tee, shopperId, "can you do 5 Tee with 270 and give me a free Merino socks?", { negotiationId: relative.body.negotiationId }));
+    expect(bundle.body.card, JSON.stringify(bundle.body)).toBeDefined();
+    expect(bundle.body.card.trail[1].amount).toBe(27000);
+    expect(bundle.body.card.option.items).toEqual([
+      expect.objectContaining({ title: "Everyday Heavyweight Tee", qty: 5 }),
+      expect.objectContaining({ title: "Merino Socks", qty: 1, thrownIn: true }),
+    ]);
+    expect(bundle.body.card.option.listTotal).toBe(30800);
+    expect(analysisIndex).toBe(3);
+  });
+
   it("answers an LLM model question directly without confusing it with a product model", async () => {
     let backboardCalls = 0;
     const fetchImpl: typeof fetch = async () => {
@@ -397,6 +465,16 @@ describe("multi-product shopper API integration", () => {
     expect(trailOffer.body.card.option.items[0]).toMatchObject({ title: "Trail Runner 2", qty: 1 });
   });
 });
+
+function backboardCompleted(content: string): Response {
+  return new Response(`data: ${JSON.stringify({
+    type: "run_ended",
+    status: "completed",
+    final_content: content,
+    thread_id: `thread-${Math.random()}`,
+    assistant_id: "assistant",
+  })}\n\n`, { status: 200, headers: { "Content-Type": "text/event-stream" } });
+}
 
 function shopifyProduct(id: string, title: string, handle: string, productType: string, price: string, cost: string, inventory: number) {
   return {

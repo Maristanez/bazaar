@@ -26,12 +26,18 @@ const MAX_ROUNDS = 4;
 const MAX_OFFER_QUANTITY = 10;
 const MIRROR_TTL_MS = 60_000;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_VOICE_TEXT = 600;
+const MAX_VOICE_AUDIO_BYTES = 5 * 1024 * 1024;
 
 
 const backboardProvider = env.BACKBOARD_MODEL_PROVIDER || "openai";
 const backboardModel = env.BACKBOARD_MODEL_NAME || "gpt-5.6-terra";
 const backboardAssistantId = env.BACKBOARD_ASSISTANT_ID || "16072e36-597a-4720-94c3-1d4cf2f520f9";
 const backboardTimeoutMs = Number(env.BACKBOARD_TIMEOUT_MS || 6500);
+const elevenLabsApiKey = String(env.ELEVENLABS_API_KEY || "").trim();
+const elevenLabsVoiceId = String(env.ELEVENLABS_VOICE_ID || "JBFqnCBsd6RMkjVDRZzb").trim();
+const elevenLabsTtsModel = String(env.ELEVENLABS_TTS_MODEL || "eleven_flash_v2_5").trim();
+const elevenLabsSttModel = String(env.ELEVENLABS_STT_MODEL || "scribe_v2").trim();
 const backboard = env.BACKBOARD_API_KEY
   ? createBackboardShopkeeper({
     apiKey: env.BACKBOARD_API_KEY,
@@ -151,6 +157,7 @@ const server = createServer(async (request, response) => {
       model: `${backboardProvider}/${backboardModel}`,
       hasBackboardKey: Boolean(env.BACKBOARD_API_KEY),
       backboardAssistantConfigured: Boolean(backboardAssistantId),
+      voiceConfigured: Boolean(elevenLabsApiKey),
       shopifyConfigured: hasShopifyCredentials(),
       products: mirror.products.length,
       mirrorSource: mirror.source,
@@ -183,7 +190,7 @@ const server = createServer(async (request, response) => {
     sendJson(response, request, 200, {
       ok: true,
       service: "bazaar-chat",
-      routes: ["GET /api/products", "POST /api/chat", "POST /api/offers", "POST /api/accept", "GET /api/stream", "GET /health"],
+      routes: ["GET /api/products", "POST /api/chat", "POST /api/offers", "POST /api/accept", "GET /api/voice/config", "POST /api/voice/speak", "POST /api/voice/transcribe", "GET /api/stream", "GET /health"],
     });
     return;
   }
@@ -200,6 +207,67 @@ const server = createServer(async (request, response) => {
     } catch (error) {
       console.error("[api/products]", error);
       sendJson(response, request, 503, { error: "shopify_unavailable", items: publicProducts(state.mirror), warnings: [error.message] });
+    }
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/voice/config") {
+    sendJson(response, request, 200, {
+      enabled: Boolean(elevenLabsApiKey),
+      provider: "elevenlabs",
+      ttsModel: elevenLabsTtsModel,
+      sttModel: elevenLabsSttModel,
+    });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/voice/speak") {
+    if (!elevenLabsApiKey) { sendJson(response, request, 503, { error: "voice_unavailable" }); return; }
+    try {
+      const payload = await readJson(request);
+      const text = String(payload.text || "").replace(/\s+/g, " ").trim();
+      if (!text || text.length > MAX_VOICE_TEXT) { sendJson(response, request, 400, { error: "invalid_voice_text" }); return; }
+      const audio = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(elevenLabsVoiceId)}/stream?output_format=mp3_44100_128`, {
+        method: "POST",
+        headers: { "xi-api-key": elevenLabsApiKey, "Content-Type": "application/json", Accept: "audio/mpeg" },
+        body: JSON.stringify({ text, model_id: elevenLabsTtsModel }),
+      });
+      if (!audio.ok) throw new Error(`ElevenLabs TTS HTTP ${audio.status}`);
+      const body = Buffer.from(await audio.arrayBuffer());
+      sendCors(response, request);
+      response.writeHead(200, { "Content-Type": audio.headers.get("content-type") || "audio/mpeg", "Cache-Control": "no-store", "Content-Length": body.length });
+      response.end(body);
+    } catch (error) {
+      console.error("[voice/speak]", error instanceof Error ? error.message : error);
+      sendJson(response, request, 502, { error: "voice_generation_failed" });
+    }
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/voice/transcribe") {
+    if (!elevenLabsApiKey) { sendJson(response, request, 503, { error: "voice_unavailable" }); return; }
+    try {
+      const mimeType = String(request.headers["content-type"] || "audio/webm").split(";")[0].trim();
+      if (!/^audio\//i.test(mimeType)) { sendJson(response, request, 415, { error: "audio_required" }); return; }
+      const audio = await readBuffer(request, MAX_VOICE_AUDIO_BYTES);
+      if (!audio.length) { sendJson(response, request, 400, { error: "empty_audio" }); return; }
+      const form = new FormData();
+      form.append("file", new Blob([audio], { type: mimeType }), `shopper.${audioExtension(mimeType)}`);
+      form.append("model_id", elevenLabsSttModel);
+      form.append("tag_audio_events", "false");
+      const transcription = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+        method: "POST",
+        headers: { "xi-api-key": elevenLabsApiKey, Accept: "application/json" },
+        body: form,
+      });
+      if (!transcription.ok) throw new Error(`ElevenLabs STT HTTP ${transcription.status}`);
+      const result = await transcription.json();
+      const text = String(result?.text || "").trim();
+      if (!text) throw new Error("ElevenLabs STT returned no text");
+      sendJson(response, request, 200, { text });
+    } catch (error) {
+      console.error("[voice/transcribe]", error instanceof Error ? error.message : error);
+      sendJson(response, request, 502, { error: "transcription_failed" });
     }
     return;
   }
@@ -364,6 +432,28 @@ function readJson(request) {
       }
     });
   });
+}
+
+function readBuffer(request, maximumBytes) {
+  return new Promise((resolveBuffer, reject) => {
+    const chunks = [];
+    let length = 0;
+    request.on("data", chunk => {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      length += buffer.length;
+      if (length > maximumBytes) request.destroy(new Error("Request body too large"));
+      else chunks.push(buffer);
+    });
+    request.on("error", reject);
+    request.on("end", () => resolveBuffer(Buffer.concat(chunks)));
+  });
+}
+
+function audioExtension(mimeType) {
+  if (/ogg/i.test(mimeType)) return "ogg";
+  if (/mp4|m4a/i.test(mimeType)) return "m4a";
+  if (/wav/i.test(mimeType)) return "wav";
+  return "webm";
 }
 
 function hasShopifyCredentials() {
@@ -659,12 +749,19 @@ async function makeOfferTurn(payload, message) {
   const needsFreshApprovalCost = active?.round >= MAX_ROUNDS && owner.getPolicy().askOwner && !active.approvalUsed;
   const mirror = await syncMirror({ force: needsFreshApprovalCost });
   const shopperContext = resolveShopperContext(payload.shopperId, mirror, payload.negotiationId);
-  const understanding = await understandOffer(message, payload, mirror);
-  const matchText = [message, understanding.productHint].filter(Boolean).join(" ");
-  const match = findProductFromPayload({ ...payload, text: matchText }, mirror, { contextItem: shopperContext?.item, allowFallback: false });
+  const understanding = await understandOffer(message, payload, mirror, shopperContext);
+  if (understanding.currency === "unsupported") {
+    return { reply: "Please send the offer in CAD so I can price it safely.", products: publicProducts(mirror) };
+  }
+  const matchText = [message, understanding.productHint, ...(understanding.items || []).map(item => item.productHint)].filter(Boolean).join(" ");
+  const understoodMatch = understanding.productHint
+    ? findProductFromPayload({ ...payload, message: understanding.productHint, text: understanding.productHint }, mirror, { contextItem: shopperContext?.item, allowFallback: false })
+    : null;
+  const match = understoodMatch || findProductFromPayload({ ...payload, text: matchText }, mirror, { contextItem: shopperContext?.item, allowFallback: false });
   if (!match) return { reply: "Pick a published product first, then send me a number like “Could you do $120?”", products: publicProducts(mirror) };
   const sameContextItem = shopperContext?.item && shopperContext.item.productId === match.item.productId;
-  const cartRequest = requestedCartFromMessage(message, mirror, match.item);
+  const cartRequest = requestedCartFromUnderstanding(understanding.items, mirror, match.item)
+    || requestedCartFromMessage(message, mirror, match.item);
   if (cartRequest.unavailable.length) {
     return {
       reply: unavailableCartReply(cartRequest.unavailable, mirror, match.item),
@@ -1085,19 +1182,69 @@ function normalizeSearchText(value) {
   return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
-async function understandOffer(message, payload) {
-  return deterministicOfferUnderstanding(message, payload);
+async function understandOffer(message, payload, mirror, shopperContext) {
+  const fallback = () => deterministicOfferUnderstanding(message, payload);
+  if (!backboard) return fallback();
+  const shopperId = requireShopperId(payload);
+  const negotiationId = payload.negotiationId || shopperContext?.negotiationId || `catalog:${shopperId}`;
+  const latest = latestNegotiationOffer(negotiationId);
+  const products = publicProducts(mirror);
+  const currentProduct = shopperContext?.item
+    ? { ...products.find(product => product.productId === shopperContext.item.productId), quantity: shopperContext.quantity }
+    : enrichPublicProduct(publicObjectOrNull(payload.product), mirror);
+  try {
+    const analysis = await backboard.understandOffer({
+      shopperId,
+      negotiationId,
+      shopperMessage: message,
+      ...(currentProduct ? { currentProduct } : {}),
+      products,
+      latestShopTotal: latest ? latest.total / 100 : null,
+    });
+    const relativeAmount = analysis.priceMode === "relative_discount"
+      ? latest && analysis.amount !== null ? latest.total / 100 - analysis.amount : null
+      : analysis.amount;
+    if (relativeAmount !== null && (!Number.isFinite(relativeAmount) || relativeAmount <= 0)) throw new Error("invalid relative offer");
+    logBackboardRun("understand", analysis.trace);
+    const relativeFollowup = analysis.priceMode === "relative_discount";
+    const explicitQuantity = parseQuantity(message, null);
+    return {
+      productHint: analysis.productHint,
+      quantity: relativeFollowup && explicitQuantity === null ? null : analysis.quantity,
+      dollars: relativeAmount,
+      perUnit: analysis.priceMode === "per_unit",
+      priceMode: analysis.priceMode,
+      currency: analysis.currency,
+      items: relativeFollowup ? [] : analysis.items,
+      reasonText: message,
+      reasonTags: analysis.reasonTags,
+      confidence: analysis.confidence,
+    };
+  } catch (error) {
+    console.error("[backboard/understand]", error instanceof Error ? error.message : error);
+    return fallback();
+  }
+}
+
+function latestNegotiationOffer(negotiationId) {
+  let latest = null;
+  for (const offer of state.offers.values()) if (offer.negotiationId === negotiationId) latest = offer;
+  return latest;
 }
 
 function deterministicOfferUnderstanding(message, payload = {}) {
+  const dollars = parseMoney(message) ?? parseMoney(payload.amount);
   return {
     productHint: null,
     quantity: parseQuantity(message, null),
-    dollars: parseMoney(message) ?? parseMoney(payload.amount),
+    dollars,
     perUnit: isPerUnitOffer(message),
+    priceMode: dollars === null ? "none" : isPerUnitOffer(message) ? "per_unit" : "total",
+    currency: /\b(?:USD|EUR|JPY)\b/i.test(String(message || "")) ? "unsupported" : "CAD",
+    items: [],
     reasonText: message,
     reasonTags: [],
-    confidence: parseMoney(message) !== null ? 0.6 : 0.35,
+    confidence: dollars !== null ? 0.6 : 0.35,
   };
 }
 
@@ -1156,6 +1303,40 @@ function requestedCartFromMessage(message, mirror, main) {
     unavailable,
     quotedTotalDollars: quotedLineAmounts.length >= 2 ? quotedLineAmounts.reduce((sum, amount) => sum + amount, 0) : null,
   };
+}
+
+function requestedCartFromUnderstanding(items, mirror, main) {
+  if (!Array.isArray(items) || !items.length) return null;
+  const groups = new Map();
+  for (const item of mirror.items) {
+    const group = groups.get(item.productId) || [];
+    group.push(item);
+    groups.set(item.productId, group);
+  }
+  let mainQuantity = null;
+  const requestedItems = [];
+  const unavailable = [];
+  const seen = new Set();
+  for (const requested of items) {
+    const hint = normalizeSearchText(requested?.productHint);
+    const variants = [...groups.values()].find(group => productMention(hint, group[0]));
+    if (!variants) return null;
+    const sample = variants[0];
+    if (seen.has(sample.productId)) continue;
+    seen.add(sample.productId);
+    const quantity = Number(requested.quantity);
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > MAX_OFFER_QUANTITY) return null;
+    if (sample.productId === main.productId) {
+      mainQuantity = quantity;
+      const selected = variants.find(item => item.variantId === main.variantId) || main;
+      if (!selected.inStock || selected.cost === null || Number(selected.inventory ?? quantity) < quantity) unavailable.push({ ...sample, quantity });
+      continue;
+    }
+    const available = variants.find(item => item.inStock && item.cost !== null && Number(item.inventory ?? quantity) >= quantity);
+    if (!available) unavailable.push({ ...sample, quantity });
+    else requestedItems.push({ variantId: available.variantId, quantity });
+  }
+  return { mainQuantity, requestedItems, unavailable, quotedTotalDollars: null };
 }
 
 function productMention(text, item) {
