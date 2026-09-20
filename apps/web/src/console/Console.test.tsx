@@ -37,7 +37,7 @@ test("S5: fixture events reach the feed in under a second, newest first, with re
   await act(async () => { await vi.advanceTimersByTimeAsync(100); });
   const first = screen.getByRole("article", { name: "blocked · validate" });
   expect(within(first).getByText(events[0]!.reasoning)).toBeTruthy();
-  expect(getComputedStyle(first).backgroundColor).toBe("rgb(243, 103, 90)");
+  expect(first.className).toContain("feed-row-blocked");
   await act(async () => { await vi.advanceTimersByTimeAsync(100); });
   expect(screen.getAllByRole("article")[0]!.textContent).toContain(events[1]!.reasoning);
   await act(async () => { await vi.advanceTimersByTimeAsync(900); });

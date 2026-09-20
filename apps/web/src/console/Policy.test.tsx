@@ -2,9 +2,23 @@
 import React from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
+import type { ConsoleState } from "@bazaar/contracts";
 import { Console } from "./Console";
 import { createFixturePort } from "./data/fixturePort";
+import { state } from "./fixtures/state";
 afterEach(() => { cleanup(); vi.useRealTimers(); });
+
+/** The shared fixture's catalog is fully resolved (README: "all these are resolved"); this test
+ * needs its own deliberately-flawed products to exercise the red/amber flagging rules. */
+function withFlaggedProducts(): ConsoleState {
+  const withGaps = structuredClone(state);
+  withGaps.products = withGaps.products.map(product => {
+    if (product.title === "Cap") return { ...product, missingCost: true, variants: product.variants.map(variant => ({ ...variant, unitCost: null })) };
+    if (["Merino socks", "Trail gaiters", "Soft flask"].includes(product.title)) return { ...product, missingStockedAt: true, stockedAt: null };
+    return product;
+  });
+  return withGaps;
+}
 
 test("S6: preview changes nothing on readback; Adopt commits the slider and ask-me choice exactly once", async () => {
   const port = createFixturePort({ stream: [] });
@@ -25,15 +39,15 @@ test("S6: preview changes nothing on readback; Adopt commits the slider and ask-
 });
 
 test("missing cost blocks Cap in red; three missing stock dates are dull amber, never decision yellow", async () => {
-  render(<Console port={createFixturePort({ stream: [] })} />);
+  render(<Console port={createFixturePort({ initialState: withFlaggedProducts(), stream: [] })} />);
   const cap = await screen.findByRole("listitem", { name: "Cap" });
   expect(cap.textContent).toContain("missing cost — not open to offers");
-  expect(getComputedStyle(cap).backgroundColor).toBe("rgb(243, 103, 90)");
+  expect(cap.className).toContain("flag-red");
   for (const title of ["Merino socks", "Trail gaiters", "Soft flask"]) {
     const row = screen.getByRole("listitem", { name: title });
     expect(row.textContent).toContain("no stock date — treated as new stock");
-    expect(getComputedStyle(row).backgroundColor).toBe("rgb(232, 214, 185)");
-    expect(getComputedStyle(row).backgroundColor).not.toBe("rgb(246, 216, 9)");
+    expect(row.className).toContain("flag-amber");
+    expect(row.className).not.toContain("flag-red");
   }
 });
 

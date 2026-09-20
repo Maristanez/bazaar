@@ -19,6 +19,12 @@
       <shopify-account menu="{{ section.settings.customer_account_menu }}">
         {{ 'icon-account.svg' | inline_asset_content }}
       </shopify-account>
+      <details class="header__owner-menu">
+        <summary aria-label="Owner options">Owner</summary>
+        <div class="header__owner-menu-list">
+          <a href="https://bazaar-chat-production.up.railway.app/console" target="_blank" rel="noopener">Console</a>
+        </div>
+      </details>
     {% endif %}
 
     <a href="{{ routes.cart_url }}" aria-label="Cart">
@@ -100,6 +106,50 @@
   }
   .site-header .header__brand {
     justify-content: flex-start;
+  }
+  .site-header .header__owner-menu {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .site-header .header__owner-menu summary {
+    list-style: none;
+    cursor: pointer;
+    min-height: 2.75rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--th-cream);
+    border: 1px solid color-mix(in srgb, var(--th-cream) 40%, transparent);
+  }
+  .site-header .header__owner-menu summary::-webkit-details-marker {
+    display: none;
+  }
+  .site-header .header__owner-menu summary:hover {
+    border-color: var(--th-sun);
+  }
+  .site-header .header__owner-menu-list {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background: var(--th-paper);
+    border-radius: 0.6rem;
+    padding: 0.35rem;
+    min-width: 8rem;
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.28);
+    z-index: 10;
+  }
+  .site-header .header__owner-menu-list a {
+    display: block;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--th-bark);
+    justify-content: flex-start;
+  }
+  .site-header .header__owner-menu-list a:hover {
+    background: color-mix(in srgb, var(--th-teal) 10%, transparent);
   }
   .site-header .header__brand img {
     display: block;

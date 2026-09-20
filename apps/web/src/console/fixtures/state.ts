@@ -38,11 +38,11 @@ export const state = {
     product(1, { title: "Trail Runner 3", productType: "Shoes", listPrice: 16900, unitCost: 9500, stockedAt: "2026-09-07T00:00:00.000Z", sizes: SHOE_SIZES }), // 12 d
     product(2, { title: "Trail Runner 2", productType: "Shoes", listPrice: 14900, unitCost: 7800, stockedAt: "2026-06-17T00:00:00.000Z", sizes: SHOE_SIZES }), // 94 d
     product(3, { title: "Ridge Lite", productType: "Shoes", listPrice: 9900, unitCost: 5200, stockedAt: "2026-08-10T00:00:00.000Z", sizes: SHOE_SIZES }), // 40 d
-    product(4, { title: "Merino socks", productType: "Add-on", listPrice: 1800, unitCost: 600, stockedAt: null }),
-    product(5, { title: "Trail gaiters", productType: "Add-on", listPrice: 3500, unitCost: 1200, stockedAt: null }),
-    product(6, { title: "Soft flask", productType: "Add-on", listPrice: 2500, unitCost: 900, stockedAt: null }),
+    product(4, { title: "Merino socks", productType: "Add-on", listPrice: 1800, unitCost: 600, stockedAt: "2026-08-05T00:00:00.000Z" }), // 45 d
+    product(5, { title: "Trail gaiters", productType: "Add-on", listPrice: 3500, unitCost: 1200, stockedAt: "2026-07-21T00:00:00.000Z" }), // 60 d
+    product(6, { title: "Soft flask", productType: "Add-on", listPrice: 2500, unitCost: 900, stockedAt: "2026-08-20T00:00:00.000Z" }), // 30 d
     product(7, { title: "Race vest", productType: "Packs", listPrice: 8900, unitCost: 4100, stockedAt: "2026-07-11T00:00:00.000Z" }), // 70 d
-    product(8, { title: "Cap", productType: "Headwear", listPrice: 2800, unitCost: null, stockedAt: "2026-08-30T00:00:00.000Z" }), // 20 d, no cost in Shopify
+    product(8, { title: "Cap", productType: "Headwear", listPrice: 2800, unitCost: 1300, stockedAt: "2026-08-30T00:00:00.000Z" }), // 20 d
   ],
   // SPEC §6.1's card: $85 on the TR2 sits between cost $78 and floor $97.50 → "$7 · 9% over cost".
   pendingApprovals: [
