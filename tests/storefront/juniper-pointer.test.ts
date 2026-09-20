@@ -27,9 +27,10 @@ function mountPage(onPage: typeof products, reply: () => ChatReply, extra: Param
     chat: reply,
     ...extra,
     before: (window) => {
-      // The feature's timers run on the vitest fake clock.
+      // The feature's timers, and its Date.now() reads of the shopper's own scroll, run on the vitest fake clock.
       window.setTimeout = (fn: () => void, ms?: number) => setTimeout(fn, ms);
       window.clearTimeout = (id: any) => clearTimeout(id);
+      window.Date = Date;
       extra.before?.(window);
     },
   });
@@ -164,5 +165,90 @@ describe("juniper-pointer — Juniper points at the page", () => {
     expect(chat.pointer.point("ridge-vest")).toBe(true);
     expect(cards["ridge-vest"].classList.contains(RING)).toBe(true);
     expect(cards["ridge-vest"].scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it("does not scroll the page out from under a shopper who scrolled it themselves in the last 600ms, but still rings", async () => {
+    const { cards, say, window } = mountPage(products, () => ({ reply: "Try the Ridge Vest." }));
+    window.dispatchEvent(new window.Event("scroll"));
+    await say("what carries water?");
+    expect(cards["ridge-vest"].classList.contains(RING)).toBe(true);
+    expect(cards["ridge-vest"].scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it("scrolls again once the shopper's own scroll is more than 600ms old", async () => {
+    const replies = ["Try the Ridge Vest.", "Or the Trail Runner, plain and light."];
+    const { cards, say, window } = mountPage(products, () => ({ reply: replies.shift() || "Noted." }));
+    window.dispatchEvent(new window.Event("scroll"));
+    await say("one");
+    expect(cards["ridge-vest"].scrollIntoView).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(700);
+    await say("two");
+    expect(cards["trail-runner"].scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not mistake its own smooth scroll for the shopper scrolling", async () => {
+    const { cards, say, window, chat } = mountPage(products, () => ({ reply: "Try the Ridge Vest." }));
+    await say("what carries water?");
+    expect(cards["ridge-vest"].scrollIntoView).toHaveBeenCalledTimes(1);
+    // The scrollIntoView call we just triggered would fire real 'scroll' events in a browser; simulate one
+    // landing right after. A later point() should still scroll — this was never the shopper scrolling.
+    window.dispatchEvent(new window.Event("scroll"));
+    expect(chat.pointer.point("trail-runner")).toBe(true);
+    expect(cards["trail-runner"].scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it("names two products in one reply: rings only the first one on this page, with a single scroll", async () => {
+    const { cards, say } = mountPage(products, () => ({
+      reply: "For muddy trails I would look at the Trail Runner 2 — deeper lugs — and the Ridge Vest to keep the wind out.",
+    }));
+    await say("what's good for muddy trails?");
+    expect(cards["trail-runner-2"].classList.contains(RING)).toBe(true);
+    expect(cards["trail-runner-2"].scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(cards["ridge-vest"].classList.contains(RING)).toBe(false);
+    expect(cards["ridge-vest"].scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it("does not ring or scroll for a card that arrives outside a live turn (V2 restoring a saved offer on load)", async () => {
+    const { cards, chat, document } = mountPage(products, () => ({ reply: "Here is what I can do." }));
+    const card = {
+      negotiationId: "n1",
+      status: "live",
+      round: 1,
+      option: { id: "A", items: [{ title: "Ridge Vest", quantity: 1 }], total: 100, listTotal: 120 },
+      line: "Held for 15 minutes.",
+      expiresAt: new Date(Date.now() + 15 * 60000).toISOString(),
+    };
+    chat.addOfferCard(card);
+    await vi.advanceTimersByTimeAsync(50);
+    expect(cards["ridge-vest"].classList.contains(RING)).toBe(false);
+    expect(cards["ridge-vest"].scrollIntoView).not.toHaveBeenCalled();
+    expect(document.querySelector("." + RING)).toBeNull();
+  });
+
+  it("on a desktop where the open panel's fixed corner sits over the card's column, rings without scrolling, then scrolls once the chat closes", async () => {
+    const { cards, say, chat } = mountPage(products, () => ({ reply: "Try the Ridge Vest." }));
+    chat.open();
+    // Real desktop geometry: the panel is fixed to the bottom-right corner; this card's column falls under it.
+    (chat.elements.panel as any).getBoundingClientRect = () => ({ left: 800, right: 1200, top: 100, bottom: 800, width: 400, height: 700 });
+    const card = cards["ridge-vest"];
+    (card as any).getBoundingClientRect = () => ({ left: 850, right: 1050, top: 300, bottom: 600, width: 200, height: 300 });
+    await say("what carries water?");
+    expect(card.classList.contains(RING)).toBe(true);
+    expect(card.scrollIntoView).not.toHaveBeenCalled();
+
+    chat.close();
+    expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it("on a desktop where the card's column is clear of the panel, scrolls normally even though the panel is open", async () => {
+    const { cards, say, chat } = mountPage(products, () => ({ reply: "Try the Ridge Vest." }));
+    chat.open();
+    (chat.elements.panel as any).getBoundingClientRect = () => ({ left: 800, right: 1200, top: 100, bottom: 800, width: 400, height: 700 });
+    const card = cards["ridge-vest"];
+    (card as any).getBoundingClientRect = () => ({ left: 50, right: 250, top: 300, bottom: 600, width: 200, height: 300 });
+    await say("what carries water?");
+    expect(card.classList.contains(RING)).toBe(true);
+    expect(card.scrollIntoView).toHaveBeenCalledTimes(1);
   });
 });

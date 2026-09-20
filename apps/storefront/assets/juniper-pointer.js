@@ -15,6 +15,17 @@
   var clearTimer = null;
   var waitingForClose = false;
 
+  // A card added while a turn is not in flight is V2 restoring a saved offer after navigation, not a fresh
+  // reply worth pointing at. turnLive is true from the moment a turn starts until just after it settles (a
+  // microtask past its 'reply'/'turn:error', so the 'card' the same turn adds is still counted as live).
+  var turnLive = false;
+
+  // The shopper's own scroll, so a page they are mid-scrolling is never fought (`ring()` still marks the
+  // card, it just skips the scroll). ownScrollUntil marks a window where scroll events are our own doing
+  // (the smooth scrollIntoView we just started), so they never count as the shopper scrolling.
+  var lastShopperScrollAt = 0;
+  var ownScrollUntil = 0;
+
   function safely(fn) {
     return function () {
       try { return fn.apply(null, arguments); } catch (error) { return false; }
@@ -23,6 +34,27 @@
 
   function media(query) {
     try { return !!(window.matchMedia && window.matchMedia(query).matches); } catch (error) { return false; }
+  }
+
+  function onWindowScroll() {
+    if (Date.now() < ownScrollUntil) return;
+    lastShopperScrollAt = Date.now();
+  }
+
+  try { window.addEventListener('scroll', onWindowScroll, { passive: true }); } catch (error) {
+    try { window.addEventListener('scroll', onWindowScroll); } catch (ignored) { /* no scroll tracking: never suppressed */ }
+  }
+
+  function recentlyScrolledByShopper() {
+    return lastShopperScrollAt > 0 && Date.now() - lastShopperScrollAt < 600;
+  }
+
+  function deferTurnLiveClear() {
+    try {
+      window.Promise.resolve().then(function () { turnLive = false; });
+    } catch (error) {
+      window.setTimeout(function () { turnLive = false; }, 0);
+    }
   }
 
   function state() {
@@ -160,6 +192,8 @@
   function scrollTo(element) {
     if (typeof element.scrollIntoView !== 'function') return;
     var behavior = media('(prefers-reduced-motion: reduce)') ? 'auto' : 'smooth';
+    // A smooth scroll fires its own 'scroll' events for a while; none of them are the shopper scrolling.
+    ownScrollUntil = Date.now() + 1000;
     try {
       element.scrollIntoView({ behavior: behavior, block: 'center' });
     } catch (error) {
@@ -171,10 +205,30 @@
     try { return !!chat.isOpen(); } catch (error) { return false; }
   }
 
-  // On a phone the open chat covers the page; scrolling under it is wasted and the ring would be gone by the time
-  // the shopper looks. So the ring waits there and the scroll happens when the chat closes.
-  function coveredByChat() {
-    return chatIsOpen() && media('(max-width: 480px)');
+  function panelBox() {
+    var panel = chat.elements && chat.elements.panel;
+    if (!panel || typeof panel.getBoundingClientRect !== 'function') return null;
+    try {
+      var rect = panel.getBoundingClientRect();
+      return rect && rect.width > 0 && rect.height > 0 ? rect : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // True when the open chat panel sits where this card would show: on a phone the panel covers the whole
+  // screen; on a desktop the panel is fixed to a bottom corner, so a card in that column stays behind it no
+  // matter how far the page scrolls vertically. Scrolling under it is wasted and the ring would be gone by
+  // the time the shopper looks, so the ring waits there and the scroll happens once the chat closes. Where
+  // real layout cannot be measured, the old phone-width guess still applies.
+  function hiddenByPanel(element) {
+    if (!chatIsOpen()) return false;
+    var panel = panelBox();
+    if (!panel || typeof element.getBoundingClientRect !== 'function') return media('(max-width: 480px)');
+    var rect;
+    try { rect = element.getBoundingClientRect(); } catch (error) { return media('(max-width: 480px)'); }
+    if (!rect || (!rect.width && !rect.height)) return media('(max-width: 480px)');
+    return rect.right > panel.left && rect.left < panel.right;
   }
 
   function midSentence() {
@@ -187,8 +241,8 @@
     unring();
     ringed = element;
     element.classList.add(RING);
-    if (coveredByChat()) { waitingForClose = true; return; }
-    if (!midSentence()) scrollTo(element);
+    if (hiddenByPanel(element)) { waitingForClose = true; return; }
+    if (!midSentence() && !recentlyScrolledByShopper()) scrollTo(element);
     startHold();
   }
 
@@ -203,6 +257,9 @@
     return true;
   }
 
+  // A reply that names several products (a "muddy trails" answer naming two pairs) points at the first one
+  // named that actually has a card on this page, and stops there — one ring, one scroll, never a jump from
+  // one card to another for a single reply.
   function pointAtFirst(handles) {
     for (var i = 0; i < handles.length; i += 1) {
       if (point(handles[i])) return true;
@@ -214,14 +271,22 @@
 
   if (typeof chat.on !== 'function') return;
 
+  chat.on('turn:start', safely(function () { turnLive = true; }));
+  chat.on('turn:error', safely(function () { turnLive = false; }));
+
   chat.on('reply', safely(function (detail) {
     detail = detail || {};
     var data = detail.data || {};
     var products = pool(data.products);
-    return pointAtFirst(handlesOnCard(data.card, products).concat(handlesInText(detail.text, products)));
+    var pointed = pointAtFirst(handlesOnCard(data.card, products).concat(handlesInText(detail.text, products)));
+    deferTurnLiveClear();
+    return pointed;
   }));
 
+  // A card that lands outside a live turn is V2 replaying a saved offer after navigation (restoring must
+  // never scroll the page or ring anything), not a fresh reply worth pointing at.
   chat.on('card', safely(function (detail) {
+    if (!turnLive) return false;
     detail = detail || {};
     return pointAtFirst(handlesOnCard(detail.card, pool(detail.products)));
   }));
