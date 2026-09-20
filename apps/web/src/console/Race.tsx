@@ -50,11 +50,10 @@ export function Race({ products, policy, draft, saving, onDraft, onAdopt }: { pr
 
   const run = useMemo(() => {
     if (!main) return undefined;
-    // INTEGRATION: settings reach the engine once LiveGymInput accepts them
-    const input = { main, catalog, floorPct, askOwner, seed: 42, n: 300, now: new Date(runAt), settings } as LiveGymInput;
+    const input: LiveGymInput = { main, catalog, floorPct, askOwner, seed: 42, n: 300, now: new Date(runAt), settings };
     try {
       const candidate = runLiveGym(input);
-      const savedInput = { ...input, floorPct: policy.floorPct, askOwner: policy.askOwner, settings: savedSettings } as LiveGymInput;
+      const savedInput: LiveGymInput = { ...input, floorPct: policy.floorPct, askOwner: policy.askOwner, settings: savedSettings };
       return { candidate, saved: dirty ? runLiveGym(savedInput) : candidate };
     } catch { return undefined; }
   }, [askOwner, catalog, dirty, floorPct, main, policy.askOwner, policy.floorPct, runAt, settings.discountCapPct, settings.lowballCutoffPct, settings.maxRounds, savedSettings.discountCapPct, savedSettings.lowballCutoffPct, savedSettings.maxRounds]);

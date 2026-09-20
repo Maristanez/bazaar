@@ -111,7 +111,7 @@ test("a lowball is countered by code: no LLM call, no round consumed, the same p
 
   const real = await say("Could you do $130? It is last season and I am buying today.");
   expect(real.card.round).toBe(1); // the forty lowballs consumed nothing
-  expect(llm.calls).toHaveLength(1);
+  expect(llm.calls).toHaveLength(2); // a genuine offer is understood, then answered: two calls
 });
 
 test("a cutoff of zero turns the lowball rule off", async () => {
@@ -121,6 +121,6 @@ test("a cutoff of zero turns the lowball rule off", async () => {
   const say = await chatter(base, "cutoff-off");
   await say("Could you do $40? I am buying today.");
   const second = await say("Could you do $40? I am buying today.");
-  expect(llm.calls).toHaveLength(2);
+  expect(llm.calls).toHaveLength(4); // with the rule off, both $40 offers are genuine: understood and answered
   expect(second.card.round).toBe(2);
 });

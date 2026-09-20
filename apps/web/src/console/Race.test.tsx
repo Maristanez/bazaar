@@ -36,3 +36,15 @@ test("the Floor, Rounds and Lowball pills each show their own slider and value l
   await act(async () => screen.getByRole("tab", { name: "Lowball" }).click());
   expect(screen.getByRole("slider", { name: "Lowball cutoff: 40% of list" })).toBeTruthy();
 });
+
+test("a setting reaches the real engine: a tighter Max off changes what the 300 shoppers do", async () => {
+  render(<Console port={createFixturePort({ stream: [] })} />);
+  await screen.findByRole("heading", { name: "Try it on 300 shoppers" });
+  const stage = () => screen.getByRole("img", { name: /300 simulated shoppers/ }).getAttribute("aria-label");
+  const before = stage();
+
+  await act(async () => screen.getByRole("tab", { name: "Max off" }).click());
+  fireEvent.change(screen.getByRole("slider", { name: /Max off/ }), { target: { value: "0" } });
+
+  expect(stage()).not.toBe(before); // customers saved and profit are read from the run itself
+});

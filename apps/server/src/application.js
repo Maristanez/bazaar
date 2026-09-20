@@ -1194,6 +1194,15 @@ function normalizeSearchText(value) {
 async function understandOffer(message, payload, mirror, shopperContext) {
   const fallback = () => deterministicOfferUnderstanding(message, payload);
   if (!backboard) return fallback();
+  // A plain dollar figure under the owner's lowball cutoff is read by code alone, so a junk offer never costs an LLM call.
+  const plain = fallback();
+  const listed = shopperContext?.item?.list ?? findProductFromPayload(payload, mirror, { contextItem: shopperContext?.item })?.item?.list;
+  const { lowballCutoffPct } = ownerSettings();
+  // Only an unmistakable total qualifies: one number, and no wording that could make it relative, per unit or a bundle ask.
+  const unambiguous = (String(message).match(/\d+(?:\.\d+)?/g) || []).length === 1
+    && !/\b(?:off|cheaper|less|lower|discount|each|per|apiece|free|throw|include|plus|another|extra)\b|%/i.test(String(message));
+  if (unambiguous && lowballCutoffPct > 0 && listed && plain.priceMode === "total" && plain.currency === "CAD" && Number.isFinite(plain.dollars)
+    && plain.dollars * 100 * 100 < listed * (plain.quantity || shopperContext?.quantity || 1) * lowballCutoffPct) return plain;
   const shopperId = requireShopperId(payload);
   const negotiationId = payload.negotiationId || shopperContext?.negotiationId || `catalog:${shopperId}`;
   const latest = latestNegotiationOffer(negotiationId);
