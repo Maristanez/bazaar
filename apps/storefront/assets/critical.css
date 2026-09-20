@@ -119,13 +119,28 @@ select:focus-visible {
 }
 
 .ai-chat__panel {
+  display: flex;
+  flex-direction: column;
   width: 100%;
+  /* The launcher and its gap sit below the panel; the panel never leaves the screen. */
+  max-height: calc(100svh - 6.5rem);
   overflow: hidden;
   border: 1px solid rgb(15 23 42 / 12%);
   border-radius: 1rem;
   background: #fff;
   box-shadow: 0 24px 60px rgb(15 23 42 / 24%);
   color: #111827;
+}
+
+.ai-chat__panel[hidden] {
+  display: none;
+}
+
+.ai-chat__header,
+.ai-chat__prompts,
+.ai-chat__form,
+.ai-chat__source {
+  flex: 0 0 auto;
 }
 
 .ai-chat__header {
@@ -162,7 +177,7 @@ select:focus-visible {
 }
 
 .ai-chat__voice-toggle {
-  min-height: 2.5rem;
+  min-height: 2.75rem;
   padding: 0 0.75rem;
   border: 1px solid #a7f3d0;
   border-radius: 999px;
@@ -190,9 +205,9 @@ select:focus-visible {
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 2.5rem;
-  min-width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  height: 2.75rem;
   border: 0;
   border-radius: 999px;
   background: #e5e7eb;
@@ -203,9 +218,13 @@ select:focus-visible {
 }
 
 .ai-chat__messages {
+  position: relative;
   display: grid;
+  flex: 1 1 auto;
+  align-content: start;
   gap: 0.75rem;
-  max-height: min(19rem, 48svh);
+  min-height: 0;
+  max-height: 60svh;
   padding: 1rem;
   overflow-y: auto;
   overflow-x: hidden;
@@ -300,8 +319,8 @@ select:focus-visible {
 
 .ai-chat__offer-card {
   display: grid;
-  gap: 0.7rem;
-  padding: 0.9rem;
+  gap: 0.5rem;
+  padding: 0.85rem;
   border: 1px dashed #f59e0b;
   border-radius: 0.9rem;
   background: #fff7ed;
@@ -309,12 +328,43 @@ select:focus-visible {
   overflow-wrap: anywhere;
 }
 
-.ai-chat__offer-topline,
-.ai-chat__offer-actions {
+.ai-chat__offer-topline {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.ai-chat__offer-actions {
+  display: grid;
+  justify-items: center;
+}
+
+.ai-chat__offer-topline [data-offer-countdown] {
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-chat__offer-items {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.ai-chat__offer-card--superseded {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border-color: #d1d5db;
+  background: transparent;
+  color: #4b5563;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .ai-chat__offer-topline {
@@ -332,13 +382,16 @@ select:focus-visible {
 }
 
 .ai-chat__offer-card p {
+  margin: 0;
   font-size: 0.82rem;
-  line-height: 1.45;
+  line-height: 1.4;
 }
 
 .ai-chat__offer-price {
-  display: grid;
-  gap: 0.15rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .ai-chat__offer-price span {
@@ -361,7 +414,7 @@ select:focus-visible {
 .ai-chat__badges span,
 .ai-chat__trail span {
   border-radius: 999px;
-  padding: 0.3rem 0.45rem;
+  padding: 0.2rem 0.45rem;
   font-size: 0.72rem;
   font-weight: 800;
 }
@@ -381,23 +434,25 @@ select:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.5rem;
+  min-height: 2.75rem;
   padding: 0.55rem 0.7rem;
   border: 0;
-  border-radius: 999px;
   font: inherit;
   font-size: 0.8rem;
   font-weight: 800;
-  text-decoration: none;
   text-align: center;
 }
 
 .ai-chat__offer-actions a {
-  background: #064e3b;
-  color: #fff;
+  color: #064e3b;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .ai-chat__offer-actions button {
+  width: 100%;
+  border-radius: 999px;
+  font-size: 0.95rem;
   background: #ea580c;
   color: #fff;
   cursor: pointer;
@@ -413,6 +468,10 @@ select:focus-visible {
   color: #6b7280;
 }
 
+.ai-chat--has-offer .ai-chat__prompts {
+  display: none;
+}
+
 .ai-chat__prompts {
   display: flex;
   gap: 0.5rem;
@@ -422,7 +481,7 @@ select:focus-visible {
 
 .ai-chat__prompts button {
   flex: 0 0 auto;
-  min-height: 2.5rem;
+  min-height: 2.75rem;
   padding: 0.55rem 0.7rem;
   border: 1px solid #d1d5db;
   border-radius: 999px;
@@ -554,9 +613,23 @@ select:focus-visible {
 
   .ai-chat__launcher span + span { display: none; }
 
+  /* On a phone the open chat is a full-height sheet: messages fill it and the composer sits at the bottom. */
   .ai-chat__panel {
-    max-height: calc(100svh - 6rem);
+    position: fixed;
+    inset: 0;
+    height: 100svh;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    padding-bottom: env(safe-area-inset-bottom);
   }
+
+  .ai-chat__panel:not([hidden]) + .ai-chat__launcher { display: none; }
+
+  .ai-chat__messages { max-height: none; }
+
+  .ai-chat__header { padding-top: max(1rem, env(safe-area-inset-top)); }
 }
 
 /** Section layout utilities */

@@ -362,7 +362,7 @@
     }).catch(function (error) {
       button.__bazaarAccepting = false;
       button.disabled = false;
-      button.textContent = 'Deal';
+      button.textContent = dealLabel(card);
       addMessage(error.message || 'That offer could not be accepted. Try a fresh offer.', 'bot');
     });
   }
@@ -399,9 +399,14 @@
     if (!card || !card.option) return;
     var negotiationKey = card.negotiationId || card.offerId;
     var priorArticle = offerArticles.get(negotiationKey);
-    if (priorArticle && priorArticle.__bazaarCard && priorArticle.__bazaarCard.offerId !== card.offerId) {
-      markSuperseded(priorArticle);
+    if (priorArticle && priorArticle.__bazaarCard && priorArticle.__bazaarCard.offerId === card.offerId) {
+      // The server restated the offer already on the table: the same card moves under the new reply.
+      messages.appendChild(priorArticle);
+      renderOfferState(priorArticle, card, priorArticle.querySelector('[data-offer-actions] button'));
+      showCardTop(priorArticle);
+      return;
     }
+    if (priorArticle && priorArticle.__bazaarCard) markSuperseded(priorArticle);
     var article = document.createElement('article');
     var dealButton = document.createElement('button');
     var productLink = document.createElement('a');
@@ -417,7 +422,7 @@
       '<span data-offer-countdown="' + escapeHtml(card.expiresAt) + '">15:00</span>',
       '</div>',
       '<h3>' + escapeHtml(firstItem.title || 'Trailhead offer') + '</h3>',
-      '<div class="ai-chat__offer-items" data-offer-items>' + itemSummary + '</div>',
+      '<ul class="ai-chat__offer-items" data-offer-items>' + itemSummary + '</ul>',
       '<p class="ai-chat__offer-price" data-offer-price><span>' + money(card.option.listTotal) + '</span><strong>' + money(card.option.total) + '</strong></p>',
       '<p data-offer-line>' + escapeHtml(card.line || 'I can hold this for 15 minutes.') + '</p>',
       '<div class="ai-chat__badges" data-offer-badges>' + (card.badges || []).map(function (badge) { return '<span>' + escapeHtml(badge) + '</span>'; }).join('') + '</div>',
@@ -431,29 +436,39 @@
     productLink.href = cardProduct && cardProduct.url ? cardProduct.url : '/collections/all';
     productLink.textContent = 'View item';
     dealButton.type = 'button';
-    dealButton.textContent = endpoint && card.status === 'live' ? 'Deal' : card.status === 'pending_owner' ? 'Waiting for owner' : card.status === 'live' ? 'Deal' : 'Offer unavailable';
-    dealButton.disabled = !endpoint || card.status !== 'live';
     dealButton.addEventListener('click', function () {
       acceptOffer(card, dealButton);
     });
 
-    article.querySelector('[data-offer-actions]').appendChild(productLink);
     article.querySelector('[data-offer-actions]').appendChild(dealButton);
+    article.querySelector('[data-offer-actions]').appendChild(productLink);
     messages.appendChild(article);
+    widget.classList.add('ai-chat--has-offer');
     currentOfferArticle = article;
     offerArticles.set(negotiationKey, article);
     renderOfferState(article, card, dealButton);
-    messages.scrollTop = messages.scrollHeight;
+    showCardTop(article);
     if (endpoint && (card.status === 'live' || card.status === 'pending_owner')) startOfferPolling(card, article, dealButton);
   }
 
+  // The pane scrolls to the card's top; a card that fits lands fully in view because the browser clamps the scroll.
+  function showCardTop(article) {
+    messages.scrollTop = article.offsetTop - 12;
+  }
+
+  function dealLabel(card) {
+    return 'Deal at ' + money(card.option && card.option.total);
+  }
+
+  // An offer that has been replaced collapses to one line: its round and its total.
   function markSuperseded(article) {
     if (!article || !article.__bazaarCard) return;
-    article.__bazaarCard = Object.assign({}, article.__bazaarCard, { status: 'superseded' });
+    var card = article.__bazaarCard = Object.assign({}, article.__bazaarCard, { status: 'superseded' });
+    var countdown = article.querySelector('[data-offer-countdown]');
+    if (countdown && countdownTimers.get(countdown)) window.clearTimeout(countdownTimers.get(countdown));
     article.setAttribute('data-offer-status', 'superseded');
     article.classList.add('ai-chat__offer-card--superseded');
-    var button = article.querySelector('[data-offer-actions] button');
-    if (button) { button.disabled = true; button.textContent = 'Superseded'; }
+    article.innerHTML = '<span>Round ' + escapeHtml(String(card.round || 1)) + '</span><span aria-hidden="true">·</span><span>' + money(card.option && card.option.total) + '</span><span class="visually-hidden">, replaced by a newer offer</span>';
     var poller = offerPollers.get(article);
     if (poller) { window.clearInterval(poller); offerPollers.delete(article); }
     var key = article.__bazaarCard.negotiationId || article.__bazaarCard.offerId;
@@ -461,6 +476,7 @@
   }
 
   function renderOfferState(article, card, button) {
+    if (card.status === 'superseded') { article.__bazaarCard = card; markSuperseded(article); return; }
     article.__bazaarCard = card;
     article.setAttribute('data-offer-status', card.status || 'live');
     var status = article.querySelector('[data-offer-status-label]');
@@ -483,7 +499,7 @@
     var expiry = pending && card.pendingUntil ? new Date(card.pendingUntil) : new Date(card.expiresAt);
     countdown.setAttribute('data-offer-countdown', expiry.toISOString());
     button.disabled = button.__bazaarAccepting || !endpoint || card.status !== 'live';
-    button.textContent = button.__bazaarAccepting ? 'Minting...' : !endpoint ? 'Deal needs API' : pending ? 'Waiting for owner' : card.status === 'live' ? 'Deal' : card.status === 'superseded' ? 'Superseded' : 'Offer unavailable';
+    button.textContent = button.__bazaarAccepting ? 'Minting...' : !endpoint ? 'Deal needs API' : pending ? 'Waiting for owner' : card.status === 'live' ? dealLabel(card) : 'Offer unavailable';
     startCountdown(countdown, expiry, button, pending);
   }
 
@@ -491,7 +507,7 @@
     return (items || []).map(function (item) {
       var size = item.size ? ' · size ' + escapeHtml(item.size) : '';
       var quantity = item.qty === undefined || item.qty === null ? 1 : item.qty;
-      return '<span>' + escapeHtml(item.title || 'Item') + size + ' · qty ' + escapeHtml(String(quantity)) + '</span>';
+      return '<li>' + escapeHtml(item.title || 'Item') + size + ' · qty ' + escapeHtml(String(quantity)) + '</li>';
     }).join('');
   }
 

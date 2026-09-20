@@ -147,7 +147,7 @@ describe("Shopify theme chat integration", () => {
     const cards = [...dom.window.document.querySelectorAll(".ai-chat__offer-card")];
     expect(cards).toHaveLength(2);
     expect(cards.map(article => article.getAttribute("data-offer-status"))).toEqual(["live", "live"]);
-    expect(cards.every(article => article.querySelector("[data-offer-actions] button")?.textContent === "Deal")).toBe(true);
+    expect(cards.every(article => article.querySelector("[data-offer-actions] button")?.textContent?.startsWith("Deal at $"))).toBe(true);
   });
 
   it("polls pending owner cards and renders the final live totals", async () => {
@@ -176,7 +176,7 @@ describe("Shopify theme chat integration", () => {
       await vi.advanceTimersByTimeAsync(2000);
       expect(calls[1]).toContain("/api/offers/offer-1?");
       expect(button.disabled).toBe(false);
-      expect(button.textContent).toBe("Deal");
+      expect(button.textContent).toBe("Deal at $142");
       expect(button.closest("article")?.getAttribute("data-offer-status")).toBe("live");
       expect(dom.window.document.querySelector("[data-offer-price] strong")?.textContent).toBe("$142");
       expect(dom.window.document.querySelector("[data-offer-line]")?.textContent).toBe("My best offer is $142.");

@@ -305,6 +305,9 @@ const server = createServer(async (request, response) => {
         sendJson(response, request, 400, { error: "message is required" });
         return;
       }
+      // Asking how low the price goes is not a new offer: the card on the table is restated and the round stands.
+      const standing = isPriceMoveQuestion(message) ? await withShopperLock(requireShopperId(payload), () => standingOfferReply(payload)) : null;
+      if (standing) { sendJson(response, request, 200, standing); return; }
       if (isOfferIntent(message)) {
         sendJson(response, request, 200, await makeOfferFromPayload(payload, message));
         return;
@@ -925,6 +928,22 @@ async function makeOfferTurn(payload, message) {
   return { reply: replyLine, card, negotiationId, products: prioritizePublicProducts(mirror, selectedMain) };
 }
 
+/** The shopper's open offer, restated with what would move its price. Every figure is the card's own. */
+function standingOfferReply(payload) {
+  const shopperId = requireShopperId(payload);
+  const negotiationId = payload.negotiationId || state.shopperContexts.get(shopperId)?.negotiationId;
+  const offer = [...state.offers.values()].find(candidate => candidate.negotiationId === negotiationId && candidate.shopperId === shopperId && ["live", "pending_owner"].includes(candidate.status));
+  if (!offer) return null;
+  const card = currentCard(offer);
+  if (card.status === "pending_owner") return { reply: card.line, card, negotiationId };
+  if (card.status !== "live") return null;
+  const total = formatMoney(card.option.total);
+  const reply = card.round >= card.maxRounds
+    ? `${total} is my best on this one, and it's held while the timer runs. A real reason, a bundle or a firmer number is the only thing that could move it now.`
+    : `${total} is where I am right now, and it's held while the timer runs. Give me something to work with and it can move: a reason, a bundle (a second pair or an add-on), or a firmer number from you.`;
+  return { reply, card, negotiationId };
+}
+
 function currentCard(offer) {
   if (["live", "pending_owner"].includes(offer.status) && Date.now() >= offer.expiresAt.getTime()) offer.status = "expired";
   const status = owner.getPolicy().paused && offer.status === "live" ? "paused" : offer.status;
@@ -1266,7 +1285,7 @@ function deterministicOfferUnderstanding(message, payload = {}) {
 }
 
 async function answerWithBackboard(context, fallbackLine) {
-  const fallback = () => fallbackLine || fallbackReply(context);
+  const fallback = () => fallbackLine || fallbackReply();
   if (!backboard) return fallback();
   try {
     const answer = await backboard.answerQuestion({
@@ -1530,7 +1549,7 @@ function deterministicReply(context) {
     const scopedProducts = lastProducts.length ? lastProducts : products;
     return { reply: totalReply(scopedProducts), memoryProducts: scopedProducts };
   }
-  if (/\b(weekend|outfit|recommend|style|wear|fit)\b/.test(message)) {
+  if (/\b(weekend|outfit|recommend|style|what (?:to|should i) wear)\b/.test(message)) {
     const picks = outfitPicks(products);
     return { reply: outfitReplyFromPicks(picks), memoryProducts: picks };
   }
@@ -1562,10 +1581,6 @@ function quantityPriceReply(message, products) {
     product,
     reply: `${quantity} ${product.title} cost ${formatMoney(product.listPrice * quantity)} at the storefront price. If you want to negotiate, tell me your total and give me a reason.`,
   };
-}
-
-function outfitReply(products) {
-  return outfitReplyFromPicks(outfitPicks(products));
 }
 
 function outfitPicks(products) {
@@ -1616,15 +1631,21 @@ function formatPublicProductList(products) {
   return products.map((product) => `${product.title}${product.price ? ` (${product.price})` : ""}`).join(", ");
 }
 
-function fallbackReply(context = {}) {
-  const products = Array.isArray(context.products) ? context.products : [];
-  if (products.length) return outfitReply(products);
+function fallbackReply() {
   return "I can help with products, sizing, and offers. If you want to haggle, send a number like “Could you do $120?” and I will price a real offer card from the server.";
+}
+
+/** "What's your best?" and its cousins: a question about the price with no number in it. */
+function isPriceMoveQuestion(text) {
+  const message = String(text || "");
+  if (parseMoney(message) !== null) return false;
+  return /\b(best (?:you can do|you could do|you've got|price|offer|deal)|(?:your|the) best(?: (?:price|offer|deal|number|shot))?(?=\s*(?:[?.!,]|$))|final (?:price|offer|number)|last price|lowest (?:price|offer|number|you|i )|your lowest(?=\s*(?:[?.!,]|$))|bottom line|(?:go|any|get|come) (?:any |a bit |a little )?(?:lower|down)|do (?:any )?better|better price|meet me|in the middle|half ?way|split the difference|wiggle room)\b/i.test(message);
 }
 
 function isOfferIntent(text) {
   const message = String(text || "");
   const hasMoney = parseMoney(message) !== null;
+  if (isPriceMoveQuestion(message)) return true;
   const hasOfferLanguage = /\b(offer|deal|discount|haggle|checkout|could you do|can you do|would you take|best price|can i get|could i get|give it to me|give them to me|buy|take|grab|order|lower|cheaper|knock|meet me|split the difference|work with me|out the door|otd)\b/i.test(message);
   return hasMoney || hasOfferLanguage;
 }
