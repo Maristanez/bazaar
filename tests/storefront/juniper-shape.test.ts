@@ -85,6 +85,36 @@ describe("V12 — the chat keeps its shape out of the conversation's way", () =>
     expect(chat.shape.shapedBy()).toBe("shopper");
   });
 
+  it("minimised, he can be carried anywhere on the page; minimising the chat sends him home to the corner", () => {
+    const { chat, widget, window } = mount();
+    const launcher = must(chat.elements.launcher as HTMLElement);
+    const fire = (type: string, x: number, y: number) => {
+      const event = new window.MouseEvent(type, { bubbles: true, clientX: x, clientY: y, button: 0 });
+      (type === "pointerdown" ? launcher : window).dispatchEvent(event);
+    };
+    fire("pointerdown", 900, 700);
+    fire("pointermove", 500, 300);
+    expect(widget.style.getPropertyValue("--juniper-shape-ax")).toBe("-400px");
+    fire("pointerup", 500, 300);
+    expect(chat.shape.roam({ x: -400, y: -400 })).toEqual({ x: -400, y: -400 });
+    expect(widget.style.getPropertyValue("--juniper-shape-ax")).toBe("-400px");
+    expect(widget.classList.contains("juniper-shape--roaming")).toBe(true);
+    // The click that ends a drag does not open the chat.
+    launcher.click();
+    expect(chat.isOpen()).toBe(false);
+
+    // Never off the screen.
+    expect(chat.shape.roam({ x: -99999, y: 500 }).y).toBe(0);
+    expect(chat.shape.roam({ x: -99999, y: 0 }).x).toBeGreaterThan(-window.innerWidth);
+
+    chat.shape.roam({ x: -300, y: -200 });
+    chat.open();
+    chat.close();
+    expect(widget.style.getPropertyValue("--juniper-shape-ax")).toBe("0px");
+    expect(widget.style.getPropertyValue("--juniper-shape-ay")).toBe("0px");
+    expect(widget.classList.contains("juniper-shape--roaming")).toBe(false);
+  });
+
   it("opens at the size this browser remembered", () => {
     const { widget } = mount(JSON.stringify({ w: 480, h: 520 }));
     expect(widget.style.getPropertyValue("--juniper-shape-h")).toBe("520px");

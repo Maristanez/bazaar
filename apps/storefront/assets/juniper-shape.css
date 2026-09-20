@@ -431,3 +431,58 @@
   color: var(--cream);
   font-size: 0.95rem;
 }
+
+/* ---- roaming: minimised, he goes wherever he is dragged. Open, the widget is back in its corner (the panel has a
+   place of its own), and minimising sends him home. ---- */
+.ai-chat.juniper-shape--roaming {
+  translate: var(--juniper-shape-ax, 0) var(--juniper-shape-ay, 0);
+  transition: translate 0.35s var(--ease);
+}
+
+.ai-chat.juniper-shape--roaming:has(.ai-chat__panel:not([hidden])) {
+  translate: 0 0;
+}
+
+.ai-chat.juniper-shape--carrying {
+  transition: none;
+}
+
+.ai-chat .ai-chat__launcher,
+.ai-chat [data-juniper-pill] {
+  touch-action: none;
+  -webkit-user-drag: none;
+}
+
+.ai-chat .ai-chat__launcher {
+  cursor: grab;
+}
+
+.ai-chat.juniper-shape--carrying,
+.ai-chat.juniper-shape--carrying * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+.ai-chat.juniper-shape--carrying .ai-chat__launcher .ai-chat__sticker--launcher {
+  scale: 1.08;
+  rotate: -5deg;
+  filter: drop-shadow(0 18px 18px rgb(47 22 4 / 40%));
+}
+
+/* What he says follows him: below when he is near the top, to his right when he is near the left edge. */
+.ai-chat.juniper-shape--high .juniper-shape__peek {
+  top: calc(100% + 0.6rem);
+  bottom: auto;
+  border-radius: 0.25rem 1rem 1rem;
+}
+
+.ai-chat.juniper-shape--left .juniper-shape__peek {
+  right: auto;
+  left: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-chat.juniper-shape--roaming {
+    transition: none;
+  }
+}

@@ -250,6 +250,70 @@
       else if (widget.getAttribute('data-juniper-shape') === 'voice') shapeHerself(null);
     });
 
+    // ---- roaming: minimised, his face (or the voice pill) can be dragged anywhere on the page. Minimising the chat
+    // always sends him home to the bottom-right corner, so there is one place he is known to be. ----
+    var roam = { x: 0, y: 0 };
+    var DRAG_SLOP = 6;           // less than this is a click, not a drag
+
+    function applyRoam(next) {
+      var box = widget.getBoundingClientRect ? widget.getBoundingClientRect() : { width: 80, height: 80 };
+      var edge = MARGIN / 2;
+      var roomX = Math.max(0, (window.innerWidth || 1200) - (box.width || 80) - edge * 2);
+      var roomY = Math.max(0, (window.innerHeight || 800) - (box.height || 80) - edge * 2);
+      roam = { x: Math.round(Math.min(0, Math.max(-roomX, next.x))), y: Math.round(Math.min(0, Math.max(-roomY, next.y))) };
+      widget.style.setProperty('--juniper-shape-ax', roam.x + 'px');
+      widget.style.setProperty('--juniper-shape-ay', roam.y + 'px');
+      widget.classList.toggle('juniper-shape--roaming', Boolean(roam.x || roam.y));
+      // Near the top or the left edge, what he says opens below him or to his right instead of off the screen.
+      widget.classList.toggle('juniper-shape--high', roomY + roam.y < 150);
+      widget.classList.toggle('juniper-shape--left', roomX + roam.x < 260);
+    }
+
+    function goHome() { applyRoam({ x: 0, y: 0 }); }
+
+    var roaming = null;
+    function roamStart(event) {
+      if ((chat.isOpen && chat.isOpen()) || event.button > 0) return;
+      if (event.target && event.target.closest && event.target.closest('[data-juniper-pill-stop], [data-juniper-peek]')) return;
+      roaming = { x: event.clientX, y: event.clientY, rx: roam.x, ry: roam.y, moved: false, id: event.pointerId, holder: event.currentTarget };
+    }
+    function roamMove(event) {
+      if (!roaming) return;
+      var dx = event.clientX - roaming.x;
+      var dy = event.clientY - roaming.y;
+      if (!roaming.moved && Math.abs(dx) < DRAG_SLOP && Math.abs(dy) < DRAG_SLOP) return;
+      if (!roaming.moved) {
+        roaming.moved = true;
+        widget.classList.add('juniper-shape--carrying');
+      }
+      applyRoam({ x: roaming.rx + dx, y: roaming.ry + dy });
+      event.preventDefault();
+    }
+    function roamEnd() {
+      if (!roaming) return;
+      var moved = roaming.moved;
+      roaming = null;
+      widget.classList.remove('juniper-shape--carrying');
+      if (!moved) return;
+      // The click that ends a drag is not a request to open the chat.
+      var swallow = function (event) { event.stopPropagation(); event.preventDefault(); };
+      widget.addEventListener('click', swallow, true);
+      window.setTimeout(function () { widget.removeEventListener('click', swallow, true); }, 0);
+    }
+    function makeCarryable(handle) {
+      if (!handle || handle.__juniperCarry) return;
+      handle.__juniperCarry = true;
+      handle.addEventListener('pointerdown', roamStart);
+      handle.addEventListener('dragstart', function (event) { event.preventDefault(); });
+    }
+    // A quick drag leaves his face behind before the first move lands on it: the window hears the rest.
+    window.addEventListener('pointermove', roamMove);
+    window.addEventListener('pointerup', roamEnd);
+    window.addEventListener('pointercancel', roamEnd);
+    makeCarryable(launcher);
+    makeCarryable(widget.querySelector('[data-juniper-pill]'));
+    chat.on('close', goHome);
+
     // ---- a reply that lands while the chat is minimised ----
     var peek = document.createElement('button');
     peek.type = 'button';
@@ -421,12 +485,13 @@
       });
     }
 
-    window.addEventListener('resize', function () { if (size) applySize(size, false); else { applyPlace(place, false); measureRail(); } });
+    window.addEventListener('resize', function () { applyRoam(roam); if (size) applySize(size, false); else { applyPlace(place, false); measureRail(); } });
 
     chat.shape = {
       // Other features say a line above the launcher or pill while the chat is minimised (V13's chores do).
       peek: function (text) { if (!(chat.isOpen && chat.isOpen())) showPeek(text); },
       followVoice: followVoice,
+      roam: function (next) { if (!(chat.isOpen && chat.isOpen())) applyRoam(next); return { x: roam.x, y: roam.y }; },
       size: function () { return size; },
       shapedBy: function () { return size ? (selfShaped ? 'juniper' : 'shopper') : 'default'; },
       place: function () { return { x: place.x, y: place.y }; },
