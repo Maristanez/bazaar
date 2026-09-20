@@ -1,6 +1,7 @@
-import type { GymResult, GymShopper } from "@bazaar/contracts";
+import type { GymResult, GymShopper, PolicySettings } from "@bazaar/contracts";
 import { analyzeBuyerReason, type NegotiationItem, type NegotiationOffer } from "../../../packages/engine/src/negotiate";
 import { buildNegotiationMenu, rankNegotiationMenu } from "../../../packages/engine/src/negotiation-menu";
+import { resolveSettings, type ResolvedSettings } from "../../../packages/engine/src/settings";
 import { makePopulation, type SimulatedPersona } from "./personas";
 import { mulberry32 } from "./rng";
 
@@ -12,7 +13,21 @@ export type LiveGymInput = {
   seed: number;
   n: number;
   now: Date;
+  /** Owner settings (SPEC §4.4.1). Absent or out of range = the defaults. */
+  settings?: PolicySettings;
 };
+
+/** A live run, plus how many simulated shoppers opened below the owner's lowball cutoff. */
+export type LiveGymResult = GymResult & { lowballs: number };
+
+/** Shoppers whose opening offer was below cutoffPct% of list. A cutoff of 0 means the rule is off. */
+export function countLowballs(result: Pick<GymResult, "shoppers">, list: number, cutoffPct: number): number {
+  return result.shoppers.filter((shopper) => isLowball(shopper.rounds[0]?.offer ?? list, list, cutoffPct)).length;
+}
+
+function isLowball(offer: number, list: number, cutoffPct: number): boolean {
+  return cutoffPct > 0 && offer * 100 < list * cutoffPct;
+}
 
 function assertInput(input: LiveGymInput): void {
   if (!input.main.inStock || input.main.cost === null) throw new Error("The live Gym requires an in-stock item with cost");
@@ -29,13 +44,18 @@ function assertInput(input: LiveGymInput): void {
   if (!(input.now instanceof Date) || !Number.isFinite(input.now.getTime())) throw new Error("The live Gym requires a valid timestamp");
 }
 
-function quote(input: LiveGymInput, shopper: SimulatedPersona, round: number): { offer: number; priced?: NegotiationOffer } {
-  const offer = Math.round((shopper.opening + (round - 1) / shopper.patience * (shopper.willingness - shopper.opening)) / 100) * 100;
+/** step: which message of theirs this is (sets the offer). round: the negotiation round it is priced at. */
+function quote(input: LiveGymInput, settings: ResolvedSettings, shopper: SimulatedPersona, patience: number, step: number, round: number): { offer: number; priced?: NegotiationOffer } {
+  const offer = offerAt(shopper, patience, step);
   const addOn = shopper.bundleTempted ? input.catalog.find(item => item.isAddOn && item.productId !== input.main.productId && item.inStock && item.cost !== null) : undefined;
   const reason = analyzeBuyerReason(addOn ? `I am buying ${addOn.title} too today` : "I am buying today");
-  const menuInput = { main: input.main, mirror: { items: input.catalog }, offered: offer, round, reason, quantity: 1, floorPct: input.floorPct, now: input.now, requestedAddOn: addOn?.title, allowAlternatives: false };
+  const menuInput = { main: input.main, mirror: { items: input.catalog }, offered: offer, round, reason, quantity: 1, floorPct: input.floorPct, now: input.now, requestedAddOn: addOn?.title, allowAlternatives: false, discountCapPct: settings.discountCapPct, maxRounds: settings.maxRounds };
   const candidates = rankNegotiationMenu(buildNegotiationMenu(menuInput), menuInput);
   return { offer, priced: candidates[0]?.offer };
+}
+
+function offerAt(shopper: SimulatedPersona, patience: number, step: number): number {
+  return Math.round((shopper.opening + (step - 1) / patience * (shopper.willingness - shopper.opening)) / 100) * 100;
 }
 
 function cartCost(offer: NegotiationOffer): number | null {
@@ -59,8 +79,9 @@ function addOnPart(offer: NegotiationOffer): number {
 }
 
 /** Runs a deterministic population through the live code-priced menu and deterministic option-A selection. No LLM calls are simulated. */
-export function runLiveGym(input: LiveGymInput): GymResult {
+export function runLiveGym(input: LiveGymInput): LiveGymResult {
   assertInput(input);
+  const settings = resolveSettings(input.settings);
   const population = makePopulation(mulberry32(input.seed), input.n, input.main.list);
   const floor = Math.max(input.main.cost! + 1, Math.ceil(input.main.cost! * (1 + input.floorPct / 100)));
   const banner = Math.round(input.main.list * 0.8);
@@ -76,8 +97,12 @@ export function runLiveGym(input: LiveGymInput): GymResult {
     let finalCost = input.main.cost!;
     let finalTotal = input.main.list;
 
-    for (let round = 1; round <= person.patience; round += 1) {
-      const { offer, priced } = quote(input, person, round);
+    // A lowball is countered with the quote already on the table (round one) and earns nothing: the round does not advance.
+    const patience = Math.min(person.patience, settings.maxRounds);
+    let round = 0;
+    for (let step = 1; step <= patience; step += 1) {
+      if (!isLowball(offerAt(person, patience, step), input.main.list, settings.lowballCutoffPct)) round += 1;
+      const { offer, priced } = quote(input, settings, person, patience, step, Math.max(1, round));
       rounds.push({ offer, ask: priced?.total ?? input.main.list });
 
       // Invalid or unavailable live quotes end this synthetic negotiation without an owner escalation.
@@ -96,7 +121,7 @@ export function runLiveGym(input: LiveGymInput): GymResult {
       finalTotal = priced.total;
       const affordable = person.willingness + (priced.kind === "bundle" ? bundleAllowance(priced) : 0);
       if (priced.total <= affordable) {
-        const trade = priced.kind === "accepted" ? "accepted" : priced.kind === "bundle" ? "bundle" : round === 4 ? "final" : "held";
+        const trade = priced.kind === "accepted" ? "accepted" : priced.kind === "bundle" ? "bundle" : round === settings.maxRounds ? "final" : "held";
         resolved = { id: index + 1, persona: person.persona, willingness: person.willingness, rounds, outcome: "bought", agreed: priced.total, trade };
         haggleProfit += priced.total - cost;
         if (priced.kind === "bundle") addOnRevenue += addOnPart(priced);
@@ -107,7 +132,7 @@ export function runLiveGym(input: LiveGymInput): GymResult {
     if (!resolved) {
       const lastOffer = rounds.at(-1)!.offer;
       const finalFloor = Math.max(finalCost + 1, Math.ceil(finalCost * (1 + input.floorPct / 100)));
-      const outcome = input.askOwner && rounds.length === 4 && lastOffer > finalCost && lastOffer < finalFloor && lastOffer < finalTotal
+      const outcome = input.askOwner && round === settings.maxRounds && lastOffer > finalCost && lastOffer < finalFloor && lastOffer < finalTotal
         ? "would_ask_owner"
         : "walked";
       resolved = {
@@ -147,5 +172,6 @@ export function runLiveGym(input: LiveGymInput): GymResult {
     wouldAskOwner: shoppers.filter((shopper) => shopper.outcome === "would_ask_owner").length,
     dealsMissed: shoppers.filter((shopper) => shopper.missed).length,
     shoppers,
+    lowballs: countLowballs({ shoppers }, input.main.list, settings.lowballCutoffPct),
   };
 }
