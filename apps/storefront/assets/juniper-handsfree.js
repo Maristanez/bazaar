@@ -1,6 +1,9 @@
 // V1 hands-free conversation (docs/PLAN.md). Talks to the chat only through window.BazaarChat.
-// One click on "Talk to Juniper" opens Chrome's SpeechRecognition; a pause ends the shopper's turn and sends it as a
-// normal chat turn; the mic is shut while Juniper thinks and speaks (half-duplex) and reopens when she finishes.
+// The chat's own small round mic button (elements.mic) becomes the hands-free control when SpeechRecognition is
+// supported: one click opens Chrome's SpeechRecognition; a pause ends the shopper's turn and sends it as a normal
+// chat turn; the mic is shut while Juniper thinks and speaks (half-duplex) and reopens when she finishes.
+// Nothing new is injected to start voice — the big "Talk to Juniper" control is gone; only the listening bar
+// (state word + live caption) is ours to add, and only while hands-free is actually on.
 (function () {
   var chat = window.BazaarChat;
   if (!chat) return;
@@ -16,9 +19,9 @@
   var FLAG_KEY = 'bazaar:handsfree';
   var TOLD_KEY = 'bazaar:handsfree:told';
   var OFF_KEY = 'bazaar:handsfree:off';   // the shopper turned it off: no auto-start for the rest of the session
-  var SUPPORTED_CLASS = 'juniper-handsfree--supported';
   var STATE_WORDS = { off: '', listening: 'Listening', hearing: 'Hearing you', thinking: 'Juniper is thinking', speaking: 'Juniper is talking' };
-  var MIC_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" /></svg>';
+  var ON_LABEL = 'Stop talking to Juniper';
+  var OFF_LABEL = 'Talk to Juniper';
 
   var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -40,16 +43,21 @@
   var endTimer = null;
   var restartTimer = null;
   var pendingTimer = null;
+  var mic = null;          // the theme's own [data-ai-chat-mic] button — hands-free's only control
+  var micObserver = null;
   var root = null;
-  var toggle = null;
   var bar = null;
   var stateWord = null;
   var caption = null;
   var stopButton = null;
 
+  function offNoop() {
+    chat.handsfree = { start: function () { return false; }, stop: function () {}, isOn: function () { return false; } };
+  }
+
   // Hands-free is off, and says so, wherever the browser cannot do it. Push-to-talk stays exactly as it is.
   if (!Recognition) {
-    chat.handsfree = { start: function () { return false; }, stop: function () {}, isOn: function () { return false; } };
+    offNoop();
     return;
   }
 
@@ -91,19 +99,33 @@
     if (caption) caption.textContent = text;
   }
 
+  // chat-demo.js's syncVoiceUi() re-toggles is-recording, hidden and disabled on the mic on every sync (it runs on
+  // each send, among other things) for its own, now-bypassed, push-to-talk state. Put hands-free's state straight
+  // back afterwards — never touching `hidden`, which stays chat-demo's call entirely.
+  function reassertMic() {
+    if (!mic) return;
+    if (on) {
+      if (!mic.classList.contains('is-recording')) mic.classList.add('is-recording');
+      if (mic.getAttribute('aria-pressed') !== 'true') mic.setAttribute('aria-pressed', 'true');
+      if (mic.getAttribute('aria-label') !== ON_LABEL) { mic.setAttribute('aria-label', ON_LABEL); mic.title = ON_LABEL; }
+      if (mic.disabled) mic.disabled = false; // the shopper must always be able to stop, even mid-turn
+    } else {
+      if (mic.classList.contains('is-recording')) mic.classList.remove('is-recording');
+      if (mic.getAttribute('aria-pressed') !== 'false') mic.setAttribute('aria-pressed', 'false');
+      if (mic.getAttribute('aria-label') !== OFF_LABEL) { mic.setAttribute('aria-label', OFF_LABEL); mic.title = OFF_LABEL; }
+    }
+  }
+
   function setState(next) {
     var changed = next !== state;
     state = next;
     if (root) {
       root.setAttribute('data-state', state);
-      root.classList.toggle('is-on', on);
-      toggle.setAttribute('aria-pressed', on ? 'true' : 'false');
-      toggle.querySelector('.juniper-handsfree__label').textContent = on ? 'Done talking' : 'Talk to Juniper';
-      toggle.setAttribute('aria-label', on ? 'Turn hands-free off' : 'Talk to Juniper, hands-free');
       bar.hidden = !on;
       stateWord.textContent = STATE_WORDS[state] || '';
       stopButton.hidden = state !== 'speaking';
     }
+    reassertMic();
     if (isListening()) keepListeningMood();
     else if (state === 'off' && chat.state().mood === 'listening') chat.setMood('idle');
     if (changed) announce('bazaar-voice:state', { on: on, state: state });
@@ -158,8 +180,8 @@
       if (event.type === 'keydown' && event.key === 'Escape') return;
       document.removeEventListener('pointerdown', retry, true);
       document.removeEventListener('keydown', retry, true);
-      // A press on our own button is already the shopper asking; the click handles it.
-      if (root && event.target && root.contains(event.target)) return;
+      // A press on the mic is already the shopper asking; the click handler handles it.
+      if (mic && event.target && mic.contains(event.target)) return;
       if (on || stored(OFF_KEY) === '1') return;
       guarded(function () { autoStart(); });
     }
@@ -222,7 +244,7 @@
   function onError(event) {
     var reason = event && event.error;
     if (reason === 'not-allowed' || reason === 'service-not-allowed') {
-      refused('The browser would not let me use the microphone, so hands-free is off. Allow the microphone for this shop and tap Talk to Juniper again. Typing still works.');
+      refused('The browser would not let me use the microphone, so hands-free is off. Allow the microphone for this shop and tap the mic again. Typing still works.');
     }
     // no-speech, aborted, network and the rest end the session; onend decides whether to reopen it.
   }
@@ -305,7 +327,7 @@
   function tellOnce() {
     if (stored(TOLD_KEY) === '1') return;
     store(TOLD_KEY, '1');
-    chat.addMessage("Hands-free is on: just talk, and pause when you're done. While it's on, Chrome's speech service hears the audio to turn it into words. Press Esc or tap Done talking to stop.", 'bot');
+    chat.addMessage("Hands-free is on: just talk, and pause when you're done. While it's on, Chrome's speech service hears the audio to turn it into words. Press Esc or tap the mic to stop.", 'bot');
   }
 
   // A click has every other feature's script long since run, so the pill (if any) already exists: decide now.
@@ -339,7 +361,7 @@
     return on;
   }
 
-  // The shopper's own off switch (button, Esc, a pill's stop): remembered, so auto-listen stays away this session.
+  // The shopper's own off switch (mic click, Esc, a pill's stop): remembered, so auto-listen stays away this session.
   function stop() {
     if (on) store(OFF_KEY, '1');
     turnOff('');
@@ -366,12 +388,13 @@
     if (why) chat.addMessage(why, 'bot');
   }
 
-  // ---- The control and the bar ----
+  // ---- The mic takeover and the listening bar ----
 
   function build() {
+    mic = chat.elements.mic;
     var form = chat.elements.form;
-    var foot = form && form.parentNode;
-    if (!foot) return false;
+    var foot = chat.elements.foot || (form && form.parentNode);
+    if (!foot || !mic || !form) return false;
     root = document.createElement('div');
     root.className = 'juniper-handsfree';
     root.setAttribute('data-state', 'off');
@@ -381,23 +404,36 @@
         '<span class="juniper-handsfree__state"></span>' +
         '<span class="juniper-handsfree__caption"></span>' +
         '<button class="juniper-handsfree__stop" type="button" hidden>Stop</button>' +
-      '</div>' +
-      '<button class="juniper-handsfree__toggle" type="button" aria-pressed="false">' + MIC_ICON + '<span class="juniper-handsfree__label">Talk to Juniper</span></button>';
-    toggle = root.querySelector('.juniper-handsfree__toggle');
+      '</div>';
     bar = root.querySelector('.juniper-handsfree__bar');
     stateWord = root.querySelector('.juniper-handsfree__state');
     caption = root.querySelector('.juniper-handsfree__caption');
     stopButton = root.querySelector('.juniper-handsfree__stop');
     stopButton.setAttribute('aria-label', 'Stop Juniper talking');
     foot.insertBefore(root, form);
-    toggle.addEventListener('click', function () { guarded(function () { if (on) stop(); else start(); }); });
     stopButton.addEventListener('click', function () { guarded(bargeIn); });
+
+    // Capture phase, on the mic itself: at the target, capturing listeners run before bubble-phase ones, so this
+    // runs before chat-demo.js's own (bubble-phase) push-to-talk handler. stopImmediatePropagation keeps that
+    // handler — and the MediaRecorder/getUserMedia it opens — from ever running.
+    mic.addEventListener('click', function (event) {
+      event.stopImmediatePropagation();
+      event.preventDefault();
+      guarded(function () { if (on) stop(); else start(); });
+    }, true);
+
+    reassertMic();
+    if (window.MutationObserver) {
+      micObserver = new window.MutationObserver(function () { guarded(reassertMic); });
+      try { micObserver.observe(mic, { attributes: true, attributeFilter: ['class', 'disabled', 'aria-pressed', 'aria-label'] }); } catch (error) { /* observe is best-effort */ }
+    }
     return true;
   }
 
-  if (!build()) return;
-  // Manual recording is retired wherever hands-free can run; the stylesheet hides [data-ai-chat-mic] under this class.
-  chat.elements.widget.classList.add(SUPPORTED_CLASS);
+  if (!build()) {
+    offNoop();
+    return;
+  }
 
   chat.on('turn:start', function () {
     shopperTurns += 1;
