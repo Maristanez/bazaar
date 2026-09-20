@@ -54,7 +54,7 @@ describe("V13 — Juniper's hands", () => {
     expect(understand("make it two")).toMatchObject({ kind: "fit", quantity: 2 });
     expect(understand("what's in my cart?")).toEqual({ kind: "cart" });
     expect(understand("take me back to the shop")).toEqual({ kind: "browse" });
-    expect(understand("undo")).toEqual({ kind: "undo" });
+    expect(understand("undo")).toMatchObject({ kind: "undo" });
   });
 
   it("hears looser phrasing: one telling word, and the many ways to say go", () => {
@@ -135,10 +135,76 @@ describe("V13 — Juniper's hands", () => {
       "If I buy today, could you add socks as a gift?",
       "could you add two pairs of socks as a gift",
       "I'm buying two pairs. What can you do?",
-      "Deal. Take me to checkout.",
-      "Click the deal button for me",
-      "I'll pay now",
+      "can you do a better deal",
+      "size 10 for 120 dollars?",
+      "I want two, what's the best price",
+      "What's good for muddy trails?",
+      "Is that your best?",
     ]) expect(understand(text), text).toBeNull();
+  });
+
+  it("Deal, checkout and emptying the cart stay in the shopper's hand: she says so on the page", async () => {
+    const { understand, chat, steps, requests, settle } = mount({ onProduct: true });
+    expect(understand("Deal. Take me to checkout.")).toEqual({ kind: "refuse", what: "checkout" });
+    expect(understand("Click the deal button for me")).toEqual({ kind: "refuse", what: "deal" });
+    expect(understand("I'll pay now")).toEqual({ kind: "refuse", what: "checkout" });
+    chat.open();
+    chat.send("click the deal button");
+    await wait(settle);
+    expect(must(steps()[0]).textContent).toContain("that button is yours");
+    expect(requests.filter((request: any) => request.path === "/api/chat").length).toBe(0);
+  });
+
+  it("empties the cart when asked, and Undo puts it all back", async () => {
+    const calls: { url: string; body: any }[] = [];
+    const mounted = mountWidget({
+      features: ["hands"], products: [RUNNER, SOCKS],
+      before: (window) => { window.setTimeout = (run: () => void, ms?: number) => setTimeout(run, (ms || 0) > 3000 ? ms : 0); },
+      routes: {
+        "/cart.js": () => ({ item_count: 3, items: [{ key: "k1", variant_id: 910, quantity: 2, handle: "trail-runner-3", product_title: "Trail Runner 3" }, { key: "k2", variant_id: 222, quantity: 1, handle: "trail-socks", product_title: "Trail Socks" }] }),
+        "/cart/clear.js": (body: any) => { calls.push({ url: "/cart/clear.js", body }); return {}; },
+        "/cart/update.js": (body: any) => { calls.push({ url: "/cart/update.js", body }); return {}; },
+        "/cart/add.js": (body: any) => { calls.push({ url: "/cart/add.js", body }); return { items: [] }; },
+      },
+    });
+    mounted.chat.open();
+    mounted.chat.send("clear my cart");
+    await wait(mounted.settle);
+    expect(calls.map((call) => call.url)).toEqual(["/cart/clear.js"]);
+    (must(mounted.document.querySelector("[data-juniper-undo]")) as HTMLElement).click();
+    await wait(mounted.settle);
+    expect(calls[1]).toEqual({ url: "/cart/add.js", body: { items: [{ id: 910, quantity: 2 }, { id: 222, quantity: 1 }] } });
+
+    mounted.chat.send("remove the trail socks from my cart");
+    await wait(mounted.settle);
+    expect(calls[2]).toEqual({ url: "/cart/update.js", body: { updates: { k2: 0 } } });
+    expect(mounted.requests.filter((request: any) => request.path === "/api/chat").length).toBe(0);
+  });
+
+  it("drives the browser: back, forward, refresh, scroll", () => {
+    const { understand } = mount();
+    expect(understand("refresh the page")).toEqual({ kind: "reload" });
+    expect(understand("go forward")).toEqual({ kind: "forward" });
+    expect(understand("go back")).toEqual({ kind: "back" });
+    expect(understand("scroll to the top")).toEqual({ kind: "scroll", where: "top" });
+  });
+
+  it("takes the way people and speech-to-text actually put it", () => {
+    const { understand } = mount({ onProduct: true });
+    for (const text of ["add to cart", "Add to card.", "at it to my cart", "Hey Jarvis, can you please add this to my cart", "I'll take it", "buy this", "press add to cart", "Click the add to cart button."]) {
+      expect(understand(text), text).toMatchObject({ kind: "add", product: { handle: "trail-runner-3" } });
+    }
+    expect(understand("I'll take them in a 10")).toMatchObject({ kind: "add", size: "10" });
+    expect(understand("add two")).toMatchObject({ kind: "add", quantity: 2 });
+    for (const text of ["press home", "home", "Click the home button.", "Go home."]) expect(understand(text), text).toEqual({ kind: "home" });
+    for (const text of ["back", "go back", "take me back"]) expect(understand(text), text).toEqual({ kind: "back" });
+    expect(understand("cart")).toEqual({ kind: "cart" });
+    expect(understand("make it a 10")).toMatchObject({ kind: "fit", size: "10" });
+    expect(understand("size ten and a half")).toMatchObject({ kind: "fit", size: "10.5" });
+    expect(understand("scroll down")).toEqual({ kind: "scroll", where: "down" });
+    expect(understand("socks please")).toMatchObject({ kind: "show", product: { handle: "trail-socks" } });
+    expect(understand("show me everything")).toMatchObject({ kind: "browse" });
+    expect(understand("open the menu")).toEqual({ kind: "unsure" });
   });
 
   it("picks the size and quantity on the product form, then adds what the form says, with Undo", async () => {

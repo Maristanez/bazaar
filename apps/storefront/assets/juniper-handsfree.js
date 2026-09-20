@@ -317,7 +317,10 @@
     if (!on || !text) return;
     // The wake word on its own is a summons, not something to say to Juniper.
     if (chat.keyword && chat.keyword.matches(text) && text.split(/\s+/).length <= 3) { resetTurn(); listen(); return; }
-    if (autoListen && shopperTurns === 0 && text.split(/\s+/).length < MIN_WORDS_BEFORE_FIRST_TURN) {
+    // A short chore ("go home", "add to cart") is someone talking to Juniper, however few the words.
+    var isChore = false;
+    try { isChore = Boolean(chat.hands && chat.hands.understand && chat.hands.understand(text, chat.state())); } catch (error) { isChore = false; }
+    if (!isChore && autoListen && shopperTurns === 0 && text.split(/\s+/).length < MIN_WORDS_BEFORE_FIRST_TURN) {
       // Too little to be someone talking to Juniper. A fresh session, so these words do not pad the next ones.
       listen();
       return;

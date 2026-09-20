@@ -147,6 +147,18 @@ createServer(async (request, response) => {
       return;
     }
     // A stand-in for Shopify's cart API, so Juniper's hands (V13) have a cart to work on. Held in memory.
+    if (url.pathname === "/cart/clear.js" || url.pathname === "/cart/update.js") {
+      const chunks = [];
+      for await (const chunk of request) chunks.push(chunk);
+      const body = JSON.parse(Buffer.concat(chunks).toString() || "{}");
+      if (url.pathname === "/cart/clear.js") cart.items = [];
+      else for (const [key, quantity] of Object.entries(body.updates || {})) { const item = cart.items.find((entry) => entry.key === String(key)); if (item) item.quantity = Number(quantity); }
+      cart.items = cart.items.filter((item) => item.quantity > 0);
+      cart.item_count = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(cart));
+      return;
+    }
     if (url.pathname === "/cart/add.js" || url.pathname === "/cart/change.js") {
       const chunks = [];
       for await (const chunk of request) chunks.push(chunk);
@@ -158,7 +170,7 @@ createServer(async (request, response) => {
           const variant = owner && (owner.variants || []).find((entry) => String(entry.id) === String(wanted.id));
           touched = cart.items.find((item) => item.key === String(wanted.id));
           if (touched) touched.quantity += wanted.quantity || 1;
-          else { touched = { key: String(wanted.id), handle: owner ? owner.handle : "", title: owner ? owner.title : "Item", product_title: owner ? owner.title : "Item", variant_title: variant ? variant.title : "", quantity: wanted.quantity || 1 }; cart.items.push(touched); }
+          else { touched = { key: String(wanted.id), variant_id: wanted.id, handle: owner ? owner.handle : "", title: owner ? owner.title : "Item", product_title: owner ? owner.title : "Item", variant_title: variant ? variant.title : "", quantity: wanted.quantity || 1 }; cart.items.push(touched); }
         }
       } else {
         touched = cart.items.find((item) => item.key === String(body.id));

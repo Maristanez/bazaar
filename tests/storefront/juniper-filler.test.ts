@@ -154,7 +154,7 @@ describe("V11 — spoken filler while the shopkeeper picks", () => {
     expect(chat.setSpokenReplies(true)).toBe(true);
     chat.send("Hello there");
     await vi.advanceTimersByTimeAsync(100);
-    expect(spoken().filter((request) => /shelf|maths|Hmm/.test(request.body.text)).length).toBe(3);
+    expect(spoken().filter((request) => /shelf|see what|Hmm/.test(request.body.text)).length).toBe(3);
     // The first reply was read aloud through the same fake Audio; while it plays, a filler would talk over it.
     const before = plays();
     timing.chatDelay = 3000;

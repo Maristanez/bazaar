@@ -5,7 +5,7 @@
   var chat = window.BazaarChat;
   if (!chat) return;
   try {
-    var LINES = ['Hmm, let me look.', 'One moment, checking the shelf.', 'Let me do the maths on that.'];
+    var LINES = ['Hmm, let me look.', 'One moment, checking the shelf.', 'Let me see what I can do.'];
     var WAIT_MS = 1500;
     var VOLUME = 0.85;
     if (typeof window.fetch !== 'function' || typeof window.Audio !== 'function' || !window.URL || typeof window.URL.createObjectURL !== 'function') return;

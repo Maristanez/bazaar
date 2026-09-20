@@ -6,6 +6,8 @@
 //            A chore for a product on another page takes her there first and is finished on arrival.
 //   on her own — asked to find something, she answers, then takes the shopper to the product she named ("Stay
 //            here" stops her).
+//            Cart edits the shopper asks for: take a named thing out, or empty the cart, each with Undo.
+//            Browser: back, forward, refresh, scroll.
 //   never  — Deal, checkout, payment, removing what the shopper did not ask to remove. A deal is binding: it takes
 //            the shopper's own hand. Nothing here reads, writes or says a price.
 (function () {
@@ -27,10 +29,43 @@
 
   // "Trail Runner three" and "trail-runner-3" read the same.
   function plain(value) {
-    return lower(value).replace(/[^a-z0-9.]+/g, ' ').replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\b/g, function (word) { return String(NUMBER_WORDS[word]); }).replace(/\s+/g, ' ').replace(/^ | $/g, '');
+    return lower(value).replace(/[^a-z0-9.]+/g, ' ').replace(/\.(?!\d)/g, ' ').replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\b/g, function (word) { return String(NUMBER_WORDS[word]); }).replace(/\b(\d{1,2}) and a half\b/g, '$1.5').replace(/\s+/g, ' ').replace(/^ | $/g, '');
+  }
+
+  // What the ear hands over is not what was said: "add to card", "at it to my kart", "hey Jarvis, can you please…".
+  function tidy(said) {
+    return said
+      .replace(/\b(?:card|kart|court)\b/g, function (word, at, whole) { return /(?:gift|credit|debit|business) $/.test(whole.slice(0, at)) ? word : 'cart'; })
+      .replace(/^(?:(?:hey|hi|ok|okay|yo|so|um|uh|and|now|then|please|juniper|jarvis|jarvus|jervis)\s+)+/, '')
+      .replace(/^(?:(?:can|could|would|will) you|i (?:want|need|d like) you to|i d like to|i want to|let s|let us|go ahead and|just)\s+/, '')
+      .replace(/^(?:please|kindly|quickly|just)\s+/, '')
+      .replace(/\s+(?:please|for me|thanks|thank you|now|right now|real quick)$/g, '')
+      .replace(/^(?:press|click|tap|hit|push|select|choose|use)(?: on)?(?: the)?\s+(.+?)(?: button| link| tab| icon)?$/, '$1')
+      .replace(/^(?:at|had|ad|and) ((?:it|this|that|them|these|those) )?(to|in|into) /, 'add $1$2 ');
   }
 
   function state() { try { return chat.state() || {}; } catch (error) { return {}; } }
+
+  // A chore with no haggling in it is answered here, on the page, and never sent: the server reads every turn as
+  // bargaining ("make it two" came back as a two-dollar offer). A sentence that does both gets both.
+  var HAGGLING = /\$|\b\d+\s*(?:dollars|bucks)\b|\b(?:offer|discount|deal|price|cheaper|budget|best you can|how about|could you do|would you take|knock|off|gift|free|throw in|perk|bundle|student|percent|half price|match)\b|%/i;
+
+  // ---- a chore that needs another page: she goes there herself and finishes the job on arrival ----
+  var PLAN_KEY = 'bazaar:hands:plan';
+  var PLAN_FRESH_MS = 60000;
+  function planAhead(action) {
+    try { window.sessionStorage.setItem(PLAN_KEY, JSON.stringify({ at: Date.now(), kind: action.kind, handle: action.product.handle, size: action.size || '', quantity: action.quantity || 0 })); } catch (error) { /* she still gets there */ }
+  }
+  function resumePlan() {
+    var plan = null;
+    try { plan = JSON.parse(window.sessionStorage.getItem(PLAN_KEY) || 'null'); window.sessionStorage.removeItem(PLAN_KEY); } catch (error) { plan = null; }
+    var current = state().currentProduct;
+    if (!plan || !current || Date.now() - plan.at > PLAN_FRESH_MS || lower(plan.handle) !== lower(current.handle)) return;
+    window.setTimeout(function () {
+      // Open or minimised is as the shopper left it (V2 carries that over); minimised, the peek reports.
+      run({ kind: plan.kind, product: current, size: plan.size, quantity: plan.quantity });
+    }, 1100);
+  }
 
   // ---- reading the chore out of what was said ----
   function namedProduct(said, products) {
@@ -72,7 +107,8 @@
 
   function sizeIn(said) {
     var match = /\bsize\s+(\d{1,2}(?:\.5)?|xs|s|m|l|xl|xxl|extra small|small|medium|large|extra large)\b/.exec(said)
-      || /\bin (?:a |an )?(extra small|small|medium|large|extra large)\b/.exec(said);
+      || /\b(?:in|make (?:it|that|them)|give me|do|want|need|take|get me|i m|i am|i wear|wear) an? (\d{1,2}(?:\.5)?|extra small|small|medium|large|extra large)\b/.exec(said)
+      || /\bin (extra small|small|medium|large|extra large)\b/.exec(said);
     if (!match) return '';
     return SIZE_WORDS[match[1]] || match[1].toUpperCase();
   }
@@ -80,31 +116,75 @@
   // "add two" counts only inside a cart chore: "could you add two pairs of socks as a gift" is haggling, not a chore.
   function quantityIn(said, adding) {
     var match = /\b(?:make (?:it|that)|quantity(?: of| to)?|change (?:it|that|the quantity) to|set (?:it|the quantity) to)\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)\b/.exec(said)
-      || (adding ? /\b(?:add|put|throw|toss|pop|drop)\s+(\d{1,2}|two|three|four|five|six|seven|eight|nine|ten|a couple)\b/.exec(said) : null);
+      || (adding ? /\b(?:add|put|throw|toss|pop|drop|take|have|get|buy|grab|want|need|order)\s+(?:me )?(\d{1,2}|a couple)\b(?! and a half|\.5)/.exec(said) : null)
+      || /^(?:i (?:want|need|ll take|d like|ll have)|give me|get me) (\d{1,2}|a couple)(?: of (?:them|these|those|it)| pairs?)?$/.exec(said);
     if (!match) return 0;
     var value = match[1] === 'a couple' ? 2 : (NUMBER_WORDS[match[1]] || parseInt(match[1], 10));
     return value > 0 && value <= 20 ? value : 0;
   }
 
+  var CART = '(?:cart|bag|basket|trolley)';
   function understand(text, context) {
-    var said = plain(text);
+    var said = tidy(plain(text));
     if (!said) return null;
     context = context || {};
+    // Bargaining talk borrows the same verbs ("could you add two pairs of socks as a gift"). With haggling in the
+    // sentence, only a chore that names the cart outright is a chore.
+    var haggling = HAGGLING.test(String(text || ''));
+    // The two things that stay in the shopper's own hand. Said plainly, on the page, without a trip to the server.
+    if (/\b(check ?out|pay(?: now| for (?:it|this|them))?|place (?:the |my )?order|buy (?:it )?now)\b/.test(said) && !/\bcheck out the\b/.test(said)) return { kind: 'refuse', what: 'checkout' };
+    if (/\b(?:press|click|tap|hit|push|accept|confirm|take)(?: on)? (?:the |that |this |a )?deal\b/.test(plain(text))) return { kind: 'refuse', what: 'deal' };
     var product = namedProduct(said, context.products);
     var going = /\b(show|open|take me|bring me|go to|head to|jump to|navigate|pull up|bring up|let me see|let s see|look at|see the|find|search for|where is|where are|want to see|like to see|check out the)\b/.test(said);
     if (!product && (going || /\b(add|put|throw|toss|pop|drop)\b/.test(said))) product = looselyNamed(said, context.products);
-    if (/\b(undo|take (?:that|it) (?:back )?out|remove (?:that|the last (?:one|thing)))\b/.test(said)) return { kind: 'undo' };
-    if (/\b(add|put|throw|toss|pop|drop)\b.*\b(cart|bag|basket)\b/.test(said) || /\badd (?:it|them|this|that|those|these)\b/.test(said)) {
+    if (/\b(undo|take (?:that|it|them) (?:back )?out|put (?:that|it|them) back|remove (?:it|that|them|this|the last (?:one|thing))|never ?mind that|scratch that)\b/.test(said) && !namedProduct(said, context.products)) return { kind: 'undo', product: context.currentProduct || null };
+    if (/\b(?:clear|empty|delete|wipe|reset)\b.*\bcart\b|\b(?:remove|delete|take out|get rid of) (?:everything|all(?: of (?:it|them))?)\b|^start over$/.test(said)) return { kind: 'clear' };
+    if ((/\b(?:remove|delete|take out|take off|get rid of|lose)\b/.test(said) || /\btake\b.+\b(?:out|off)\b/.test(said)) && !haggling) {
+      var gone = product || looselyNamed(said, context.products);
+      if (gone) return { kind: 'remove', product: gone };
+      if (/\b(?:it|this|that|these|those|them)\b/.test(said) && context.currentProduct && !/\b(undo|last)\b/.test(said)) return { kind: 'remove', product: context.currentProduct, orUndo: true };
+    }
+    if (/^(?:refresh|reload)(?: (?:the |this )?page)?$/.test(said)) return { kind: 'reload' };
+    if (/^(?:go |take me |head )?forward(?: (?:a|one) page)?$|^next page$/.test(said)) return { kind: 'forward' };
+    if (new RegExp('\\b(add|put|throw|toss|pop|drop|stick|chuck)\\b.*\\b' + CART + '\\b').test(said)
+      || (!haggling && (/\badd (?:it|them|this|that|those|these|one|\d{1,2}|a couple)\b/.test(said)
+        || /^add(?: (?:to|in|into)(?: (?:my|the))? cart)?$/.test(said)
+        || /\b(?:i ll|i will|ill|we ll|i d like to|i want to|let me) (?:take|have|get|buy|grab|order) (?:it|them|this|that|these|those|one|a pair|\d{1,2}|a couple)\b/.test(said)
+        || /^(?:buy|get|grab|order|purchase|bag)(?: me)? (?:it|this|that|these|those|them|one|a pair)\b/.test(said)))) {
       return { kind: 'add', product: product || context.currentProduct || null, size: sizeIn(said), quantity: quantityIn(said, true) || 0 };
     }
-    if (/\b(open|show|view|see|check|go to|take me to|navigate to|head to|bring up|pull up|what s in|whats in)\b.*\b(cart|bag|basket)\b/.test(said)) return { kind: 'cart' };
+    if (/\b(open|show|view|see|check|go to|take me to|navigate to|head to|bring up|pull up|what s in|whats in)\b.*\b(cart|bag|basket)\b/.test(said) || /^(?:my |the )?(?:cart|bag|basket)$/.test(said)) return { kind: 'cart' };
+    if (/^(?:go |take me |head |navigate )?back(?: (?:a|one) page| to (?:the )?(?:last|previous) page)?$|^(?:the )?(?:previous|last) page$/.test(said)) return { kind: 'back' };
+    var scroll = /^(?:scroll|go|move|page)?\s*(?:to (?:the )?)?(up|down|top|bottom)(?: of (?:the )?page)?$/.exec(said) || /\bscroll (?:\w+ )?(up|down|top|bottom)\b/.exec(said) || /\b(?:to|at) the (top|bottom)\b/.exec(said);
+    if (scroll) return { kind: 'scroll', where: scroll[1] };
+    if (/^(?:the )?(?:home|home ?page|front page|main page|start)$/.test(said)) return { kind: 'home' };
+    if (/^(?:the )?(?:shop|store|products|catalog|catalogue|collection|shelves|everything|all)$/.test(said) || /\b(?:show|see|view|browse|open|list)\b.*\b(?:everything|all (?:the |your )?(?:products|items|gear|stuff)|what you (?:have|ve got|sell))\b/.test(said)) return { kind: 'browse' };
     if (/\b(all products|everything you (?:have|ve got|sell)|back to (?:the )?(?:shop|store|products)|keep shopping|browse (?:the )?(?:shop|store)|(?:show|see|open|go to|navigate to|take me to) (?:me )?(?:the )?(?:shop|store|catalog|catalogue|collection|shelves))\b/.test(said)) return { kind: 'browse' };
     if (/\b(go|take me|bring me|head|navigate|back) (?:to (?:the )?)?home(?: ?page)?\b/.test(said)) return { kind: 'home' };
     if (product && going) return { kind: 'show', product: product };
+    // Just its name, or its name and a nod: "the vest", "socks please".
+    var brief = said.split(' ').length <= 4;
+    if (!product && brief && !haggling) product = looselyNamed(said, context.products);
+    if (product && brief && !haggling) return { kind: 'show', product: product };
+    // A kind of thing, not one thing ("show me shoes"): the shelves, with the first of them pointed out.
+    if (going) {
+      var kind = kindNamed(said, context.products);
+      if (kind) return { kind: 'browse', point: kind.handle };
+    }
     var size = sizeIn(said);
     var quantity = quantityIn(said, false);
-    if (size || quantity) return { kind: 'fit', size: size, quantity: quantity };
+    if ((size || quantity) && !haggling) return { kind: 'fit', size: size, quantity: quantity };
+    // It was an order, not a haggle, and she did not catch it: she says what she can do rather than guess.
+    if (/^(?:add|put|remove|open|close|go|take me|bring me|navigate|scroll|show|find|search|select|choose|pick|set|change|switch)\b/.test(said) && !haggling) return { kind: 'unsure' };
     return null;
+  }
+
+  function kindNamed(said, products) {
+    var heard = {};
+    said.split(' ').forEach(function (word) { if (word.length >= 3 && !COMMON[word]) heard[singular(word)] = true; });
+    return (products || []).filter(function (product) {
+      return plain([product && product.type, product && product.title].join(' ')).split(' ').some(function (word) { return word.length >= 3 && !COMMON[word] && heard[singular(word)]; });
+    })[0] || null;
   }
 
   // Minimised, the chat cannot show her line; V12's peek above the launcher or the voice pill says it instead.
@@ -221,27 +301,6 @@
   chat.on('speak:start', function () { speaking = true; });
   chat.on('speak:end', function () { speaking = false; flush(); });
 
-  // A chore with no haggling in it is answered here, on the page, and never sent: the server reads every turn as
-  // bargaining ("make it two" came back as a two-dollar offer). A sentence that does both gets both.
-  var HAGGLING = /\$|\b\d+\s*(?:dollars|bucks)\b|\b(?:offer|discount|deal|price|cheaper|budget|best you can|how about|could you do|would you take|knock|off)\b/i;
-
-  // ---- a chore that needs another page: she goes there herself and finishes the job on arrival ----
-  var PLAN_KEY = 'bazaar:hands:plan';
-  var PLAN_FRESH_MS = 60000;
-  function planAhead(action) {
-    try { window.sessionStorage.setItem(PLAN_KEY, JSON.stringify({ at: Date.now(), kind: action.kind, handle: action.product.handle, size: action.size || '', quantity: action.quantity || 0 })); } catch (error) { /* she still gets there */ }
-  }
-  function resumePlan() {
-    var plan = null;
-    try { plan = JSON.parse(window.sessionStorage.getItem(PLAN_KEY) || 'null'); window.sessionStorage.removeItem(PLAN_KEY); } catch (error) { plan = null; }
-    var current = state().currentProduct;
-    if (!plan || !current || Date.now() - plan.at > PLAN_FRESH_MS || lower(plan.handle) !== lower(current.handle)) return;
-    window.setTimeout(function () {
-      // Open or minimised is as the shopper left it (V2 carries that over); minimised, the peek reports.
-      run({ kind: plan.kind, product: current, size: plan.size, quantity: plan.quantity });
-    }, 1100);
-  }
-
   // ---- the chores ----
   function go(href) {
     // A link inside the widget, clicked: V2 carries the conversation (and the ?shopper= of a demo) across the page.
@@ -327,6 +386,10 @@
     });
   }
 
+  function onCartPage() { return /\/cart\/?$/.test(window.location.pathname); }
+  // The cart page is drawn by the server: after a change made from the chat it is loaded again, chat and all.
+  function refreshCartPage() { if (onCartPage()) afterTurn(function () { go('/cart'); }); }
+
   function undoAdd(line) {
     if (!lastAdd) return Promise.resolve(false);
     var taken = lastAdd;
@@ -343,6 +406,79 @@
       travel(document.querySelector('header a[href$="/cart"], a[href="/cart"], a[aria-label="Cart"]'), function () { line.done('Opening your cart'); afterTurn(function () { go('/cart'); }); });
       return;
     }
+    if (action.kind === 'refuse') {
+      step('').fail(action.what === 'deal' ? 'A deal is binding, so that button is yours to press' : 'Paying is yours to do. Here is your cart, checkout is right there');
+      if (action.what !== 'deal' && !onCartPage()) afterTurn(function () { go('/cart'); });
+      return;
+    }
+    if (action.kind === 'clear') {
+      line = step('Juniper is emptying your cart');
+      json('/cart.js').then(function (cart) {
+        var had = (cart.items || []).map(function (item) { return { id: item.variant_id || item.id, quantity: item.quantity }; });
+        if (!had.length) { line.done('Your cart is already empty'); return null; }
+        return json('/cart/clear.js', {}).then(function () {
+          lastAdd = null;
+          showCartCount();
+          line.done('Cart emptied', function () {
+            json('/cart/add.js', { items: had }).then(function () { showCartCount(); line.done('Put everything back'); refreshCartPage(); })
+              .catch(function () { line.fail('The cart did not answer. It is still empty.'); });
+          });
+          refreshCartPage();
+        });
+      }).catch(function () { line.fail('The cart did not answer. Nothing was changed.'); });
+      return;
+    }
+    if (action.kind === 'remove') {
+      if (action.orUndo && lastAdd) { run({ kind: 'undo' }); return; }
+      var gone = action.product;
+      line = step('Juniper is taking the ' + gone.title + ' out of your cart');
+      json('/cart.js').then(function (cart) {
+        var lines = (cart.items || []).filter(function (item) { return lower(item.handle) === lower(gone.handle) || lower(item.product_title || item.title) === lower(gone.title); });
+        if (!lines.length) { line.fail('There is no ' + gone.title + ' in your cart'); return null; }
+        var back = lines.map(function (item) { return { id: item.variant_id || item.id, quantity: item.quantity }; });
+        var updates = {};
+        lines.forEach(function (item) { updates[item.key || item.variant_id || item.id] = 0; });
+        return json('/cart/update.js', { updates: updates }).then(function () {
+          lastAdd = null;
+          showCartCount();
+          line.done('Took the ' + gone.title + ' out', function () {
+            json('/cart/add.js', { items: back }).then(function () { showCartCount(); line.done('Put the ' + gone.title + ' back'); refreshCartPage(); })
+              .catch(function () { line.fail('The cart did not answer. It is still out.'); });
+          });
+          refreshCartPage();
+        });
+      }).catch(function () { line.fail('The cart did not answer. Nothing was changed.'); });
+      return;
+    }
+    if (action.kind === 'reload') {
+      step('').done('Refreshing the page');
+      afterTurn(function () { go(window.location.pathname + window.location.search); });
+      return;
+    }
+    if (action.kind === 'forward') {
+      step('').done('Going forward');
+      afterTurn(function () { window.history.forward(); });
+      return;
+    }
+    if (action.kind === 'unsure') {
+      step('').fail('Say it another way? I can open products, pick a size, set a quantity, add to, remove from or clear your cart, scroll, refresh, and take you home, back, or to your cart');
+      return;
+    }
+    if (action.kind === 'scroll') {
+      line = step('Juniper is scrolling');
+      var top = action.where === 'top' ? 0 : action.where === 'bottom' ? document.documentElement.scrollHeight : window.scrollY + (action.where === 'up' ? -1 : 1) * Math.round(window.innerHeight * 0.8);
+      try { window.scrollTo({ top: top, behavior: 'smooth' }); } catch (error) { window.scrollTo(0, top); }
+      line.done(action.where === 'top' ? 'Top of the page' : action.where === 'bottom' ? 'Bottom of the page' : 'Scrolled ' + action.where);
+      return;
+    }
+    if (action.kind === 'back') {
+      line = step('Juniper is taking you back');
+      var from = '';
+      try { from = document.referrer && new URL(document.referrer).origin === window.location.origin ? document.referrer : ''; } catch (error) { from = ''; }
+      line.done('Going back');
+      afterTurn(function () { go(from || '/collections/all'); });
+      return;
+    }
     if (action.kind === 'home') {
       line = step('Juniper is taking you home');
       line.done('Heading to the front of the shop');
@@ -351,26 +487,29 @@
     }
     if (action.kind === 'browse') {
       line = step('Juniper is taking you back to the shelves');
-      line.done('Heading back to all products');
+      var onShelves = /\/collections\//.test(window.location.pathname) || Boolean(action.point && document.querySelector('a[href*="/products/' + action.point + '"]'));
+      if (onShelves && action.point && chat.pointer && chat.pointer.point) { chat.pointer.point(action.point); line.done('Here they are'); return; }
+      line.done('Heading to the shelves');
       afterTurn(function () { go('/collections/all'); });
       return;
     }
     if (action.kind === 'show') {
       var current = state().currentProduct;
-      if (current && lower(current.handle) === lower(action.product.handle)) return;
+      if (current && lower(current.handle) === lower(action.product.handle)) { step('').done('You are looking at the ' + action.product.title); return; }
       line = step('Juniper is pulling up the ' + action.product.title);
       var card = document.querySelector('a[href*="/products/' + action.product.handle + '"]');
       travel(card, function () { line.done('Opening the ' + action.product.title); afterTurn(function () { go(action.product.url || '/products/' + action.product.handle); }); });
       return;
     }
     if (action.kind === 'fit') {
-      if (!productForm().select && !productForm().quantity) return;
+      if (!productForm().select && !productForm().quantity) { step('').fail('Open a product first and I will set that up'); return; }
       line = step('Juniper is setting that up');
       fit(action, function (said, problem) { if (problem) line.fail(problem); else if (said.length) line.done('Set ' + said.join(', ')); else line.fail('Nothing to change here'); });
       return;
     }
     if (action.kind === 'undo') {
-      if (!lastAdd) return;
+      if (!lastAdd && action.product) { run({ kind: 'remove', product: action.product }); return; }
+      if (!lastAdd) { step('').fail('Nothing to take back. Tell me what to remove, or say clear my cart'); return; }
       line = step('Juniper is taking that back out');
       undoAdd(line).catch(function () { line.fail('The cart did not answer. It is still in there.'); });
       return;
@@ -454,7 +593,8 @@
         var chore = understand(text, { products: current.products, currentProduct: current.currentProduct });
         if (!chore) return false;
         run(chore);
-        return !HAGGLING.test(String(text || ''));
+        // Haggling in the same breath still goes to her; a refusal or an "I did not catch that" never does.
+        return chore.kind === 'refuse' || chore.kind === 'unsure' || !HAGGLING.test(String(text || ''));
       } catch (error) {
         if (window.console) window.console.error('[juniper-hands]', error);
         return false;
