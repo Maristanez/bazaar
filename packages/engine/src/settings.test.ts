@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, resolveSettings } from "./settings";
+import { DEFAULT_SETTINGS, resolveSettings } from "./settings.ts";
 
 describe("owner settings", () => {
   it("absent settings are today's behaviour", () => {

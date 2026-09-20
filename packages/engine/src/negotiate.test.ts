@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { analyzeBuyerReason, applyNegotiationContext, auditOffer, priceOffer, type BuyerReason } from "./negotiate";
+import { analyzeBuyerReason, applyNegotiationContext, auditOffer, ownerApprovalTotal, priceOffer, type BuyerReason } from "./negotiate.ts";
 
 const shoe = {
   variantId: "tr2-10", productId: "tr2", title: "Trail Runner 2", size: "10", productType: "shoe",
@@ -179,3 +179,21 @@ function emptyReasonForTest() {
     isReadyToBuy: false,
   };
 }
+
+describe("ownerApprovalTotal", () => {
+  const audit = { cost: 9500, floor: 11875 };
+  it("is the shopper's offer in whole dollars when it sits above cost, under the floor and under the final price", () => {
+    expect(ownerApprovalTotal(10050, audit, 14000)).toBe(10100);
+  });
+  it("is null at or below cost, at or above the floor, and at or above the final price", () => {
+    expect(ownerApprovalTotal(9500, audit, 14000)).toBeNull();
+    expect(ownerApprovalTotal(11875, audit, 14000)).toBeNull();
+    expect(ownerApprovalTotal(11000, audit, 11000)).toBeNull();
+  });
+  it("never asks the owner to approve a total at or below cost", () => {
+    fc.assert(fc.property(fc.integer({ min: 1, max: 100_000 }), fc.integer({ min: 0, max: 50_000 }), (offered, cost) => {
+      const total = ownerApprovalTotal(offered, { cost, floor: cost * 2 + 1 }, 1_000_000);
+      if (total !== null) expect(total).toBeGreaterThan(cost);
+    }), { numRuns: 500 });
+  });
+});

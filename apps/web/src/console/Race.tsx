@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { GymResult, OwnerProduct, Policy, PolicySettings } from "@bazaar/contracts";
 import { raceLayout, runLiveGym, type LiveGymInput, type RaceDot } from "@bazaar/gym";
-import { SETTING_RANGES, resolveSettings } from "@bazaar/engine";
+import { SETTING_RANGES, floorOf, resolveSettings } from "@bazaar/engine";
 import { invalidReason, items } from "./gymItems";
 
 type Draft = Pick<Policy, "floorPct" | "askOwner"> & { settings?: PolicySettings };
@@ -69,7 +69,7 @@ export function Race({ products, policy, draft, saving, onDraft, onAdopt }: { pr
 
   if (!main || !run) return <section className="paper race" aria-labelledby="race-title"><h2 id="race-title">Try it on 300 shoppers</h2><p className="muted">No product is ready to simulate: each needs a cost in Shopify and stock on hand.</p></section>;
 
-  const cost = main.cost!, list = main.list, floor = Math.max(cost + 1, Math.ceil(cost * (1 + floorPct / 100)));
+  const cost = main.cost!, list = main.list, floor = floorOf(cost, floorPct);
   const race = raceLayout(run.candidate, list, round), settled = race.round >= race.rounds;
   const final = raceLayout(run.candidate, list, 99), before = raceLayout(run.saved, list, 99);
   const now = figures(run.candidate, list, cost), was = figures(run.saved, list, cost);

@@ -1,5 +1,5 @@
 import type { GymResult, GymShopper, PolicySettings } from "@bazaar/contracts";
-import { analyzeBuyerReason, buildNegotiationMenu, isLowball, rankNegotiationMenu, resolveSettings, type NegotiationItem, type NegotiationOffer, type ResolvedSettings } from "@bazaar/engine";
+import { analyzeBuyerReason, buildNegotiationMenu, floorOf, isLowball, rankNegotiationMenu, resolveSettings, type NegotiationItem, type NegotiationOffer, type ResolvedSettings } from "@bazaar/engine";
 import { makePopulation, type SimulatedPersona } from "./personas.ts";
 import { mulberry32 } from "./rng.ts";
 
@@ -77,7 +77,7 @@ export function runLiveGym(input: LiveGymInput): LiveGymResult {
   assertInput(input);
   const settings = resolveSettings(input.settings);
   const population = makePopulation(mulberry32(input.seed), input.n, input.main.list);
-  const floor = Math.max(input.main.cost! + 1, Math.ceil(input.main.cost! * (1 + input.floorPct / 100)));
+  const floor = floorOf(input.main.cost!, input.floorPct);
   const banner = Math.round(input.main.list * 0.8);
   const shoppers: GymShopper[] = [];
   let haggleProfit = 0;

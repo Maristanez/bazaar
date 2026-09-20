@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { runLiveGym } from "./live";
-import { raceLayout } from "./race";
+import { runLiveGym } from "./live.ts";
+import { raceLayout } from "./race.ts";
 import type { NegotiationItem } from "@bazaar/engine";
 
 const main: NegotiationItem = { variantId: "v", productId: "p", title: "Trail Runner", productType: "shoes", list: 14900, cost: 7800, stockedAt: "2026-06-17", inStock: true, isAddOn: false };

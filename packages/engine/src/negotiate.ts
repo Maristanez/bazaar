@@ -1,8 +1,13 @@
 import type { Item } from "./types.ts";
+import { floorOf } from "./floor.ts";
 import { formatMoney, toShopper } from "./money.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_MAX_ROUNDS = 4;
+/** An offer under this share of list gets the firm line. Wording only. */
+const WELL_UNDER_LIST = 0.8;
+/** The share of list the shopkeeper suggests a shopper open with. */
+const SUGGESTED_OPENING = 0.85;
 
 export type NegotiationItem = Item & {
   variantNumericId?: string;
@@ -77,7 +82,7 @@ export function priceOffer(
   const validMoney = validItem(main) && validQuantity;
   const listTotal = validMoney ? main.list * quantity : 0;
   const floor = validMoney && Number.isInteger(options.floorPct) && options.floorPct >= 0 && options.floorPct <= 60 && Number.isFinite(options.floorPct) && validDate(options.now)
-    ? Math.max(main.cost! * quantity + 1, Math.ceil(main.cost! * quantity * (1 + options.floorPct / 100)))
+    ? floorOf(main.cost! * quantity, options.floorPct)
     : null;
   if (!validMoney || !main.inStock || main.cost === null || floor === null || floor > listTotal) {
     return { kind: "closed", items: [mainQty], listTotal, total: listTotal, line: "I cannot safely haggle this item because it is not open to offers.", badges: [main.cost === null ? "missing cost" : "not open to offers"] };
@@ -96,7 +101,7 @@ export function priceOffer(
   const safeOffered = toShopper(offered);
   const hasConvincingReason = reason.score >= 2 || reason.hasBulkIntent || quantity > 1;
   // Wording only: an offer well under list gets the firm line. The owner's lowball rule is isLowball (lowball.ts).
-  const wellUnderList = safeOffered < toShopper(main.list * quantity * 0.8);
+  const wellUnderList = safeOffered < toShopper(main.list * quantity * WELL_UNDER_LIST);
   const bundleItems = mirror.items.filter(item => validItem(item) && item.inStock && item.cost !== null && item.productId !== main.productId);
   if (bundleItems.length && reason.hasAddOnIntent) {
     const bundlePart = bundleItems.reduce((sum, item) => {
@@ -105,7 +110,7 @@ export function priceOffer(
     }, 0);
     const bundleCost = main.cost * quantity + bundleItems.reduce((sum, item) => sum + item.cost! * (item.qty || 1), 0);
     const bundleList = main.list * quantity + bundleItems.reduce((sum, item) => sum + item.list * (item.qty || 1), 0);
-    const bundleFloor = Math.max(bundleCost + 1, Math.ceil(bundleCost * (1 + options.floorPct / 100)));
+    const bundleFloor = floorOf(bundleCost, options.floorPct);
     const bundleTotal = toShopper(Math.max(ask + bundlePart, bundleFloor));
     if (bundleFloor <= bundleList && bundleTotal > bundleCost && bundleTotal >= bundleFloor && bundleTotal <= bundleList) {
       const accepted = hasConvincingReason && safeOffered >= bundleTotal;
@@ -132,7 +137,16 @@ export function priceOffer(
 
 /** The figure the shopkeeper suggests a shopper open with when they have not named one. A prompt to the shopper, never an offer from the shop. */
 export function suggestedOpeningOffer(list: number, quantity = 1): number {
-  return toShopper(list * quantity * 0.85);
+  return toShopper(list * quantity * SUGGESTED_OPENING);
+}
+
+/**
+ * The figure the owner is asked to approve: the shopper's offer in whole dollars, when it is above cost, under the floor
+ * and under the shop's final price. Anything else needs no approval, or can never be approved (invariant 2): null.
+ */
+export function ownerApprovalTotal(offered: number, audit: Pick<NegotiationAudit, "cost" | "floor">, finalTotal: number): number | null {
+  const total = toShopper(offered);
+  return total > audit.cost && total < audit.floor && total < finalTotal ? total : null;
 }
 
 export function auditOffer(items: readonly (NegotiationItem & { qty?: number })[], total: number, floorPct: number, now: Date, ownerApproved = false): NegotiationAudit | null {
@@ -140,7 +154,7 @@ export function auditOffer(items: readonly (NegotiationItem & { qty?: number })[
   const cost = items.reduce((sum, item) => sum + item.cost! * (item.qty ?? 1), 0);
   const list = items.reduce((sum, item) => sum + item.list * (item.qty ?? 1), 0);
   if (!Number.isSafeInteger(cost) || !Number.isSafeInteger(list)) return null;
-  const floor = Math.max(cost + 1, Math.ceil(cost * (1 + floorPct / 100)));
+  const floor = floorOf(cost, floorPct);
   if ((!ownerApproved && floor > list) || total <= cost || total > list || (!ownerApproved && total < floor)) return null;
   const main = items[0]!;
   const target = Math.ceil(list - urgencyFor(main.stockedAt, now) * (list - floor));

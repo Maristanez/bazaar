@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { analyzeBuyerReason } from "./negotiate";
-import { buildNegotiationMenu, type NegotiationMenuInput } from "./negotiation-menu";
-import type { NegotiationItem } from "./negotiate";
+import { analyzeBuyerReason } from "./negotiate.ts";
+import { buildNegotiationMenu, type NegotiationMenuInput } from "./negotiation-menu.ts";
+import type { NegotiationItem } from "./negotiate.ts";
 
 const now = new Date("2026-09-19T12:00:00.000Z");
 const tr3: NegotiationItem = { variantId: "tr3-10", productId: "tr3", handle: "trail-runner-3", title: "Trail Runner 3", size: "10", productType: "Trail Shoes", list: 16900, cost: 9500, stockedAt: "2026-09-07", inStock: true, isAddOn: false };

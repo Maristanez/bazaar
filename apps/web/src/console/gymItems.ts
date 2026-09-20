@@ -1,5 +1,5 @@
 import type { OwnerProduct } from "@bazaar/contracts";
-import type { NegotiationItem } from "@bazaar/engine";
+import { isAddOn, type NegotiationItem } from "@bazaar/engine";
 
 /** A catalog variant as the Gym takes it: the engine's item plus whether the owner opened it to offers. */
 export type GymItem = NegotiationItem & { openToOffers: boolean };
@@ -15,7 +15,7 @@ export function items(products: OwnerProduct[]): GymItem[] {
     cost: variant.unitCost,
     stockedAt: product.stockedAt,
     inStock: variant.inStock,
-    isAddOn: /accessor|sock|gaiter|flask|cap|bag|tote/i.test(`${product.productType || ""} ${product.title}`),
+    isAddOn: isAddOn(product),
     openToOffers: product.openToOffers,
   })));
 }

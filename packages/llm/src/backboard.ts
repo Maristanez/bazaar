@@ -1,4 +1,5 @@
 import type { Option, ProductCard } from "@bazaar/contracts";
+import { formatMoney } from "@bazaar/engine";
 
 const DEFAULT_ENDPOINT = "https://app.backboard.io/api/threads/messages";
 const DEFAULT_TIMEOUT_MS = 4_000;
@@ -499,17 +500,13 @@ function publicMenuOption(option: Option): PublicMenuOption {
       qty: item.qty,
       ...(item.thrownIn === undefined ? {} : { thrownIn: item.thrownIn }),
     })),
-    listTotal: formatCents(option.listTotal),
-    total: formatCents(option.total),
+    listTotal: formatMoney(option.listTotal),
+    total: formatMoney(option.total),
     ownerRank: option.ownerRank,
     facts: [...option.facts],
   };
 }
 
-function formatCents(cents: number): string {
-  const dollars = Number(cents || 0) / 100;
-  return `$${Number.isInteger(dollars) ? dollars.toFixed(0) : dollars.toFixed(2)}`;
-}
 
 function publicDollarAmounts(input: BackboardQuestion): Set<number> {
   const amounts = new Set<number>();

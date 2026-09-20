@@ -110,6 +110,9 @@ importers:
       '@bazaar/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@bazaar/engine':
+        specifier: workspace:*
+        version: link:../engine
 
 packages:
 

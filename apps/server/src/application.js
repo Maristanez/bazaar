@@ -8,7 +8,7 @@ import { createSupabaseDb } from "./infra/db.ts";
 import { createOwnerRuntime } from "./owner/runtime.ts";
 import { loadRedTeamResult } from "./owner/redteam.ts";
 import { dealKpis } from "./owner/kpis.ts";
-import { analyzeBuyerReason, applyNegotiationContext, auditOffer, buildNegotiationMenu, formatMoney, isLowball, rankNegotiationMenu, resolveSettings, suggestedOpeningOffer, toShopper } from "@bazaar/engine";
+import { analyzeBuyerReason, applyNegotiationContext, auditOffer, buildNegotiationMenu, ownerApprovalTotal, formatMoney, isAddOn, isLowball, rankNegotiationMenu, resolveSettings, suggestedOpeningOffer, toShopper } from "@bazaar/engine";
 import { selectCatalogItem } from "./catalog.ts";
 import { publicConfig } from "./public-config.ts";
 import { randomUUID } from "node:crypto";
@@ -899,13 +899,14 @@ async function makeOfferTurn(payload, message) {
   const stored = { ...offer, line: replyLine, offerId, negotiationId, shopperId, expiresAt, status: "live", backboard: phrased.trace, card };
   state.offers.set(offerId, stored);
   const audit = auditOffer(offer.items, offer.total, owner.getPolicy().floorPct, new Date());
-  if (!lowball && previousRound >= maxRounds && latestPolicy.askOwner && !negotiation.approvalUsed && audit && toShopper(offered) > audit.cost && toShopper(offered) < audit.floor && toShopper(offered) < offer.total) {
-    const approval = owner.requestApproval({ negotiationId, shopperId, surface: "storefront", items: card.option.items, offer: toShopper(offered), cost: audit.cost, finalTotal: offer.total });
+  const approvalTotal = audit ? ownerApprovalTotal(offered, audit, offer.total) : null;
+  if (!lowball && previousRound >= maxRounds && latestPolicy.askOwner && !negotiation.approvalUsed && approvalTotal !== null) {
+    const approval = owner.requestApproval({ negotiationId, shopperId, surface: "storefront", items: card.option.items, offer: approvalTotal, cost: audit.cost, finalTotal: offer.total });
     negotiation.approvalUsed = true;
     stored.finalOffer = { ...offer };
     stored.approvalId = approval.id;
     stored.status = "pending_owner";
-    stored.total = toShopper(offered);
+    stored.total = approvalTotal;
     card.status = "pending_owner";
     card.pendingUntil = approval.deadline;
     card.option.total = stored.total;
@@ -1766,10 +1767,6 @@ function centsToDecimal(cents) {
 
 function gidTail(gid) {
   return String(gid || "").split("/").pop() || "";
-}
-
-function isAddOn(product) {
-  return /accessor|sock|gaiter|flask|cap|bag|tote/i.test(`${product.productType || ""} ${product.title || ""}`);
 }
 
 function randomId(prefix) {

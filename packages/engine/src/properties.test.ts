@@ -1,7 +1,7 @@
 // Invariants 1 and 2 as properties of the one menu every shopper is priced from (SPEC §6).
 import { expect, it } from "vitest";
 import fc from "fast-check";
-import { auditOffer, buildNegotiationMenu, isLowball, rankNegotiationMenu, toShopper, type BuyerReason, type NegotiationItem, type NegotiationMenuInput } from "./index.ts";
+import { auditOffer, buildNegotiationMenu, isLowball, rankNegotiationMenu, toShopper, type BuyerReason, type NegotiationItem, type NegotiationMenuInput, type NegotiationOffer } from "./index.ts";
 
 const replay = { seed: 42, numRuns: 1000 };
 const now = new Date("2026-09-19T12:00:00.000Z");
@@ -83,7 +83,8 @@ it("the menu is deterministic, lettered from A, and ranking only reorders it", (
     expect(buildNegotiationMenu(input)).toEqual(menu);
     expect(menu.map(choice => choice.id)).toEqual(menu.map((_, index) => String.fromCharCode(65 + index)));
     const ranked = rankNegotiationMenu(menu, input);
-    expect(ranked.map(choice => choice.offer.total).sort()).toEqual(menu.map(choice => choice.offer.total).sort());
+    const byCart = (a: NegotiationOffer, b: NegotiationOffer) => JSON.stringify(a).localeCompare(JSON.stringify(b));
+    expect(ranked.map(choice => choice.offer).sort(byCart)).toEqual(menu.map(choice => choice.offer).sort(byCart));
     expect(ranked.map(choice => choice.id)).toEqual(menu.map(choice => choice.id));
   }), replay);
 });

@@ -1,6 +1,6 @@
 // Compile-time tests — checked by `pnpm typecheck`, never executed.
 // B0's "Done when": a ChatEvent cannot hold an Option (SPEC rule 11 / AGENTS invariant 3).
-import type { ChatEvent, OfferCard, Option, PublicOption } from "./index";
+import type { ChatEvent, OfferCard, Option, PublicOption } from "./index.ts";
 
 declare const option: Option;
 declare const card: OfferCard;

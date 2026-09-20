@@ -55,7 +55,7 @@ bazaar/
 ```sh
 pnpm install
 cp .env.example .env            # fill in Backboard, Shopify and Supabase keys
-pnpm test                       # 262 tests
+pnpm test                       # 268 tests
 pnpm test:props                 # the engine's properties alone
 pnpm typecheck
 pnpm start                      # builds the Console if needed; server on $PORT, Console at /console

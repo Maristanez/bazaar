@@ -1,3 +1,4 @@
+import { floorOf } from "./floor.ts";
 import { priceOffer, type BuyerReason, type NegotiationItem, type NegotiationOffer, type NegotiationMirror, type NegotiationOptions } from "./negotiate.ts";
 
 export type NegotiationMenuInput = {
@@ -94,7 +95,7 @@ function priceCandidate(main: NegotiationItem, offered: number, round: number, m
 
 function safeOffer(offer: NegotiationOffer, floorPct: number): boolean {
   const cost = offer.items.reduce((sum, item) => sum + (item.cost ?? Number.POSITIVE_INFINITY) * (item.qty || 1), 0);
-  const floor = Math.max(cost + 1, Math.ceil(cost * (1 + floorPct / 100)));
+  const floor = floorOf(cost, floorPct);
   return Number.isSafeInteger(cost) && Number.isSafeInteger(offer.total)
     && offer.items.every(item => item.inStock && item.cost !== null && inventorySafe(item, item.qty || 1))
     && offer.total > cost && offer.total >= floor && offer.total <= offer.listTotal;

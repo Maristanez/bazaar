@@ -7,7 +7,7 @@ import {
   parseBackboardOfferUnderstanding,
   parseBackboardPick,
   validateBackboardAnswer,
-} from "./backboard";
+} from "./backboard.ts";
 
 const option: Option = {
   id: "D",
