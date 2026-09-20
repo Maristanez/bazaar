@@ -323,9 +323,9 @@ The server sends the shopper's browser and the ChatGPT card a stripped **public 
 | **Floor** | cost × (1 + floor%). The lowest total the shopkeeper may agree to on its own. Set by the owner's slider (cost + 0–60%). |
 | **Urgency** | 0 to 1, from stock age: 0 up to 60 days, 1 at 120 days or more. |
 | **Target** | list − urgency × (list − floor). The lowest price a haggle on that cart may end at without the owner. |
-| **Ask** | The shopkeeper's price for the current round. Steps down from list to target over four rounds, with shrinking steps. |
-| **Round** | One shopper offer and the shopkeeper's answer. Up to four. Questions and small talk don't use a round. |
-| **Final offer** | The round-4 option A, at ask(4) = target. |
+| **Ask** | The shopkeeper's price for the current round. Steps down from list to target over the owner's max rounds (four by default), with shrinking steps. |
+| **Round** | One shopper offer and the shopkeeper's answer. Up to the owner's **max rounds** (2–6, four by default). Questions, small talk and lowballs don't use a round. |
+| **Final offer** | Option A of the last round, at ask(max rounds) = target. |
 | **Menu** | The list of deals the engine wrote for this turn. Every one clears the floor. |
 | **Option** | One deal on the menu (A = held price, B… = bundles, C… = something else). |
 | **Trade** | What the shopper gives to get a lower price: a bigger cart, a purchase now, or taking older stock. |
@@ -337,15 +337,29 @@ The server sends the shopper's browser and the ChatGPT card a stripped **public 
 | **Public card** | The stripped offer card sent to the shopper: the picked option's items and totals, badges, line, countdown. No menu, facts, cost, floor or profit. |
 | **The check** | The code step that verifies the LLM's pick, every dollar figure, and every reason. |
 | **Auditor** | The code step at Deal time that re-checks cost and floor from fresh data before a code is minted. |
-| **Layer** | One of the guardrails that can block an attempt: validate, engine, check, offer ids, Auditor, the Shopify code. |
+| **Layer** | One of the guardrails that can block an attempt: filter, validate, engine, check, offer ids, Auditor, the Shopify code. |
 | **Console** | The owner's page, behind a login. |
-| **Policy** | The owner's settings: floor %, "Ask me" on/off, paused or not. Saved policy = live. Candidate policy = under the slider. |
+| **Policy** | The owner's settings: floor %, discount cap, max rounds, tone preset, firm-price products, lowball cutoff, rate limit, "Ask me" on/off, paused or not. Saved policy = live. Candidate policy = under the controls, not yet adopted. |
+| **Discount cap** | The most the shopkeeper may take off list, as a percentage (0–40%, 22% by default). The higher of the floor and the capped price is the lowest price; the cap can never reach below the floor. |
+| **Tone preset** | One of three owner-chosen voices for the shopkeeper: friendly trail guide, brisk and professional, playful haggler. Changes wording only, never a price. |
+| **Firm price** | A product the owner has closed to offers. The shopkeeper sells it at list and says the price is firm. |
+| **Lowball** | A shopper offer below the owner's **lowball cutoff** (a percentage of list, 40% by default; 0 turns it off). |
+| **Lowball counter** | The answer to a lowball: a deal picked by code from the menu, with its reason — something else when the gap is too wide. It uses no round, so lowballs can never walk the ask down. |
+| **Rate limit** | The owner's cap on negotiations per hour and messages per minute from one network address. |
+| **Blocklist** | Network addresses the owner has blocked from the feed. A blocked shopper sees list prices only. |
+| **Filter** | The first layer: rate limit, blocklist and message length. A filtered turn is a blocked row in the feed. |
+| **No-agent store** | The main counterfactual: the same shop at list price only, with no shopkeeper. A shopper who will not pay list leaves. |
+| **Customer saved** | A deal settled below list — a shopper who asked for less and would have left a no-agent store. |
+| **Revenue recovered** | The agreed totals of the customers saved. |
+| **Profit recovered** | The profit on the customers saved. |
+| **Agent cost** | What the shopkeeper's LLM calls cost, in dollars. |
+| **Forecast** | The Console panel that runs the Gym's 300 shoppers under the candidate policy and shows each figure beside the saved policy's, before the owner adopts. Simulated, never added to real figures. |
 | **Adopt** | Make the candidate policy the saved one. |
 | **Gym** | The owner-only rehearsal: 300 synthetic shoppers plus the red-team. |
 | **Swarm** | The Gym's view: every synthetic shopper drawn as a dot. |
 | **Persona** | One of five rule-based shopper types in the Gym. |
 | **Deal missed** | A shopper who walked although they would have paid at least the floor. |
-| **Banner** | The counterfactual: a plain 20%-off sale for everyone. |
+| **Banner** | The second counterfactual: a plain 20%-off sale for everyone. |
 | **Red-team** | 20 scripted attacks run through the full pipeline with a dry-run minter. |
 | **Breach** | Any deal at or below cost, or below floor without owner approval. The required count is 0. |
 | **Settle** | Mint the discount code and open Shopify Checkout at the agreed total. |

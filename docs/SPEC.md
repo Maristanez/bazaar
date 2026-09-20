@@ -137,15 +137,49 @@ Three tools, plain names so the model picks them reliably:
 
 **Owner login (Supabase Auth).** The Console is behind an email + password login. The browser uses `@supabase/supabase-js` for one thing only — signing in and holding the session. Every owner endpoint on our server (`/api/console/state`, `/api/console/stream`, `/api/policy`, `/api/approvals/:id`, `/api/pause`) requires the Supabase access token as a `Bearer` header; a small Hono middleware verifies it (`supabase.auth.getUser(token)`) and checks the user owns that merchant. The browser's native `EventSource` cannot send a header, so the Console reads its stream with `fetch` (e.g. `@microsoft/fetch-event-source`). There is no Gym endpoint: the Gym runs in the browser on the product costs that `/api/console/state` returns once at load. Shopper endpoints (`/api/products`, `/api/chat`, `/api/accept`, `/mcp`) need no login and can never return owner data (rule 11). Nothing on the storefront links to the Console. **For the demo: create Maya's account in the Supabase dashboard ahead of time, turn "Confirm email" off, and be already signed in before judges arrive** — a login screen is not a demo beat.
 
+**Redesigned Sat 19 Sep 20:00 (grilled, Bryan).** The Console answers one owner question — *what does the shopkeeper earn me that a list-price store would lose?* — and lets her try a setting on simulated shoppers before real ones meet it. One viewport at 1360 px, no tabs; below 760 px it stacks KPIs → controls → Forecast → feed. `DESIGN.md` tokens are unchanged.
+
 | Region | Contents |
 |---|---|
-| **Top bar** | Store name · `Deals live` / `Paused` · **PAUSE** (red, always in frame) |
-| **Left — live feed** | One row per event: `offer $120 on TR3 · floor $119 · new stock, won't bend · menu A–F · picked E (TR2 + gaiters $144) · memory: "muddy 50k"` · surface tag (`Storefront` / `ChatGPT` — both surfaces share this one feed) · model, ms, `cost_usd`. The reasoning text is **composed by code** from the engine's facts, the pick and the recalled memory — the LLM is never asked to explain itself. **Blocked rows in red**, naming the layer that blocked: `validate · engine · check · auditor` (the same four names everywhere: §7, the types, the Gym's red-team wall). |
-| **Right — policy** | Floor slider (cost + 0–60%) · "Ask me about thin-margin deals" switch · products flagged **missing cost → not open to offers** (red) · **missing `stocked_at` → treated as new stock** (amber) |
-| **Right — approvals** | The yellow **Approve / Decline** card: items, shopper's offer, **profit in $ and as "% over cost"** (same basis as the slider), 45-second bar |
-| **Bottom — the Gym** | The swarm (§9): a dot histogram of 300 synthetic shoppers, **Run the Gym** animation with a round scrubber, click-a-dot transcripts, persona legend/filter, A vs B metric cards, the red-team wall. Owner-only, like everything on this page. |
+| **Top bar** | Store name · catalog source line (`Live from Shopify · 9 products · synced 12 s ago`, or coral `Seed fallback` with the reason) · `Deals live` / `Paused` · **PAUSE** (red, always in frame) |
+| **KPI strip — real deals** | Four tiles from the `deals` table, labelled `on N real deals`: **Customers saved** · **Revenue recovered** · **Profit recovered** · **Agent cost**. Secondary line: `vs 20% banner`. Follows the product picker. A `settled` event updates the tiles live. No deals ⇒ dashes and "No deals yet"; never sample data. |
+| **Left — shopkeeper controls** | *Pricing:* floor slider (cost + 0–60%), discount cap (0–40% off list). *Behaviour:* max rounds (2–6), tone preset, "Ask me about thin-margin deals". *Guardrails:* lowball cutoff (0–80% of list), rate limit, blocklist with **Unblock**, red-team badge (`20 attacks · 0 breaches`). *Products:* firm-price switch per product, which rule binds (`floor` / `cap`), **missing cost → not open to offers** (coral), **missing `stocked_at` → treated as new stock** (amber). One **Adopt** for the whole candidate policy. |
+| **Centre — Forecast** | Product picker (every product in the mirror; "All products" forecasts the best-seller). Metric cards show **saved → candidate** with the delta, for three stores side by side: **no-agent store**, **banner**, **shopkeeper**. Below them the Gym's dot histogram (§9.2). Re-runs on every control change; nothing reaches the storefront until Adopt. The tone preset is marked "wording only — does not change prices". |
+| **Right — needs you** | The yellow **Approve / Decline** card: items, shopper's offer, **profit in $ and as "% over cost"**, 45-second bar |
+| **Right — live feed** | Compact rows, click to expand the code-composed reasoning (offer, floor, menu, pick, memory, model, ms, `cost_usd`), surface tag, **Block** button. **Blocked rows in coral**, naming the layer: `filter · validate · engine · check · auditor`. A lowball counter is a neutral row (`Lowball · countered at $133 · no LLM call`) — nothing was refused. |
 
-Red means only two things: PAUSE and blocked. Yellow means only one: the owner's decision.
+**Real and simulated figures never share a number.** The KPI strip is real deals only; the Forecast is labelled simulated (§9.3).
+
+#### 4.4.1 Owner settings
+
+All settings are engine or filter arguments, or wording. None lets a prompt set a price (rule 1). Defaults reproduce the behaviour before this change.
+
+| Setting | Range · default | Effect |
+|---|---|---|
+| Floor % | 0–60 | unchanged |
+| Discount cap | 0–40% off list · 22 | Lowest price = `max(floor, ceil(list × (1 − cap)))`. Replaces the engine's hard-coded 0.22 ladder cap. Can never go below the floor. |
+| Max rounds | 2–6 · 4 | Replaces `MAX_ROUNDS`. The ask curve becomes `list − ((r−1)/(N−1))^(1/(1+urgency)) × (list − target)`; at N = 4 the B1 worked example is unchanged. No surface hard-codes "4". |
+| Tone preset | `friendly` · `brisk` · `playful` · friendly | Each preset owns a phrase set in code; the check accepts only the saved preset's phrases. The preset also steers `QUESTION_SYSTEM_PROMPT`. Dollar figures still come only from the menu. |
+| Firm price | per product · off | No menu for that product. The shopkeeper says the price is firm; Deal settles at list with no code. Excluded from the Forecast. |
+| Lowball cutoff | 0–80% of list · 40 (0 = off) | An offer under the cutoff gets a **lowball counter**: code builds the normal menu, picks option A — or the first *something else* option when the offer is under that option's total — and fills the preset's template with one of the option's public facts. No LLM call, no round used, so lowballs cannot walk the ask down. |
+| Rate limit | 30 negotiations / h · 30 messages / min per address | Keyed on the client address (`X-Forwarded-For` first hop on Railway), because `shopperId` is client-supplied. Generous by default: a venue shares one address. |
+| Blocklist | — | **Block** on a feed row blocks that row's address; offers are closed to it and it sees list prices. In memory only. |
+| Message length | 1,000 characters, no control | Longer messages are filtered. |
+
+Persistence: one additive column, `policies.settings jsonb not null default '{}'`. The server tolerates its absence — settings then live in memory and the Console shows the same "saved on this server, retrying Supabase" note as PAUSE.
+
+#### 4.4.2 KPI definitions
+
+Over settled deals (`GET /api/console/state` → `kpis`, via a new `listDeals`):
+
+- **Customers saved** = deals with `agreed_total < list_total`.
+- **Revenue recovered** = Σ `agreed_total` of those deals. **Profit recovered** = Σ `profit` of those deals.
+- **vs 20% banner** = Σ (`agreed_total` − 0.8 × `list_total`) over all deals — the Gym's comparator (§9.1).
+- **Agent cost** = Σ `llm.costUsd` over feed events since the server started (the feed is in memory).
+
+The claim behind "saved" — a shopper who asks for less would have left a list-price store — is an assumption and is labelled as one in the tile's help text. In the Forecast it is exact: each simulated shopper's willingness is known, so the no-agent store sells only to `willingness ≥ list`.
+
+Coral means only two things: PAUSE and blocked (plus a negative money figure). Yellow means only one: the owner's decision.
 
 ---
 
@@ -367,6 +401,7 @@ All on the **rounded-up whole-dollar** figures unless a clause says otherwise: n
 
 | Layer | Stops |
 |---|---|
+| **Filter** | Message floods and price fishing: the owner's rate limit per address, the blocklist, messages over 1,000 characters (§4.4.1). Runs before any LLM call. Lowballs are not blocked — they get a lowball counter. |
 | **Validate** | Negative, zero, absurd, non-CAD amounts; unknown products; quantity tricks |
 | **Engine** | Anything that doesn't clear the floor simply isn't on the menu |
 | **Check** | An option id that isn't on the menu; a dollar figure that isn't that option's; a reason with no fact; any cost/floor/margin talk |
@@ -542,7 +577,18 @@ type ChatEvent = { t: "products"; items: ProductCard[] } | { t: "card"; card: Of
                | { t: "settled"; settlement: Settlement } | { t: "paused" };
 
 // ── OWNER-ONLY: Console routes behind the Supabase token. May carry everything. ──
-type Policy       = { floorPct: number; askOwner: boolean; paused: boolean; updatedAt: string };
+type Policy       = { floorPct: number; askOwner: boolean; paused: boolean; updatedAt: string; settings?: PolicySettings };
+type TonePreset   = "friendly"|"brisk"|"playful";
+type PolicySettings = {                       // all optional and additive — absent = the pre-redesign behaviour (§4.4.1)
+  discountCapPct?: number;                    // 0–40, default 22
+  maxRounds?: number;                         // 2–6, default 4
+  tone?: TonePreset;                          // default "friendly"
+  firmPriceProductIds?: string[];
+  lowballCutoffPct?: number;                  // 0–80 of list, default 40; 0 = off
+  rateLimit?: { negotiationsPerHour: number; messagesPerMinute: number };   // default 30 / 30
+};
+type DealKpis     = { deals: number; customersSaved: number; revenueRecovered: number; profitRecovered: number; vsBanner: number; agentCostUsd: number };  // cents, except agentCostUsd
+type CatalogStatus = { source: "shopify-admin"|"seed-fallback"; loadedAt: string|null; warnings: string[] };
 type OwnerProduct = ProductCard & { variants: { variantId: string; size?: string; price: number; unitCost: number|null; inStock: boolean }[];
                                     productType: string; stockedAt: string|null; missingCost: boolean /* red */; missingStockedAt: boolean /* amber, urgency 0 */ };
 type Approval     = { id: string; negotiationId: string; items: Option["items"]; offer: number; cost: number; profit: number; pctOverCost: number;  // same basis as the floor slider
@@ -556,7 +602,9 @@ type ConsoleEvent = { at: string; surface: "storefront"|"chatgpt"; negotiationId
 type Deal         = { id: string; merchantId: string; offerId: string; surface: "storefront"|"chatgpt"; items: Option["items"];
                       listTotal: number; agreedTotal: number; cost: number; floor: number; profit: number; ownerApproved: boolean;
                       code: string; createdAt: string };                                    // mirrors the `deals` table, column for column
-type ConsoleState = { policy: Policy; products: OwnerProduct[]; pendingApprovals: Approval[]; redteam: RedTeamResult };
+type ConsoleState = { policy: Policy; products: OwnerProduct[]; pendingApprovals: Approval[]; redteam: RedTeamResult;
+                      kpis?: DealKpis; kpisByProduct?: Record<string, DealKpis>; catalog?: CatalogStatus; blocklist?: string[] };   // additive, owner-only
+// ConsoleEvent.blockedBy gains "filter"; ConsoleEvent.kind gains "lowball". ChatEvent is unchanged.
 type RedTeamResult = { ranAt: string; attacks: { name: string; blockedBy: "validate"|"engine"|"check"|"auditor"|"shopify_code" }[];
                        breaches: number };                                                  // required: 0, recounted by the verifier
 type GymShopper = { id: number; persona: "bargain"|"budgeted"|"impatient"|"loyal"|"lowballer"; willingness: number;
