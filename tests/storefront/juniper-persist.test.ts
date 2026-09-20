@@ -167,6 +167,25 @@ describe("V2 — the conversation survives navigation", () => {
     expect(second.requests.find((request) => request.path === "/api/chat")?.body.negotiationId).toBe("neg-1");
   });
 
+  it("hides the panel's cold-open line once a real transcript comes back, so Juniper does not re-invite a shopper mid-haggle", async () => {
+    const first = await haggleOnPageOne();
+    leaveByProductLink(first);
+    const second = mount({ url: PAGE_TWO, before: carryStorage(first.window), routes: { "/api/offers/offer-1": () => ({ card: offerCard() }) } });
+    await second.settle();
+    await second.settle();
+    const coldOpen = second.document.querySelector("[data-ai-chat-welcome]") as HTMLElement | null;
+    expect(coldOpen?.hidden).toBe(true);
+  });
+
+  it("leaves the cold-open line showing on a clean visit with nothing to restore", async () => {
+    const first = await haggleOnPageOne();
+    first.window.dispatchEvent(new first.window.Event("pagehide"));
+    const second = mount({ url: PAGE_TWO, before: carryStorage(first.window) });
+    await second.settle();
+    const coldOpen = second.document.querySelector("[data-ai-chat-welcome]") as HTMLElement | null;
+    expect(coldOpen?.hidden ?? false).toBe(false);
+  });
+
   it("keeps the chat working when storage throws", async () => {
     const page = mount({
       url: PAGE_ONE,

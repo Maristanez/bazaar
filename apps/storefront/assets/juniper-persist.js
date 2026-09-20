@@ -116,19 +116,24 @@
     return card;
   }
 
-  function showCard(card) {
+  function showCard(card, negotiationId) {
     if (!card) { saved.card = null; save(); return; }
-    try { chat.addOfferCard(card); } catch (error) { /* the transcript is still there */ }
+    try {
+      chat.addOfferCard(card);
+      // addOfferCard just resolved and set the chat's active product from the card's own items, so naming no
+      // product here lets restoreNegotiation pick that same product up rather than guessing again.
+      if (negotiationId && typeof chat.restoreNegotiation === 'function') chat.restoreNegotiation(negotiationId);
+    } catch (error) { /* the transcript is still there */ }
   }
 
   function restoreCard(kept) {
     if (!kept || !kept.offerId) return;
     var base = chat.apiUrl ? chat.apiUrl('/api/offers/' + encodeURIComponent(kept.offerId)) : '';
-    if (!base || typeof window.fetch !== 'function') { showCard(storedCardIfStillGood(kept.card)); return; }
+    if (!base || typeof window.fetch !== 'function') { showCard(storedCardIfStillGood(kept.card), kept.negotiationId); return; }
     var url = base + '?shopperId=' + encodeURIComponent(saved.shopperId) + '&negotiationId=' + encodeURIComponent(kept.negotiationId || '');
     var asked;
     try { asked = window.fetch(url, { headers: { Accept: 'application/json' } }); } catch (error) { asked = null; }
-    if (!asked || !asked.then) { showCard(storedCardIfStillGood(kept.card)); return; }
+    if (!asked || !asked.then) { showCard(storedCardIfStillGood(kept.card), kept.negotiationId); return; }
     asked.then(function (response) {
       // The server answered: its word on the offer is final, including "no such offer".
       if (!response.ok) return { card: null };
@@ -139,11 +144,22 @@
       // A newer offer made while we were asking wins.
       var live = chat.state().card;
       if (live && live !== kept.card) return;
-      showCard(found.card);
+      showCard(found.card, kept.negotiationId);
     }).catch(function () {});
   }
 
+  // The panel's own cold-open line ("Eyeing X? Name a price...") is baked into the markup ahead of any script.
+  // A restored transcript already opens with real history, so that invitation would sit above it as if Juniper
+  // had forgotten the conversation she is about to repeat back.
+  function hideColdOpenLine() {
+    try {
+      var node = elements.messages && elements.messages.querySelector('[data-ai-chat-welcome]');
+      if (node) node.hidden = true;
+    } catch (error) { /* the restored transcript still reads fine with the line left in */ }
+  }
+
   function restore(previous) {
+    if ((previous.entries && previous.entries.length) || previous.card) hideColdOpenLine();
     restoring = true;
     try {
       previous.entries.forEach(function (entry) {
@@ -203,20 +219,6 @@
         });
       }).observe(elements.messages, { childList: true });
     } catch (error) { /* product links will not carry; the rest does */ }
-  }
-
-  // After a restore the chat no longer knows which negotiation the card belongs to; the next turn says so again,
-  // unless the shopper changed the variant or quantity, which the chat treats as a fresh negotiation.
-  if (chat.extendPayload) {
-    chat.extendPayload(function (payload) {
-      var kept = saved.card;
-      if (!kept || !kept.negotiationId || payload.negotiationId || payload.variantSelectionChanged || payload.quantitySelectionChanged) return;
-      var live = chat.state().card;
-      if (!live || live.offerId !== kept.offerId || (live.status !== 'live' && live.status !== 'pending_owner')) return;
-      var first = live.option && live.option.items && live.option.items[0];
-      if (payload.product && first && String(payload.product.title || '').toLowerCase() !== String(first.title || '').toLowerCase()) return;
-      payload.negotiationId = kept.negotiationId;
-    });
   }
 
   // ---- The way out ------------------------------------------------------------------------------------------------
