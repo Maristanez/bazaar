@@ -385,8 +385,8 @@
 .ai-chat .ai-chat__launcher {
   position: relative;
   gap: 0;
-  width: 4.25rem;
-  height: 4.25rem;
+  width: 5rem;
+  height: 5rem;
   min-height: 0;
   padding: 0;
   border-radius: 999px;
@@ -395,8 +395,8 @@
 }
 
 .ai-chat .ai-chat__launcher .ai-chat__sticker--launcher {
-  width: 4.25rem;
-  height: 4.25rem;
+  width: 5rem;
+  height: 5rem;
   margin: 0;
   filter: drop-shadow(0 10px 12px rgb(47 22 4 / 38%));
 }
