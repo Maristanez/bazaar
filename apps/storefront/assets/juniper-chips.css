@@ -1,1 +1,136 @@
-/* V6 suggestion chips that change (docs/PLAN.md). */
+/* V6 suggestion chips that change (docs/PLAN.md).
+   The row is one line that scrolls sideways, so its height never moves when the chips change. New chips land one by
+   one with the card's slap; the old ones leave underneath them; a tapped chip lifts toward the messages. */
+
+.ai-chat__prompts.juniper-chips__row {
+  position: relative;
+  /* The foot is a grid: without this a long row would widen the whole panel instead of scrolling. */
+  min-width: 0;
+  flex-wrap: nowrap;
+  align-items: center;
+  /* Room for the focus ring and the slap, which a scrolling box would otherwise clip. */
+  min-height: calc(2.75rem + 10px);
+  margin: -5px -0.75rem;
+  padding: 5px 0.75rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 0.75rem;
+  scrollbar-width: none;
+  /* The fade sits over the side padding only, so a chip cut by it reads as "more this way". */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%);
+}
+
+.ai-chat__prompts.juniper-chips__row::-webkit-scrollbar {
+  display: none;
+}
+
+/* The space stays reserved while the owner decides, so the form below does not jump. */
+.ai-chat__prompts.juniper-chips__row:empty {
+  display: flex;
+}
+
+.ai-chat__prompts.juniper-chips__row[hidden] {
+  display: none;
+}
+
+.ai-chat__prompts .juniper-chips__chip {
+  white-space: nowrap;
+  transition: background 0.2s var(--ease), box-shadow 0.2s var(--ease), color 0.2s var(--ease), translate 0.2s var(--ease), scale 0.12s var(--ease);
+}
+
+.ai-chat__prompts .juniper-chips__chip:active {
+  scale: 0.96;
+}
+
+.ai-chat__prompts .juniper-chips__chip:focus-visible {
+  outline: 2.5px solid var(--teal);
+  outline-offset: 2px;
+}
+
+/* Stickers slapped down in turn, each tilted the other way from its neighbour. */
+.ai-chat__prompts .juniper-chips__chip--landing {
+  --juniper-chip-tilt: 1.2deg;
+  animation: juniper-chips-land 0.55s var(--ease) both;
+  animation-delay: calc(90ms + var(--juniper-chip-i, 0) * 50ms);
+}
+
+.ai-chat__prompts .juniper-chips__chip--landing:nth-child(even) {
+  --juniper-chip-tilt: -1.2deg;
+}
+
+@keyframes juniper-chips-land {
+  from { scale: 1.06; rotate: var(--juniper-chip-tilt); opacity: 0; }
+  to { scale: 1; rotate: 0deg; opacity: 1; }
+}
+
+/* The outgoing chips: plain copies that cannot be clicked, focused or read out. */
+.juniper-chips__host {
+  position: relative;
+}
+
+.juniper-chips__ghosts {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.juniper-chips__ghost {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 2.75rem;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--hairline);
+  color: var(--teal);
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+  animation: juniper-chips-leave 0.16s ease-in both;
+}
+
+@keyframes juniper-chips-leave {
+  to { scale: 0.94; opacity: 0; }
+}
+
+/* The tapped chip becomes the message: it takes the shopper bubble's colour and lifts toward the conversation. */
+.juniper-chips__ghost--sent {
+  z-index: 1;
+  background: var(--teal);
+  box-shadow: none;
+  color: var(--cream);
+  animation: juniper-chips-send 0.28s cubic-bezier(0.3, 0, 0.8, 0.15) both;
+}
+
+@keyframes juniper-chips-send {
+  to { translate: 0 -2.6rem; scale: 0.92; opacity: 0; }
+}
+
+/* Hands-free: the row says what it is for, and the chip being spoken lights in the voice colour. */
+.ai-chat__prompts.juniper-chips__row[data-juniper-lead]::before {
+  content: attr(data-juniper-lead);
+  flex: none;
+  margin-right: 0.15rem;
+  color: var(--bark-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ai-chat__prompts .juniper-chips__chip.is-spoken {
+  background: color-mix(in srgb, var(--coral) 14%, #fff);
+  box-shadow: inset 0 0 0 2px var(--coral);
+  color: var(--bark);
+  translate: 0 -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .juniper-chips__ghosts {
+    display: none;
+  }
+}
