@@ -432,7 +432,7 @@ Prize text: *"We judge ambition… The more of the stack you use, the crazier it
 |---|---|---|
 | **Assistants + threads (state)** | One isolated assistant per shopper, cloned from the base assistant (`BACKBOARD_ASSISTANT_ID`) with its documents, so one shopper's memory never reaches another | Feed shows thread id |
 | **Documents / RAG** | `store-notes.md`, `sizing-guide.md`, `policy.md` (in `infra/seed/`) | It answers "do these run small?" mid-haggle |
-| **Memory** | Size, what they're training for, what they liked; seeded for the `demo` shopper; mode from `BACKBOARD_MEMORY_MODE`; `memory_response_citation` on | *"Welcome back — still a size 10?"*; feed shows the recalled memory |
+| **Memory** | Size, what they're training for, what they liked; seeded for the `demo` shopper; mode from `BACKBOARD_MEMORY_MODE`; `memory_response_citation` on | The opening line of a `?shopper=` visit, which is whatever `POST /api/greeting` recalled (*"Welcome back — still a size 10?"* for the seeded demo shopper) and is absent when nothing was; feed shows the recalled memory |
 | **Model routing** | **Every LLM call goes through Backboard** — understand (`understandOffer`), choose + say, and questions. There is no direct model API call and no model key of our own. Default: provider `openai`, model `gpt-5.6-terra` (`BACKBOARD_MODEL_PROVIDER` / `BACKBOARD_MODEL_NAME`). | Model name on every feed row |
 | **Streaming** | Server-side only: we stream from Backboard to catch `run_ended` / `run_failed` early, **buffer the whole line, run the check, then** send it. The shopper never sees an unchecked token. | Chat |
 | **`cost_usd`** | Per call | Feed row; **Agent cost** KPI |

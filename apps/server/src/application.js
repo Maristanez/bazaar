@@ -309,6 +309,25 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  // The opening line for a shopper the shopkeeper may remember. It is only ever what Backboard recalls, checked like any
+  // other answer; with nothing recalled, a refused line or a failure, there is no greeting and the theme keeps its own.
+  if (request.method === "POST" && url.pathname === "/api/greeting") {
+    let greeting = null;
+    try {
+      const payload = await readJson(request);
+      const shopperId = requireShopperId(payload);
+      if (backboard && !owner?.getPolicy().paused) {
+        const answer = await backboard.greet({ shopperId, productTitle: stringOrNull(payload.product?.title) || undefined });
+        logBackboardRun("greeting", answer.trace);
+        greeting = answer.greeting;
+      }
+    } catch (error) {
+      console.error("[backboard/greeting]", error instanceof Error ? error.message : error);
+    }
+    sendJson(response, request, 200, { greeting, recalled: greeting !== null });
+    return;
+  }
+
   if (request.method === "POST" && url.pathname === "/api/chat") {
     try {
       const payload = await readJson(request);

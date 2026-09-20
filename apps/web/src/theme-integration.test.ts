@@ -79,6 +79,29 @@ describe("Shopify theme chat integration", () => {
     expect(calls.filter(call => call.url.endsWith("/api/session/reset"))).toEqual([]);
   });
 
+  it("greets a remembered shopper with what the server recalled, and claims no memory when it recalled nothing", async () => {
+    const welcomeAfter = async (greeting: string | null) => {
+      const fetchImpl = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith("/api/greeting") ? { greeting, recalled: greeting !== null } : { ok: true }))) as unknown as typeof fetch;
+      const dom = mount(fetchImpl, "https://shop.example.test/products/trail-runner-3?shopper=demo");
+      for (let i = 0; i < 20; i += 1) await Promise.resolve();
+      return dom.window.document.querySelector("[data-ai-chat-welcome]")!.textContent || "";
+    };
+    expect(await welcomeAfter("Welcome back — still a size 10 for that muddy 50k?")).toBe("Welcome back — still a size 10 for that muddy 50k?");
+    // A greeting that lands after the shopper has already spoken must not rewrite the top of the conversation.
+    let release: (value: Response) => void = () => {};
+    const slow = vi.fn(async (url: string) => url.endsWith("/api/greeting") ? new Promise<Response>(resolve => { release = resolve; }) : new Response(JSON.stringify({ reply: "ok" }))) as unknown as typeof fetch;
+    const late = mount(slow, "https://shop.example.test/products/trail-runner-3?shopper=demo");
+    for (let i = 0; i < 20; i += 1) await Promise.resolve();
+    await submit(late, "hello");
+    release(new Response(JSON.stringify({ greeting: "Welcome back — still a size 10?", recalled: true })));
+    for (let i = 0; i < 20; i += 1) await Promise.resolve();
+    expect(late.window.document.querySelector("[data-ai-chat-welcome]")?.textContent || "").not.toContain("size 10");
+
+    const plain = await welcomeAfter(null);
+    expect(plain).toContain("Trail Runner 3");
+    expect(plain).not.toMatch(/welcome back|size 10/i);
+  });
+
   it("never falls back to an identity every storage-blocked browser would share", async () => {
     const ids: unknown[] = [];
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => { ids.push(JSON.parse(String(init?.body)).shopperId); return new Response(JSON.stringify({ reply: "ok" })); }) as unknown as typeof fetch;

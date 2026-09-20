@@ -88,6 +88,20 @@
     }
   }
 
+  // The opening line for a remembered shopper is whatever the server recalled about them, never a line written here.
+  // It replaces the plain welcome only while the conversation has not started, and only if one came back.
+  function greetFromMemory() {
+    var url = endpoint.replace(/\/api\/(?:chat|accept|offers)$/i, '') + '/api/greeting';
+    return window.fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shopperId: shopperId, product: currentProduct }) })
+      .then(function (response) { return response.ok ? response.json() : null; })
+      .then(function (data) {
+        if (!data || typeof data.greeting !== 'string' || !data.greeting || !welcome || !welcome.isConnected) return;
+        if (messages && messages.querySelector('.ai-chat__message--user, .ai-chat__offer-card')) return;
+        welcome.textContent = data.greeting;
+      })
+      .catch(function () {});
+  }
+
   // ?shopper= names a shareable identity (the demo shopper). Each page load under it is a new visit: the server
   // drops the carried product, round and thread. What the shopkeeper remembers about the shopper is untouched.
   function startCleanVisit() {
@@ -95,15 +109,12 @@
     var url = endpoint.replace(/\/api\/(?:chat|accept|offers)$/i, '') + '/api/session/reset';
     try {
       var pending = window.fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shopperId: shopperId }) });
-      if (pending && pending.catch) pending.catch(function () {});
+      if (pending && pending.then) pending.then(greetFromMemory, function () {});
     } catch (error) { /* a failed reset must never stop the chat from loading */ }
   }
 
   function getWelcomeMessage() {
     if (currentProduct) {
-      if (shopperId === 'demo') {
-        return 'Eyeing ' + currentProduct.title + '? Welcome back — still a size 10? Ask about fit or try “Could you do $120?”';
-      }
       return 'Eyeing ' + currentProduct.title + '? Name a price and give me a reason — bundles, budget, or race-day plans help.';
     }
     if (products.length) {
