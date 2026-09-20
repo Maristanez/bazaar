@@ -130,3 +130,67 @@
     scale: 1;
   }
 }
+
+/* Voice state lives in the header, like a call: live bars and one word under Juniper's name. */
+.juniper-handsfree--live .ai-chat__who [data-ai-chat-mode] {
+  display: none;
+}
+
+.ai-chat .juniper-handsfree__live {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  color: var(--cream);
+  font-size: 0.85rem;
+  font-weight: 700;
+  animation: juniper-handsfree-slap 0.45s var(--ease) both;
+}
+
+.ai-chat .juniper-handsfree__live[hidden] {
+  display: none;
+}
+
+.juniper-handsfree__wave {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  width: 2rem;
+  height: 1.15rem;
+}
+
+.juniper-handsfree__wave i {
+  flex: none;
+  width: 2px;
+  height: 16%;
+  border-radius: 1px;
+  background: var(--coral);
+  transition: height 90ms linear;
+}
+
+.juniper-handsfree__live[data-state="speaking"] .juniper-handsfree__wave i {
+  background: var(--sky);
+}
+
+.juniper-handsfree__live[data-state="thinking"] .juniper-handsfree__wave i {
+  height: 34%;
+  background: var(--sun);
+  animation: ai-chat-step 1.2s var(--ease) infinite;
+}
+
+.juniper-handsfree__live[data-state="thinking"] .juniper-handsfree__wave i:nth-child(3n + 2) { animation-delay: 0.18s; }
+.juniper-handsfree__live[data-state="thinking"] .juniper-handsfree__wave i:nth-child(3n) { animation-delay: 0.36s; }
+
+.juniper-handsfree__live[data-state="listening"] .juniper-handsfree__wave:not(.juniper-presence--live) i,
+.juniper-handsfree__live[data-state="hearing"] .juniper-handsfree__wave:not(.juniper-presence--live) i {
+  animation: juniper-handsfree-wave 1.1s ease-in-out infinite;
+}
+
+.juniper-handsfree__wave i:nth-child(2n) { animation-delay: -0.35s; }
+.juniper-handsfree__wave i:nth-child(3n) { animation-delay: -0.7s; }
+
+@keyframes juniper-handsfree-wave {
+  0%, 100% { height: 16%; }
+  50% { height: 70%; }
+}

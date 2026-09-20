@@ -105,6 +105,28 @@
   // glows coral. The shopper's words appear there as they are heard.
   var input = chat.elements.input;
   var restPlaceholder = input ? input.getAttribute('placeholder') || '' : '';
+  // The header is where a call shows who is on the line and what they are doing: under Juniper's name, the
+  // "Trailhead's AI shopkeeper" line gives way to live bars and one word while voice is on.
+  var live = null;
+  var liveWord = null;
+  function showInHeader() {
+    var who = chat.elements.panel && chat.elements.panel.querySelector('.ai-chat__who');
+    if (!who) return;
+    if (!live) {
+      live = document.createElement('p');
+      live.className = 'juniper-handsfree__live';
+      live.hidden = true;
+      live.innerHTML = '<span class="juniper-handsfree__wave" data-juniper-wave aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="juniper-handsfree__word"></span>';
+      liveWord = live.querySelector('.juniper-handsfree__word');
+      who.appendChild(live);
+    }
+    var showing = on && state !== 'off';
+    live.hidden = !showing;
+    live.setAttribute('data-state', state);
+    liveWord.textContent = STATE_WORDS[state] || '';
+    chat.elements.widget.classList.toggle('juniper-handsfree--live', showing);
+  }
+
   function showInInput() {
     if (!input) return;
     var words = caption ? caption.textContent : '';
@@ -139,6 +161,7 @@
       stopButton.hidden = state !== 'speaking';
     }
     showInInput();
+    showInHeader();
     reassertMic();
     if (isListening()) keepListeningMood();
     else if (state === 'off' && chat.state().mood === 'listening') chat.setMood('idle');
