@@ -9,8 +9,9 @@
   // Tune on the demo laptop. Whole words only, any case. No ordinary words here ("service", "travis" stay out).
   var KEYWORDS = ['jarvis', 'hey jarvis', 'hi jarvis', 'jarvus', 'jervis', 'javis', 'jarves'];
 
-  var EAR_LABEL = "Listening for 'Hey Jarvis' — Chrome's speech service hears the audio";
-  var POPOVER_TEXT = "Listening for 'Hey Jarvis'. Chrome's speech service hears the audio.";
+  var SERVER_EARS = Boolean(chat.ears && chat.ears.engine() === 'server');
+  var EAR_LABEL = "Listening for 'Hey Jarvis' — " + (SERVER_EARS ? "this shop's voice service" : "Chrome's speech service") + ' hears the audio';
+  var POPOVER_TEXT = "Listening for 'Hey Jarvis'. " + (SERVER_EARS ? "This shop's voice service" : "Chrome's speech service") + ' hears the audio.';
   var REARM_MS = 500;        // after hands-free, push-to-talk or a turn lets go of the microphone
   var RESTART_MS = 250;      // Chrome ends recognition by itself after silence
   var QUICK_END_MS = 300;    // an end this soon after a start is a failure, not silence
@@ -24,7 +25,7 @@
     var flags = window.BazaarChatFlags;
     return Boolean(flags && (flags.keyword === false || flags.autoListen === 'always'));
   }
-  function Recognition() { return window.SpeechRecognition || window.webkitSpeechRecognition; }
+  function Recognition() { return (chat.ears && chat.ears.Recognition) || window.SpeechRecognition || window.webkitSpeechRecognition; }
 
   var pattern = new RegExp('(^|[^a-z])(' + KEYWORDS.map(function (word) {
     return word.toLowerCase().replace(/[^a-z ]/g, '').replace(/ +/g, '[^a-z]+');
@@ -212,6 +213,7 @@
       mine.continuous = true;
       mine.interimResults = true;
       mine.lang = 'en-US';
+      mine.maxClipMs = 4000;   // the server engine: the word is short, so the clips it transcribes are too
       try { mine.maxAlternatives = 3; } catch (error) { /* optional */ }
       mine.onresult = function (event) { if (recogniser === mine) onResult(event); };
       mine.onerror = function (event) { if (recogniser === mine) onError(event); };

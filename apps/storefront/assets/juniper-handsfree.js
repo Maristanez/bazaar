@@ -23,7 +23,8 @@
   var ON_LABEL = 'Stop talking to Juniper';
   var OFF_LABEL = 'Talk to Juniper';
 
-  var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  // juniper-ears.js chooses between Chrome's recogniser and our server's transcription; without it, Chrome's alone.
+  var Recognition = (chat.ears && chat.ears.Recognition) || window.SpeechRecognition || window.webkitSpeechRecognition;
 
   var on = false;
   var state = 'off';
@@ -238,7 +239,8 @@
     showCaption(heard);
     announce('bazaar-voice:caption', { text: heard, final: !said.interim });
     endTimer = clearTimer(endTimer);
-    endTimer = window.setTimeout(endTurn, END_OF_TURN_MS);
+    // The server engine has already waited out the pause before it transcribed.
+    endTimer = window.setTimeout(endTurn, event && event.endpointed ? 0 : END_OF_TURN_MS);
   }
 
   function onError(event) {
@@ -277,6 +279,8 @@
     endTimer = null;
     var text = String(heard || '').trim();
     if (!on || !text) return;
+    // The wake word on its own is a summons, not something to say to Juniper.
+    if (chat.keyword && chat.keyword.matches(text) && text.split(/\s+/).length <= 3) { resetTurn(); listen(); return; }
     if (autoListen && shopperTurns === 0 && text.split(/\s+/).length < MIN_WORDS_BEFORE_FIRST_TURN) {
       // Too little to be someone talking to Juniper. A fresh session, so these words do not pad the next ones.
       listen();
@@ -327,7 +331,7 @@
   function tellOnce() {
     if (stored(TOLD_KEY) === '1') return;
     store(TOLD_KEY, '1');
-    chat.addMessage("Hands-free is on: just talk, and pause when you're done. While it's on, Chrome's speech service hears the audio to turn it into words. Press Esc or tap the mic to stop.", 'bot');
+    chat.addMessage("Hands-free is on: just talk, and pause when you're done. While it's on, " + (chat.ears && chat.ears.engine() === 'server' ? "this shop's voice service" : "Chrome's speech service") + " hears the audio to turn it into words. Press Esc or tap the mic to stop.", 'bot');
   }
 
   // A click has every other feature's script long since run, so the pill (if any) already exists: decide now.

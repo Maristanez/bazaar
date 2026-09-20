@@ -120,7 +120,7 @@ ${nav}<main>${main}</main>${rail}
 ${widgetMarkup()}
 <script type="application/json" data-ai-chat-products>${json(all.map((product) => ({ productId: product.productNumericId, handle: product.handle, title: product.title, url: product.url, type: product.type, price: product.price, listPrice: product.listPrice, available: true, selectedVariantId: product.selectedVariantNumericId })))}</script>
 ${current ? `<script type="application/json" data-ai-chat-current-product>${json({ ...current, productId: current.productNumericId, selectedVariantId: current.selectedVariantNumericId })}</script>` : ""}
-<script>window.BazaarChatFlags = ${json(url.searchParams.get("listen") === "always" ? { autoListen: "always" } : {})};</script>
+<script>window.BazaarChatFlags = ${json({ ...(url.searchParams.get("listen") === "always" ? { autoListen: "always" } : {}), ...(url.searchParams.get("ears") ? { ears: url.searchParams.get("ears") } : {}) })};</script>
 <script src="/assets/chat-demo.js" defer></script>
 <script type="application/json" data-ai-chat-page>${json(context)}</script>
 ${featureTags()}
