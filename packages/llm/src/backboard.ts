@@ -159,8 +159,11 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
 
   async function assistantFor(shopperId: string, signal: AbortSignal, memoryOverride?: "Auto" | "Readonly" | "off"): Promise<{ id: string; memory: "Auto" | "Readonly" | "off" }> {
     const shopperMemory = memoryOverride ?? memoryForShopper(shopperId);
-    if (!isolateMemoryByShopper || shopperMemory !== "Auto") return { id: assistantId, memory: shopperMemory };
-    if (!shopperId || shopperId === "anonymous-shopper") return { id: assistantId, memory: "off" };
+    if (!isolateMemoryByShopper) return { id: assistantId, memory: shopperMemory };
+    // The base assistant is shared by everyone, so under isolation it only ever runs with memory off: a mode that reads
+    // there hands one shopper's memories to a stranger, and a mode that writes there pools them. Reading or writing
+    // memory is what a shopper's own clone is for — in Readonly as much as in Auto.
+    if (shopperMemory === "off" || !shopperId || shopperId === "anonymous-shopper") return { id: assistantId, memory: "off" };
     let pending = shopperAssistants.get(shopperId);
     if (!pending) {
       pending = resolveOrCloneShopperAssistant({

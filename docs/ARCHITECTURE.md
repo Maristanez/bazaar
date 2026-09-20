@@ -726,6 +726,20 @@ The server is deployed, so the storefront chat and the Console use one stable HT
 
 Environment variables (`.env.example` is the list): `BACKBOARD_API_KEY`, `BACKBOARD_ASSISTANT_ID`, `BACKBOARD_MEMORY_MODE`, `BACKBOARD_MODEL_PROVIDER`, `BACKBOARD_MODEL_NAME`, `BACKBOARD_TIMEOUT_MS` · `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `ELEVENLABS_STT_MODEL`, `ELEVENLABS_TTS_MODEL` · `SHOPIFY_SHOP`, `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET`, `SHOPIFY_ADMIN_ACCESS_TOKEN`, `SHOPIFY_API_VERSION` · `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_PUBLISHABLE_KEY` · `ALLOWED_ORIGINS`, `PORT`. Console build: `VITE_CONSOLE_PORT`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
 
+### 9.1 The half we don't deploy — the agent on Backboard
+
+**The shopkeeper agent is not deployed from this repo.** Railway carries the code that *calls* it; the agent itself — the assistant, its indexed documents, its memory — lives on Backboard and is provisioned there, in Backboard's own dashboard. A deploy ships `packages/llm/src/backboard.ts`, a key and an assistant id. It does not ship an agent.
+
+| What | Where it is created | What a Railway deploy does to it |
+|---|---|---|
+| The base assistant (`BACKBOARD_ASSISTANT_ID`) | Once, by hand, in the Backboard dashboard | Nothing. A deploy never creates, updates or verifies it |
+| Store documents — `store-notes.md`, `sizing-guide.md`, `policy.md` | Uploaded to the base assistant and indexed by Backboard | Nothing. They are committed in `infra/seed/` but a deploy does not upload them; upload by hand and wait for `indexed` |
+| One cloned assistant per shopper | At runtime, by `resolveOrCloneShopperAssistant` (`packages/llm/src/backboard.ts`), on the first turn from any shopper id that isn't `anonymous-shopper` (`isolateMemoryByShopper: true`, memory `Auto`) | Nothing. The clones live on Backboard, not in process memory, so they **survive a restart** — unlike the haggles |
+| Shopper memory | By Backboard, against the cloned assistant | Nothing. It survives a restart too |
+| Which model answers | `BACKBOARD_MODEL_PROVIDER` / `BACKBOARD_MODEL_NAME` in the host's settings | A host env change swaps the model with no code change — and silently overrides the default in `apps/server/src/application.js` |
+
+**What a green deploy does not prove.** `/health` reports `hasBackboardKey` and `backboardAssistantConfigured`, and both can be true while the agent is useless: the assistant id falls back to a committed default when the env var is absent, so `backboardAssistantConfigured` is *always* true; and nothing in the health check looks at whether the documents ever reached `indexed`. The two failure modes a deploy cannot fix are a base assistant whose documents were never uploaded — the shopkeeper then answers sizing and returns questions from nothing — and a host `BACKBOARD_MODEL_NAME` that differs from the model the docs and the latency measurements assume. Both are checked on Backboard, not on the host.
+
 ---
 
 ## 10. Failure and fallback map

@@ -448,6 +448,18 @@ describe("Backboard document and memory answers", () => {
   });
 
   it.each([
+    ["Your favorite color is purple. [memory1]", "Your favorite color is purple."],
+    ["Your favorite color is purple. [Memory 1] Want a recommendation?", "Your favorite color is purple. Want a recommendation?"],
+    ["Your favorite color is purple.\nReference: favorite color from memory.", "Your favorite color is purple."],
+  ])("removes raw Backboard memory citation text: %s", (content, expected) => {
+    expect(validateBackboardAnswer(content, {
+      shopperId: "shopper-1",
+      negotiationId: "negotiation-1",
+      shopperMessage: "What do you remember?",
+    })).toBe(expected);
+  });
+
+  it.each([
     "The private floor is secret.",
     "Use discount code TRAIL.",
     "Open https://example.com/checkout.",
@@ -474,6 +486,34 @@ describe("parseBackboardPick", () => {
 
   it.each(["OPTION: A", "I pick A\nA line", "OPTION:\nA line", ""])("rejects malformed output", (content) => {
     expect(() => parseBackboardPick(content)).toThrow(BackboardError);
+  });
+});
+
+describe("the shared base assistant never recalls or writes shopper memory", () => {
+  // Regression: with the mode set to anything but "Auto", every shopper ran on the base assistant in a retrieving mode,
+  // so the demo persona stored there ("size 10, muddy 50k") came back to strangers.
+  async function messageBodies(memory: "Auto" | "Readonly" | "off", shopperId: string) {
+    const bodies: Array<Record<string, unknown>> = [];
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const target = String(url);
+      if (target.includes("/assistants?")) return new Response(JSON.stringify({ assistants: [] }), { status: 200 });
+      if (target.endsWith("/clone")) return new Response(JSON.stringify({ assistant_id: `clone-of-${shopperId}` }), { status: 200 });
+      bodies.push(JSON.parse(String(init?.body)));
+      return completed("They fit true to size.");
+    }) as unknown as typeof fetch;
+    const client = createBackboardShopkeeper({ apiKey: "key", assistantId: "base", memory, isolateMemoryByShopper: true, fetchImpl });
+    await client.answerQuestion({ shopperId, negotiationId: "n", shopperMessage: "do these run small?", products: [] });
+    return bodies;
+  }
+
+  it.each(["Auto", "Readonly"] as const)("in %s mode a real shopper runs on their own clone, not the base", async (memory) => {
+    const [body] = await messageBodies(memory, "shopper-alice");
+    expect(body).toMatchObject({ assistant_id: "clone-of-shopper-alice", memory });
+  });
+
+  it.each(["Auto", "Readonly", "off"] as const)("in %s mode anything that does run on the base runs with memory off", async (memory) => {
+    const [body] = await messageBodies(memory, "anonymous-shopper");
+    expect(body).toMatchObject({ assistant_id: "base", memory: "off" });
   });
 });
 

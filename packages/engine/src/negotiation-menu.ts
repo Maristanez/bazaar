@@ -1,4 +1,5 @@
 import { floorOf } from "./floor.ts";
+import { formatMoney } from "./money.ts";
 import { priceOffer, type BuyerReason, type NegotiationItem, type NegotiationOffer, type NegotiationMirror, type NegotiationOptions } from "./negotiate.ts";
 
 export type NegotiationMenuInput = {
@@ -23,7 +24,8 @@ export type RequestedNegotiationItem = {
   quantity: number;
 };
 
-export type NegotiationMenuCandidate = { id: string; offer: NegotiationOffer };
+/** facts: the only reasons the shopkeeper may say aloud for this option. Owner-side: they reach the LLM and the check, never the public card. */
+export type NegotiationMenuCandidate = { id: string; offer: NegotiationOffer; facts: string[] };
 
 export type NegotiationMenuResult = readonly NegotiationMenuCandidate[];
 
@@ -77,7 +79,7 @@ export function buildNegotiationMenu(input: NegotiationMenuInput): NegotiationMe
     : requestedName
       ? unique.filter(offer => offer.kind === "bundle" && requested && offer.items.some(item => item.productId === requested.productId))
     : unique;
-  return explicitBundles.map((offer, index) => ({ id: String.fromCharCode(65 + index), offer }));
+  return explicitBundles.map((offer, index) => ({ id: String.fromCharCode(65 + index), offer, facts: factsFor(offer, reason, offered) }));
 }
 
 /** Deterministic option-A fallback, shared by the server and synthetic rehearsals. */
@@ -86,6 +88,32 @@ export function rankNegotiationMenu(choices: NegotiationMenuResult, input: Pick<
     || (input.allowAlternatives && choices.find(choice => choice.offer.items[0]!.productId !== input.main.productId && choice.offer.total <= input.offered)) || choices[0];
   return [preferred, ...choices.filter(choice => choice !== preferred)].filter((choice): choice is NegotiationMenuCandidate => Boolean(choice))
     .map((choice, index) => ({ ...choice, id: String.fromCharCode(65 + index) }));
+}
+
+/** What the shopkeeper may say back for each reason the shopper gave. True for every phrase that triggers the label; "market comparison" has no entry because we never verified a competitor's price, and "add-on intent" is covered by the bundle fact. */
+const REASON_FACTS: Readonly<Record<string, string>> = {
+  "budget": "to fit your budget",
+  "quantity intent": "for buying more than one item",
+  "repeat shopper": "for a returning customer",
+  "real use case": "for what you have planned",
+  "ready to buy": "since you're ready to check out today",
+};
+
+/** Public-safe reasons only. Stock age, cost, floor and target never become a fact: they are leverage against the owner. */
+function factsFor(offer: NegotiationOffer, reason: BuyerReason, offered: number): string[] {
+  const included = offer.items.filter(item => item.productId !== offer.items[0]!.productId).map(item => `${item.title} included`);
+  // Only spell out the full cart when quantities make "both" ambiguous. For a
+  // normal one-item-plus-add-on bundle, the individual included fact is safer
+  // because it does not repeat the main product in shopper copy.
+  const isMultiLine = offer.items.length > 1 && offer.items.some(item => (item.qty || 1) > 1);
+  const cartDescription = isMultiLine
+    ? [`cart includes ${offer.items.map(item => `${item.qty || 1} × ${item.title}`).join(" and ")}`]
+    : [];
+  // A reason is only credited where it bought something: an option still at list earned nothing.
+  const reasons = offer.total < offer.listTotal ? reason.labels.flatMap(label => REASON_FACTS[label] ?? []) : [];
+  // The one dollar figure a fact may carry is the shopper's own, and only where the option really is at or under it.
+  const budget = Number.isSafeInteger(offered) && offered > 0 && offer.total <= offered ? [`meets your ${formatMoney(offered)} budget`] : [];
+  return [...included, ...cartDescription, ...reasons, ...budget];
 }
 
 function priceCandidate(main: NegotiationItem, offered: number, round: number, mirror: NegotiationMirror, reason: BuyerReason, quantity: number, pricing: NegotiationOptions): NegotiationOffer | null {

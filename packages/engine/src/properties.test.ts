@@ -1,7 +1,7 @@
 // Invariants 1 and 2 as properties of the one menu every shopper is priced from (SPEC §6).
 import { expect, it } from "vitest";
 import fc from "fast-check";
-import { auditOffer, buildNegotiationMenu, isLowball, rankNegotiationMenu, toShopper, type BuyerReason, type NegotiationItem, type NegotiationMenuInput, type NegotiationOffer } from "./index.ts";
+import { auditOffer, buildNegotiationMenu, formatMoney, isLowball, rankNegotiationMenu, toShopper, type BuyerReason, type NegotiationItem, type NegotiationMenuInput, type NegotiationOffer } from "./index.ts";
 
 const replay = { seed: 42, numRuns: 1000 };
 const now = new Date("2026-09-19T12:00:00.000Z");
@@ -18,7 +18,7 @@ function item(id: string, isAddOn: boolean): fc.Arbitrary<NegotiationItem> {
   }));
 }
 const reason: fc.Arbitrary<BuyerReason> = fc.record({
-  score: fc.integer({ min: 0, max: 4 }), label: fc.constantFrom(null, "budget"), labels: fc.constant([]),
+  score: fc.integer({ min: 0, max: 4 }), label: fc.constantFrom(null, "budget"), labels: fc.subarray(["budget", "quantity intent", "add-on intent", "repeat shopper", "market comparison", "real use case", "ready to buy"]),
   hasBulkIntent: fc.boolean(), hasAddOnIntent: fc.boolean(), hasMarketComparison: fc.boolean(), isReadyToBuy: fc.boolean(),
 });
 const menuInput: fc.Arbitrary<NegotiationMenuInput> = fc.record({
@@ -86,6 +86,21 @@ it("the menu is deterministic, lettered from A, and ranking only reorders it", (
     const byCart = (a: NegotiationOffer, b: NegotiationOffer) => JSON.stringify(a).localeCompare(JSON.stringify(b));
     expect(ranked.map(choice => choice.offer).sort(byCart)).toEqual(menu.map(choice => choice.offer).sort(byCart));
     expect(ranked.map(choice => choice.id)).toEqual(menu.map(choice => choice.id));
+  }), replay);
+});
+
+it("a fact never carries a dollar figure that is not the shopper's own, and never hints at stock age", () => {
+  fc.assert(fc.property(menuInput, input => {
+    for (const { offer, facts } of buildNegotiationMenu(input)) {
+      for (const fact of facts) {
+        // Invariant 1 for words: cost, floor, target and profit have no way into a sentence.
+        for (const figure of fact.match(/\$[\d,.]+/g) ?? []) {
+          expect(figure).toBe(formatMoney(input.offered));
+          expect(offer.total).toBeLessThanOrEqual(input.offered);
+        }
+        expect(fact).not.toMatch(/\b(?:stocked|days?|weeks?|months?|ago|old|aged|clearance|season)\b/i);
+      }
+    }
   }), replay);
 });
 

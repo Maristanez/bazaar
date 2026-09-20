@@ -44,7 +44,7 @@ const backboard = env.BACKBOARD_API_KEY
     assistantId: backboardAssistantId,
     provider: backboardProvider,
     model: backboardModel,
-    memory: env.BACKBOARD_MEMORY_MODE || "Auto",
+    memory: backboardMemoryMode(env.BACKBOARD_MEMORY_MODE),
     isolateMemoryByShopper: true,
     seededShopperIds: ["demo"],
     fetchImpl: fetch,
@@ -727,6 +727,13 @@ async function withShopperLock(shopperId, work) {
   await previous;
   try { return await work(); }
   finally { release(); if (state.locks.get(shopperId) === tail) state.locks.delete(shopperId); }
+}
+
+/** Backboard's three memory modes are case-sensitive; a host setting typed by hand is not. Unset means Auto; unrecognised means off, because guessing a mode that reads or writes memory is the unsafe direction. */
+function backboardMemoryMode(configured) {
+  const value = String(configured ?? "").trim().toLowerCase();
+  if (!value) return "Auto";
+  return { auto: "Auto", readonly: "Readonly", off: "off" }[value] ?? "off";
 }
 
 function requireShopperId(payload) {
@@ -1451,11 +1458,11 @@ function escapeRegExp(value) {
 }
 
 function negotiationOptions(candidates, round, main, maxRounds) {
-  return candidates.map(({ id, offer }, index) => ({
+  return candidates.map(({ id, offer, facts }, index) => ({
     id,
     kind: offer.items[0].productId !== main.productId ? "else" : offer.kind === "bundle" ? "bundle" : round === maxRounds ? "final" : "held",
     items: offer.items.map((item, position) => ({ variantId: item.variantId, title: item.title, ...(item.size ? { size: item.size } : {}), qty: item.qty || 1, ...(position > 0 ? { thrownIn: true } : {}) })),
-    listTotal: offer.listTotal, total: offer.total, ownerRank: index + 1, facts: [],
+    listTotal: offer.listTotal, total: offer.total, ownerRank: index + 1, facts: [...facts],
   }));
 }
 
