@@ -123,6 +123,17 @@
     return value > 0 && value <= 20 ? value : 0;
   }
 
+  // The shop's own business is not the shopper's: what things cost the shop, what it makes, who supplies it, how the
+  // owner has set the haggling up, the owner's Console, the machinery behind the counter. He does not answer, here
+  // or on the server, and the question never leaves the page. Asking what a thing costs the SHOPPER is shopping.
+  var BACK_OFFICE = new RegExp('\\b(?:' + [
+    '(?:your|the (?:shop|store|owner|merchant) s|their|what s (?:your|the)) (?:own )?(?:cost|costs|margin|margins|markup|mark up|profit|profits|floor|floor price|lowest price allowed|minimum price|bottom line|break even|overhead)',
+    'cost (?:you|the (?:shop|store|owner)|them) to (?:buy|make|get|stock)', 'what (?:do|did) (?:you|they|the (?:shop|store)) pay for', 'wholesale', 'suppliers?', 'manufacturer',
+    'how much (?:do|does|did) (?:you|they|the (?:shop|store|owner|merchant)) (?:make|earn|profit|pay)', 'revenue', 'turnover', 'sales (?:figures|numbers|data|volume|report)', 'how many (?:have you|did you|do you) (?:sold|sell)',
+    'the owner', 'store owner', 'shop owner', 'merchant', 'admin', 'owner console', 'console', 'dashboard', 'back ?end', 'back office', 'database', 'api key', 'system prompt', 'your (?:instructions|prompt|rules|guardrails|settings|policy settings|configuration)',
+    'other (?:customers|shoppers|people s (?:deals|offers|orders))', 'what did (?:he|she|they|someone else|others) pay', 'shopify (?:admin|settings|plan|account|backend|fees)', 'business (?:model|side|plan)', 'commerce side', 'merchant side',
+    'how (?:are|were) you (?:programmed|built|trained|configured|set up)', 'how (?:do|does) (?:you|the (?:shop|store)) (?:decide|set|calculate|work out) (?:the |your )?(?:prices?|discounts?|offers?)', 'pricing (?:algorithm|engine|rules|strategy|model)', 'the (?:algorithm|engine)', 'profits?', 'margins?', 'mark ?ups?', 'negotiation (?:rules|engine|settings|strategy)', 'inventory (?:levels|count|numbers)', 'stock age'
+  ].join('|') + ')\\b');
   var CART = '(?:cart|bag|basket|trolley)';
   function understand(text, context) {
     var said = tidy(plain(text));
@@ -131,6 +142,7 @@
     // Bargaining talk borrows the same verbs ("could you add two pairs of socks as a gift"). With haggling in the
     // sentence, only a chore that names the cart outright is a chore.
     var haggling = HAGGLING.test(String(text || ''));
+    if (BACK_OFFICE.test(said)) return { kind: 'private' };
     // The two things that stay in the shopper's own hand. Said plainly, on the page, without a trip to the server.
     if (/\b(check ?out|pay(?: now| for (?:it|this|them))?|place (?:the |my )?order|buy (?:it )?now)\b/.test(said) && !/\bcheck out the\b/.test(said)) return { kind: 'refuse', what: 'checkout' };
     if (/\b(?:press|click|tap|hit|push|accept|confirm|take)(?: on)? (?:the |that |this |a )?deal\b/.test(plain(text))) return { kind: 'refuse', what: 'deal' };
@@ -411,6 +423,11 @@
       travel(document.querySelector('header a[href$="/cart"], a[href="/cart"], a[aria-label="Cart"]'), function () { line.done('Opening your cart'); afterTurn(function () { go('/cart'); }); });
       return;
     }
+    if (action.kind === 'private') {
+      var aside = 'That is the shop\'s side of the counter, so I will leave it there. I can help you find gear, check a size, fill your cart, or work out a deal.';
+      try { if (chat.say) chat.say(aside); else chat.addMessage(aside, 'bot'); } catch (error) { /* said nothing; still not sent */ }
+      return;
+    }
     if (action.kind === 'refuse') {
       step('').fail(action.what === 'deal' ? 'A deal is binding, so that button is yours to press' : 'Paying is yours to do. Here is your cart, checkout is right there');
       if (action.what !== 'deal' && !onCartPage()) afterTurn(function () { go('/cart'); });
@@ -603,7 +620,7 @@
         if (!chore) return false;
         run(chore);
         // Haggling in the same breath still goes to her; a refusal or an "I did not catch that" never does.
-        return chore.kind === 'refuse' || chore.kind === 'unsure' || !HAGGLING.test(String(text || ''));
+        return chore.kind === 'private' || chore.kind === 'refuse' || chore.kind === 'unsure' || !HAGGLING.test(String(text || ''));
       } catch (error) {
         if (window.console) window.console.error('[juniper-hands]', error);
         return false;
