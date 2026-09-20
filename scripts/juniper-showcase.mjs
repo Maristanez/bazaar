@@ -33,7 +33,7 @@ const TRY = [
 
 const escapeHtml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const json = (value) => JSON.stringify(value).replace(/</g, "\\u003c");
-const cart = { item_count: 1, items: [{ handle: "trail-socks", title: "Trail Socks", product_title: "Trail Socks", variant_title: "M", quantity: 1 }] };
+const cart = { item_count: 1, items: [{ key: "socks-m", handle: "trail-socks", title: "Trail Socks", product_title: "Trail Socks", variant_title: "M", quantity: 1 }] };
 
 let products = [];
 async function loadProducts() {
@@ -81,6 +81,7 @@ async function page(url) {
   const handle = url.pathname.startsWith("/products/") ? decodeURIComponent(url.pathname.slice("/products/".length)) : "";
   const current = handle ? all.find((product) => product.handle === handle) : null;
   const isCart = url.pathname === "/cart";
+  if (url.pathname === "/collections/all") url.pathname = "/";
   const pageType = current ? "product" : isCart ? "cart" : "collection";
   const context = { pageType, template: pageType, path: url.pathname, cartItemCount: cart.item_count };
   if (current) context.product = { id: current.productNumericId, handle: current.handle, title: current.title, type: current.type, available: true };
@@ -90,9 +91,9 @@ async function page(url) {
   let main;
   if (current) {
     const options = (current.variants || []).map((variant) => `<option value="${escapeHtml(variant.id)}"${String(variant.id) === String(current.selectedVariantNumericId) ? " selected" : ""}>${escapeHtml(variant.title)}</option>`).join("");
-    main = `<section class="showcase-product"><div class="showcase-product__image">${current.image ? `<img src="${escapeHtml(current.image)}&width=900" alt="">` : ""}</div><div><h1>${escapeHtml(current.title)}</h1><p class="showcase-product__price" data-product-price>${escapeHtml(current.price || "")}</p><form class="showcase-form" onsubmit="return false"><label>Size <select name="id">${options}</select></label><label>Quantity <input name="quantity" type="number" min="1" value="1"></label><button type="button">Add to cart</button><button type="button" class="showcase-offer" data-ai-chat-open>Make an offer</button></form></div></section>`;
+    main = `<section class="showcase-product"><div class="showcase-product__image">${current.image ? `<img src="${escapeHtml(current.image)}&width=900" alt="">` : ""}</div><div><h1>${escapeHtml(current.title)}</h1><p class="showcase-product__price" data-product-price>${escapeHtml(current.price || "")}</p><form class="showcase-form product-form" onsubmit="return false"><label>Size <select name="id">${options}</select></label><label>Quantity <input name="quantity" type="number" min="1" value="1"></label><button type="submit">Add to cart</button><button type="button" class="showcase-offer" data-ai-chat-open>Make an offer</button></form></div></section>`;
   } else if (isCart) {
-    main = `<section class="showcase-cart"><h1>Your cart</h1><p>${escapeHtml(cart.items[0].title)} · ${escapeHtml(cart.items[0].variant_title)} × ${cart.items[0].quantity}</p></section>`;
+    main = `<section class="showcase-cart"><h1>Your cart</h1>${cart.items.map((item) => `<p>${escapeHtml(item.title)} · ${escapeHtml(item.variant_title)} × ${item.quantity}</p>`).join("")}</section>`;
   } else {
     main = `<section><h1>All products</h1><div class="showcase-grid">${all.map((product) => productCard(product, shopper)).join("")}</div></section>`;
   }
@@ -143,6 +144,37 @@ createServer(async (request, response) => {
       const relayed = await fetch(`${upstream}${url.pathname}${url.search}`, { method: request.method, headers: { "Content-Type": request.headers["content-type"] || "application/json", Accept: request.headers.accept || "*/*" }, body: request.method === "GET" || request.method === "HEAD" ? undefined : Buffer.concat(chunks) });
       response.writeHead(relayed.status, { "Content-Type": relayed.headers.get("content-type") || "application/json", "Cache-Control": "no-store" });
       response.end(Buffer.from(await relayed.arrayBuffer()));
+      return;
+    }
+    // A stand-in for Shopify's cart API, so Juniper's hands (V13) have a cart to work on. Held in memory.
+    if (url.pathname === "/cart/add.js" || url.pathname === "/cart/change.js") {
+      const chunks = [];
+      for await (const chunk of request) chunks.push(chunk);
+      const body = JSON.parse(Buffer.concat(chunks).toString() || "{}");
+      let touched = null;
+      if (url.pathname === "/cart/add.js") {
+        for (const wanted of body.items || []) {
+          const owner = (await loadProducts()).find((product) => (product.variants || []).some((variant) => String(variant.id) === String(wanted.id)) || String(product.selectedVariantId) === String(wanted.id) || String(product.selectedVariantNumericId) === String(wanted.id));
+          const variant = owner && (owner.variants || []).find((entry) => String(entry.id) === String(wanted.id));
+          touched = cart.items.find((item) => item.key === String(wanted.id));
+          if (touched) touched.quantity += wanted.quantity || 1;
+          else { touched = { key: String(wanted.id), handle: owner ? owner.handle : "", title: owner ? owner.title : "Item", product_title: owner ? owner.title : "Item", variant_title: variant ? variant.title : "", quantity: wanted.quantity || 1 }; cart.items.push(touched); }
+        }
+      } else {
+        touched = cart.items.find((item) => item.key === String(body.id));
+        if (touched) touched.quantity = body.quantity;
+        cart.items = cart.items.filter((item) => item.quantity > 0);
+      }
+      cart.item_count = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(url.pathname === "/cart/add.js" ? { items: [touched] } : cart));
+      return;
+    }
+    if (url.pathname.startsWith("/products/") && url.pathname.endsWith(".js")) {
+      const wanted = decodeURIComponent(url.pathname.slice("/products/".length, -3));
+      const found = (await loadProducts()).find((product) => product.handle === wanted);
+      response.writeHead(found ? 200 : 404, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(found ? { handle: found.handle, title: found.title, variants: (found.variants || []).map((variant) => ({ id: variant.id, title: variant.title, available: variant.available !== false })) } : {}));
       return;
     }
     if (url.pathname === "/cart.js") { response.writeHead(200, { "Content-Type": "application/json" }); response.end(JSON.stringify(cart)); return; }

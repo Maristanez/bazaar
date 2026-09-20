@@ -273,6 +273,7 @@
 
   chat.on('turn:start', safely(function () { turnLive = true; }));
   chat.on('turn:error', safely(function () { turnLive = false; }));
+  chat.on('turn:local', safely(function () { turnLive = false; }));
 
   chat.on('reply', safely(function (detail) {
     detail = detail || {};

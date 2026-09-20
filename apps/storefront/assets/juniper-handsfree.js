@@ -504,6 +504,11 @@
     if (on) listen();
   });
 
+  // A turn answered on the page (V13's chores) has no spoken reply to wait for.
+  chat.on('turn:local', function () {
+    if (on) listen();
+  });
+
   // chat-demo.js drops the listening mood whenever it re-syncs its own voice controls; put it back.
   chat.on('mood', function (detail) {
     if (on && isListening() && detail && detail.mood === 'idle') chat.setMood('listening');

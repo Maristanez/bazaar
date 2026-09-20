@@ -106,6 +106,7 @@
     });
     chat.on('reply', endTurn);
     chat.on('turn:error', endTurn);
+    chat.on('turn:local', endTurn);
     chat.on('close', function () { if (!(chat.flags && chat.flags.voiceStaysOnClose)) endTurn(); });
     chat.on('speak:start', function () { speaking = true; stop(); });
     chat.on('speak:end', function () { speaking = false; });

@@ -49,6 +49,7 @@
   // this file. A listener that throws must not take the chat down with it.
   var listeners = {};
   var payloadExtenders = [];
+  var localTurns = [];
   var chipProvider = null;
   var flags = { voiceStaysOnClose: false };
   var spokenRepliesWanted = false;
@@ -1009,6 +1010,11 @@
     input.value = '';
     emit('turn:start', { text: text });
 
+    // A feature file may answer a turn on the page (a shopping chore). Such a turn never reaches the server, so it
+    // can never be read as an offer. 'turn:local' is its ending, the way 'reply' and 'turn:error' end the others.
+    var claimed = localTurns.some(function (claim) { try { return claim(text) === true; } catch (error) { return false; } });
+    if (claimed) { emit('turn:local', { text: text }); return; }
+
     if (endpoint) {
       setLoading(true);
       var thinking = addThinking();
@@ -1080,6 +1086,7 @@
     say: function (text) { var message = addMessage(String(text || ''), 'bot'); speakReply(String(text || '')); return message; },
     restoreNegotiation: function (id, product) { negotiationId = id || null; negotiationProductKey = productKey(product || (activeProduct === currentProduct ? selectedProduct() : activeProduct)); },
     extendPayload: function (extend) { payloadExtenders.push(extend); },
+    answerLocally: function (claim) { localTurns.push(claim); },
     setChipProvider: function (provider) { chipProvider = provider; },
     renderChips: renderChips,
     addMessage: addMessage,

@@ -351,6 +351,7 @@
     // speak:end follows every reply, spoken or not, so Juniper's own voice is never listened to.
     chat.on('speak:end', function () { turnInFlight = false; sync(REARM_MS); });
     chat.on('turn:error', function () { turnInFlight = false; sync(REARM_MS); });
+    chat.on('turn:local', function () { turnInFlight = false; sync(REARM_MS); });
 
     // Hands-free restores itself on load when its flag is set (V1); give it the microphone first.
     var restoring = false;
