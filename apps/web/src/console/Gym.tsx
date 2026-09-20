@@ -3,7 +3,7 @@ import type { GymResult, GymShopper, OwnerProduct, Policy } from "@bazaar/contra
 import { runLiveGym, type LiveGymInput } from "../../../../packages/gym/src/live";
 import type { NegotiationItem } from "../../../../packages/engine/src/negotiate";
 
-type GymItem = NegotiationItem & { openToOffers: boolean };
+export type GymItem = NegotiationItem & { openToOffers: boolean };
 type Persona = GymShopper["persona"];
 type Filter = Persona | "all";
 type PositionedDot = { id: number; x: number; y: number; shopper: GymShopper; state: "haggling" | GymShopper["outcome"] };
@@ -19,7 +19,7 @@ const PERSONAS: readonly { id: Persona; label: string }[] = [
 const PLOT = { left: 58, right: 760, top: 40, baseline: 278 } as const;
 const PILE = { left: 822, columns: 25, gap: 6.1 } as const;
 
-function items(products: OwnerProduct[]): GymItem[] {
+export function items(products: OwnerProduct[]): GymItem[] {
   return products.flatMap((product) => product.variants.map((variant) => ({
     variantId: variant.variantId,
     productId: product.productId,
@@ -35,7 +35,7 @@ function items(products: OwnerProduct[]): GymItem[] {
   })));
 }
 
-function invalidReason(main: GymItem | undefined): string | undefined {
+export function invalidReason(main: GymItem | undefined): string | undefined {
   if (!main) return "No main product is available for rehearsal.";
   if (!main.inStock) return "This variant is out of stock, so it cannot enter the Gym.";
   if (main.cost === null) return "This variant is missing cost, so it is not open to offers.";

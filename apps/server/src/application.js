@@ -103,6 +103,7 @@ const server = createServer(async (request, response) => {
         sendJson(response, request, 200, {
           policy: owner.getPolicy(), pausePersistence: owner.getPausePersistence(), products: ownerProducts(mirror), pendingApprovals: owner.pendingApprovals(),
           redteam: owner.getRedTeamResult(),
+          catalog: { source: mirror.source, loadedAt: mirror.loadedAt ? new Date(mirror.loadedAt).toISOString() : null, warnings: mirror.warnings },
           ...(await ownerKpis()),
         });
         return;

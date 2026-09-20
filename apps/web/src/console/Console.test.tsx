@@ -38,7 +38,7 @@ test("PAUSE and Resume persist policy and render live, paused and empty states",
   expect(screen.getByText("Deals live")).toBeTruthy();
   expect((await port.load()).policy.paused).toBe(false);
   expect(screen.getByText("Waiting for the first offer.")).toBeTruthy();
-  expect(screen.getByRole("heading", { name: "The Gym" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Try it on 300 shoppers" })).toBeTruthy();
 });
 
 test("a locally active PAUSE shows a persistence warning until the retry is saved", async () => {
