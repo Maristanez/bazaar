@@ -40,7 +40,7 @@ export function createFixturePort({ initialState = state, stream, intervalMs = 6
       return () => { clearInterval(timer); listeners.delete(onEvent); };
     },
     async setPolicy(next) {
-      current.policy = { ...current.policy, floorPct: next.floorPct, askOwner: next.askOwner, updatedAt: new Date().toISOString() };
+      current.policy = { ...current.policy, floorPct: next.floorPct, askOwner: next.askOwner, settings: next.settings ?? current.policy.settings, updatedAt: new Date().toISOString() };
       return structuredClone(current.policy);
     },
     async setPaused(paused) {

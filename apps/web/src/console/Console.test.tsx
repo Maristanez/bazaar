@@ -2,11 +2,32 @@
 import React from "react";
 import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
+import type { ConsoleState } from "@bazaar/contracts";
 import { Console } from "./Console";
 import { createFixturePort } from "./data/fixturePort";
 import { events } from "./fixtures/events";
+import { state } from "./fixtures/state";
 
 afterEach(() => { cleanup(); vi.useRealTimers(); });
+
+test("Other figures shows dashes when no deals have settled", async () => {
+  render(<Console port={createFixturePort({ stream: [] })} />);
+  await screen.findByRole("heading", { name: "Try it on 300 shoppers" });
+  await act(async () => screen.getByText("More settings").click());
+  expect(screen.getByText("Agent cost").nextSibling!.textContent).toBe("—");
+  expect(screen.getByText("Profit recovered").nextSibling!.textContent).toBe("—");
+  expect(screen.getByText("Deals").nextSibling!.textContent).toBe("—");
+});
+
+test("Other figures shows agent cost, profit recovered and deal count once deals settle", async () => {
+  const withDeals: ConsoleState = { ...structuredClone(state), kpis: { deals: 3, customersSaved: 2, revenueRecovered: 24_300, profitRecovered: 10_500, vsBanner: 2_420, agentCostUsd: 0.04 } };
+  render(<Console port={createFixturePort({ initialState: withDeals, stream: [] })} />);
+  await screen.findByRole("heading", { name: "Try it on 300 shoppers" });
+  await act(async () => screen.getByText("More settings").click());
+  expect(screen.getByText("Agent cost").nextSibling!.textContent).toBe("$0.04");
+  expect(screen.getByText("Profit recovered").nextSibling!.textContent).toBe("$105.00");
+  expect(screen.getByText("Deals").nextSibling!.textContent).toBe("3");
+});
 
 test("S5: fixture events reach the feed in under a second, newest first, with red named blocks", async () => {
   vi.useFakeTimers();
@@ -20,6 +41,7 @@ test("S5: fixture events reach the feed in under a second, newest first, with re
   await act(async () => { await vi.advanceTimersByTimeAsync(100); });
   expect(screen.getAllByRole("article")[0]!.textContent).toContain(events[1]!.reasoning);
   await act(async () => { await vi.advanceTimersByTimeAsync(900); });
+  await act(async () => screen.getByRole("button", { name: `Show all ${events.length}` }).click());
   expect(screen.getAllByRole("article")).toHaveLength(events.length);
   for (const layer of ["validate", "engine", "check", "auditor"]) {
     expect(screen.getByRole("article", { name: `blocked · ${layer}` })).toBeTruthy();

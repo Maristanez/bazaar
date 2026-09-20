@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import type { ConsoleEvent, ConsoleState, Policy } from "@bazaar/contracts";
+import type { ConsoleEvent, ConsoleState, Policy, PolicySettings } from "@bazaar/contracts";
 import type { ConsolePort } from "./data/port";
 import { Approvals } from "./Approvals";
 import { PolicyPanel } from "./PolicyPanel";
-import { Feed } from "./Feed";
+import { Feed, money } from "./Feed";
 import { Race } from "./Race";
 import { KeptBand } from "./KeptBand";
 import { RedTeamSummary } from "./RedTeamSummary";
@@ -15,7 +15,7 @@ export function Console({ port, onSignOut }: { port: ConsolePort; onSignOut?: ()
   const [streamMessage, setStreamMessage] = useState("");
   const [error, setError] = useState("");
   const [events, setEvents] = useState<ConsoleEvent[]>([]);
-  const [gymDraft, setGymDraft] = useState<Pick<Policy, "floorPct" | "askOwner">>();
+  const [gymDraft, setGymDraft] = useState<(Pick<Policy, "floorPct" | "askOwner"> & { settings?: PolicySettings })>();
   const [adopting, setAdopting] = useState(false);
   useEffect(() => {
     let active = true;
@@ -111,6 +111,13 @@ export function Console({ port, onSignOut }: { port: ConsolePort; onSignOut?: ()
       </div>
       <details className="more-settings"><summary>More settings</summary>
         <div className="more-grid"><PolicyPanel products={state.products} policy={state.policy} port={port} value={gymDraft ?? null} onPolicy={policy => { setGymDraft(undefined); adopted(policy); }} onDraft={setGymDraft} /><RedTeamSummary result={state.redteam} /></div>
+        <div className="other-figures"><h3>Other figures</h3>
+          <ul>
+            <li><span>Agent cost</span><b>{state.kpis && state.kpis.deals > 0 ? `$${state.kpis.agentCostUsd.toFixed(2)}` : "—"}</b></li>
+            <li><span>Profit recovered</span><b>{state.kpis && state.kpis.deals > 0 ? money(state.kpis.profitRecovered) : "—"}</b></li>
+            <li><span>Deals</span><b>{state.kpis && state.kpis.deals > 0 ? state.kpis.deals : "—"}</b></li>
+          </ul>
+        </div>
       </details>
     </main>
   </>;
