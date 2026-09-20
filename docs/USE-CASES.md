@@ -146,10 +146,10 @@ Seed store: Trailhead Co. Policy: floor 25%, "Ask me" on, 15-minute hold. Owner 
 - A5 Choose + say times out, fails, or fails the check → UC-X2.
 - A6 Message has no offer in it → treated as a question (UC-S6); no round used.
 - A7 An offer with no number ("can I get a deal?") → the shopkeeper asks for a number and suggests an opening figure (85% of list); no card; no round used.
-- A8 No reason given → the shopkeeper holds list for the first half of the haggle and moves only a little at the end ("I need a better reason before I move much").
+- A8 No reason given → the shopkeeper holds list for the first half of the haggle and moves only a little at the end ("Give me a reason and I can move more").
 - A9 Lowball → UC-S13.
 
-**Shopper sees:** one card per turn with the round ("2 of 4" — the second number is the owner's max rounds), the deal trail, list total, agreed total, badges (e.g. `reason: market comparison`), and the two honesty lines. **Owner sees:** everything in step 9.
+**Shopper sees:** one card per turn with the round ("2 of 4" — the second number is the owner's max rounds), the deal trail, list total, agreed total, badges in the shopper's words (e.g. `for a fair comparison`), and the two honesty lines. **Owner sees:** everything in step 9.
 
 **Acceptance criteria**
 - Given TR2 at round 2 and the offer above, when the turn completes, then exactly one live card exists and its total is one of the engine's option totals.

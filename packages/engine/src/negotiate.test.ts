@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { analyzeBuyerReason, applyNegotiationContext, auditOffer, ownerApprovalTotal, priceOffer, type BuyerReason } from "./negotiate.ts";
+import { analyzeBuyerReason, applyNegotiationContext, auditOffer, leadWithStatedReason, ownerApprovalTotal, priceOffer, type BuyerReason } from "./negotiate.ts";
 
 const shoe = {
   variantId: "tr2-10", productId: "tr2", title: "Trail Runner 2", size: "10", productType: "shoe",
@@ -140,14 +140,14 @@ describe("owner-set max rounds", () => {
   it("the last of two rounds reaches the price the fourth of four reaches today", () => {
     expect(price(4, undefined).total).toBe(12900);
     expect(price(2, 2).total).toBe(12900);
-    expect(price(2, 2).badges).toContain("firm counter");
+    expect(price(2, 2).badges).toContain("final offer");
   });
 
   it("the last of six rounds reaches the same price, and the middle rounds sit above it", () => {
     expect(price(6, 6).total).toBe(12900);
     expect(price(3, 6).total).toBeGreaterThan(12900);
     expect(price(3, 6).total).toBeLessThan(14900);
-    expect(price(4, 6).badges).not.toContain("firm counter");
+    expect(price(4, 6).badges).not.toContain("final offer");
   });
 
   it("a shopper with no reason still gets the small final-round move when there are only two rounds", () => {
@@ -195,5 +195,31 @@ describe("ownerApprovalTotal", () => {
       const total = ownerApprovalTotal(offered, { cost, floor: cost * 2 + 1 }, 1_000_000);
       if (total !== null) expect(total).toBeGreaterThan(cost);
     }), { numRuns: 500 });
+  });
+});
+
+describe("what the shopper reads", () => {
+  const ENGINE_WORDS = /reason:|intent|counter|bundle value|use case|comparison\)|\(/i;
+  const said = (message: string, round = 2) => priceOffer(shoe, 11000, round, mirror, analyzeBuyerReason(message), 1, { floorPct: 25, now });
+
+  it("names the shopper's reason in the shopper's words, never the engine's", () => {
+    expect(said("I'm a student on a tight budget").badges).toContain("for a tight budget");
+    for (const message of ["I'm a student on a tight budget", "I'm buying two pairs", "adding socks", "I saw the same shoe elsewhere", "I have a race in three weeks", "I'm ready to buy today", "I'm a returning customer", "no reason at all"]) {
+      for (const round of [1, 2, 4]) {
+        const offer = said(message, round);
+        for (const badge of offer.badges) expect(badge).not.toMatch(ENGINE_WORDS);
+        expect(offer.line).not.toMatch(ENGINE_WORDS);
+      }
+    }
+  });
+
+  it("leads with the reason given in this message, while the price still weighs everything said so far", () => {
+    const soFar = analyzeBuyerReason("Could you do $120? I'm buying socks too. How about $110? I'm a student on a tight budget.");
+    expect(soFar.label).toBe("quantity intent");
+    const thisTurn = leadWithStatedReason(soFar, "How about $110? I'm a student on a tight budget.");
+    expect(thisTurn.label).toBe("budget");
+    expect({ ...thisTurn, label: soFar.label }).toEqual(soFar);
+    expect(priceOffer(shoe, 11000, 2, mirror, thisTurn, 1, { floorPct: 25, now }).total).toBe(priceOffer(shoe, 11000, 2, mirror, soFar, 1, { floorPct: 25, now }).total);
+    expect(leadWithStatedReason(soFar, "$100 and that's it").label).toBe("quantity intent");
   });
 });

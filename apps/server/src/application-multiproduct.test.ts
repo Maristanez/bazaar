@@ -403,7 +403,7 @@ describe("multi-product shopper API integration", () => {
     expect(question.body.reply).toContain("budget reason");
 
     const offer = await chat(base, productPayload(trail2, shopperId, "How about $120?"));
-    expect(offer.body.card.badges).toContain("reason: budget");
+    expect(offer.body.card.badges).toContain("for a tight budget");
   });
 
   it("names an unavailable requested item and suggests a real available alternative", async () => {

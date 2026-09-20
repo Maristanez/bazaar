@@ -2,7 +2,7 @@
 // Nobody changes this file without saying so out loud (PLAN rule zero).
 
 export type Option = { id: string; kind: "held" | "bundle" | "else" | "final" | "owner";
-                  items: { variantId: string; title: string; size?: string; qty: number; thrownIn?: boolean }[];
+                  items: { variantId: string; title: string; size?: string; qty: number; thrownIn?: boolean; listPrice?: number /* one unit's public list price */ }[];
                   listTotal: number; total: number; ownerRank: number; facts: string[] };   // cents; NO cost fields
 // Option is SERVER + CONSOLE only. The shopper's browser and the ChatGPT card get PublicOption.
 // The `never` fields are the one departure from Appendix C: a bare Pick is structural, so a full Option would

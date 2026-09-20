@@ -8,7 +8,7 @@ import { createSupabaseDb } from "./infra/db.ts";
 import { createOwnerRuntime } from "./owner/runtime.ts";
 import { loadRedTeamResult } from "./owner/redteam.ts";
 import { dealKpis } from "./owner/kpis.ts";
-import { analyzeBuyerReason, applyNegotiationContext, auditOffer, buildNegotiationMenu, ownerApprovalTotal, formatMoney, isAddOn, isLowball, rankNegotiationMenu, resolveSettings, suggestedOpeningOffer, toShopper } from "@bazaar/engine";
+import { LAST_ROUND_WORDS, analyzeBuyerReason, applyNegotiationContext, auditOffer, buildNegotiationMenu, leadWithStatedReason, ownerApprovalTotal, reasonReply, formatMoney, isAddOn, isLowball, rankNegotiationMenu, resolveSettings, suggestedOpeningOffer, toShopper } from "@bazaar/engine";
 import { selectCatalogItem } from "./catalog.ts";
 import { publicConfig } from "./public-config.ts";
 import { randomUUID } from "node:crypto";
@@ -790,7 +790,8 @@ async function makeOfferTurn(payload, message) {
     ...(sameContextItem ? [shopperContext?.reasonText, ...(shopperContext?.reasonTags || [])] : []),
   ].filter(Boolean).join(" ");
   const declinedAddOns = /\b(?:without|no|remove|skip|exclude)\s+(?:(?:the|any|merino|trail|soft)\s+)*(?:socks?|gaiters?|caps?|flasks?|vests?|add[ -]?ons?|bundles?)\b|\b(?:just|only) (?:the )?(?:shoes?|main item)\b/i.test(message);
-  const reason = applyNegotiationContext(analyzeBuyerReason(reasonText), { quantity: terms.quantity });
+  // The price weighs every reason given so far; the wording answers the one given in this message.
+  const reason = leadWithStatedReason(applyNegotiationContext(analyzeBuyerReason(reasonText), { quantity: terms.quantity }), [message, understanding.reasonText].filter(Boolean).join(" "));
   if (declinedAddOns) reason.hasAddOnIntent = false;
   const requestedItems = declinedAddOns
     ? []
@@ -865,7 +866,9 @@ async function makeOfferTurn(payload, message) {
   negotiation.productId = selectedMain.productId;
   negotiation.variantId = selectedMain.variantId;
   rememberShopperContext(shopperId, selectedMain, quantity, negotiationId, { reasonText, reasonTags: reason.labels, requestedItems });
-  const replyLine = phrased.line;
+  // The model may only say the price sentence (check.ts), so code answers the shopper's reason in front of it. A code-written line already does.
+  const modelSentence = /[.!?…]$/.test(phrased.line.trim()) ? phrased.line.trim() : `${phrased.line.trim()}.`;
+  const replyLine = phrased.byModel ? [reasonReply(reason), modelSentence, round >= maxRounds ? LAST_ROUND_WORDS : ""].filter(Boolean).join(" ") : phrased.line;
   const offerId = randomId("offer");
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
   const card = {
@@ -882,18 +885,19 @@ async function makeOfferTurn(payload, message) {
         title: item.title,
         ...(item.size ? { size: item.size } : {}),
         qty: item.qty || 1,
+        listPrice: item.list,
         ...(index > 0 ? { thrownIn: true } : {}),
       })),
       listTotal: offer.listTotal,
       total: offer.total,
     },
     line: replyLine,
-    mood: offer.kind === "accepted" ? "deal" : offer.kind === "bundle" ? "tempted" : "idle",
+    mood: lowball ? "offended" : offer.kind === "accepted" ? "deal" : offer.kind === "bundle" ? "tempted" : "idle",
     badges: offer.badges,
     trail: [
-      { label: "List", amount: offer.listTotal, by: "shop" },
-      { label: round === 1 ? "Your offer" : `Round ${round}`, amount: toShopper(offered), by: "shopper" },
-      { label: "Shop", amount: offer.total, by: "shop" },
+      { label: "List price", amount: offer.listTotal, by: "shop" },
+      { label: "You offered", amount: toShopper(offered), by: "shopper" },
+      { label: "My price", amount: offer.total, by: "shop" },
     ],
     expiresAt: expiresAt.toISOString(),
     disclosure: ["You're talking to Trailhead Co's deal agent.", "Only this card is binding; chat text is not."],
@@ -940,7 +944,7 @@ function standingOfferReply(payload) {
   const total = formatMoney(card.option.total);
   const reply = card.round >= card.maxRounds
     ? `${total} is my best on this one, and it's held while the timer runs. A real reason, a bundle or a firmer number is the only thing that could move it now.`
-    : `${total} is where I am right now, and it's held while the timer runs. Give me something to work with and it can move: a reason, a bundle (a second pair or an add-on), or a firmer number from you.`;
+    : `${total} is where I am right now, and it's held while the timer runs. Give me something to work with and it can move: a reason, a second pair or an add-on, or a firmer number from you.`;
   return { reply, card, negotiationId };
 }
 
@@ -1463,7 +1467,7 @@ function lowballCounter(candidates, menu, offered) {
   const { offer } = picked;
   const title = offer.items[0].title;
   const fact = offer.items.length > 1
-    ? `that includes ${offer.items.slice(1).map(item => `${item.qty || 1} × ${item.title}`).join(" and ")}`
+    ? `that includes ${offer.items.slice(1).map(item => (item.qty || 1) > 1 ? `${item.qty} × ${item.title}` : item.title).join(" and ")}`
     : offer.total < offer.listTotal
       ? `that is already ${formatMoney(offer.listTotal - offer.total)} off the ${formatMoney(offer.listTotal)} list price`
       : `that is the list price`;
@@ -1485,14 +1489,14 @@ async function phraseOfferWithBackboard({ menu, fallback, shopperId, negotiation
     const checked = checkShopkeeperPick({ menu, pick: choice });
     if (checked.ok) {
       logBackboardRun("offer", choice.trace);
-      return { optionId: choice.optionId, line: choice.line, trace: choice.trace };
+      return { optionId: choice.optionId, line: choice.line, trace: choice.trace, byModel: true };
     }
     const option = menu.find(option => option.id === choice.optionId);
     const neutralLine = option && checked.reason === "unsupported_reason" ? neutralBackboardLine(choice.line, option) : null;
     const neutralChecked = neutralLine ? checkShopkeeperPick({ menu, pick: { optionId: choice.optionId, line: neutralLine } }) : null;
     logBackboardRun(neutralChecked?.ok ? "offer_neutralized" : `offer_blocked_${checked.reason}`, choice.trace);
     owner.publish({ at: new Date().toISOString(), surface: "storefront", shopperId, negotiationId, kind: "blocked", blockedBy: "check", reasoning: `Unsafe agent wording was replaced: ${checked.reason}.` });
-    return neutralChecked?.ok ? { optionId: choice.optionId, line: neutralLine, trace: choice.trace } : { ...safeFallback(), trace: choice.trace };
+    return neutralChecked?.ok ? { optionId: choice.optionId, line: neutralLine, trace: choice.trace, byModel: true } : { ...safeFallback(), trace: choice.trace };
   } catch (error) {
     console.error("[backboard/offer]", error instanceof Error ? error.message : error);
     return safeFallback();
@@ -1632,14 +1636,17 @@ function formatPublicProductList(products) {
 }
 
 function fallbackReply() {
-  return "I can help with products, sizing, and offers. If you want to haggle, send a number like “Could you do $120?” and I will price a real offer card from the server.";
+  return "I can help with gear, sizing and offers. To haggle, name your price and tell me why.";
 }
 
 /** "What's your best?" and its cousins: a question about the price with no number in it. */
 function isPriceMoveQuestion(text) {
   const message = String(text || "");
-  if (parseMoney(message) !== null) return false;
-  return /\b(best (?:you can do|you could do|you've got|price|offer|deal)|(?:your|the) best(?: (?:price|offer|deal|number|shot))?(?=\s*(?:[?.!,]|$))|final (?:price|offer|number)|last price|lowest (?:price|offer|number|you|i )|your lowest(?=\s*(?:[?.!,]|$))|bottom line|(?:go|any|get|come) (?:any |a bit |a little )?(?:lower|down)|do (?:any )?better|better price|meet me|in the middle|half ?way|split the difference|wiggle room)\b/i.test(message);
+  return parseMoney(message) === null && hasPriceMoveWording(message);
+}
+
+function hasPriceMoveWording(message) {
+  return /\b(best (?:you can do|you could do|you've got|price|offer|deal)|(?:your|the) best(?: (?:price|offer|deal|number|shot))?(?=\s*(?:[?.!,]|$))|final (?:price|offer|number)|last price|lowest (?:price|offer|number|you|i )|your lowest(?=\s*(?:[?.!,]|$))|bottom line|(?:go|any|get|come) (?:any |a bit |a little )?(?:lower|down)|do (?:any )?better|better price|meet me|in the middle|half ?way|split the difference|wiggle room|what (?:would|could|will|can) move (?:it|that|the price|you))\b/i.test(message);
 }
 
 function isOfferIntent(text) {
@@ -1675,6 +1682,10 @@ function parseMoney(value) {
   const wordMoney = parseMoneyWords(text);
   if (wordMoney !== null) return wordMoney;
   if (/^\s*\d+(?:\.\d{1,2})?\s*$/.test(text)) return Number(text);
+  // "Can you go lower? 120": after haggling words, a closing figure of two digits or more is the offer only when it stands
+  // alone as its own clause or follows the haggling word itself. "I wear a 10" and "is 151 your best?" stay questions.
+  const closingFigure = text.match(/(?:^|[?.!,;:]\s*|\b(?:lower|down|better|best|middle|halfway|do)\s+)(\d{2,}(?:\.\d{1,2})?)\s*[?.!]*\s*$/i);
+  if (closingFigure && hasPriceMoveWording(text)) return Number(closingFigure[1]);
   return null;
 }
 

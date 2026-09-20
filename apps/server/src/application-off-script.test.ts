@@ -25,7 +25,7 @@ async function shop(shopperId: string) {
 }
 const dollars = (cents: number) => `$${cents / 100}`;
 
-for (const phrase of ["Ok what is the best you can do?", "is that your best?", "final price?", "can you go lower?", "meet me in the middle"]) {
+for (const phrase of ["Ok what is the best you can do?", "is that your best?", "final price?", "can you go lower?", "meet me in the middle", "What would move it?"]) {
   test(`"${phrase}" with a live offer restates the current card and spends no round`, async () => {
     const say = await shop(`off-script-${phrase}`);
     const opening = await say("Could you do $130? Buying today, price match.");
@@ -42,6 +42,27 @@ for (const phrase of ["Ok what is the best you can do?", "is that your best?", "
     expect(asked.reply).not.toMatch(/outfit/i);
     const next = await say("Could you do $135?");
     expect(next.card.round).toBe(opening.card.round + 1);
+  });
+}
+
+for (const phrase of ["can you go lower? 120", "what is the best you can do? 120", "can you go lower 120"]) {
+  test(`"${phrase}" with a live offer is a new offer at that number, not a question`, async () => {
+    const say = await shop(`off-script-${phrase}`);
+    const opening = await say("Could you do $130? Buying today, price match.");
+    const next = await say(phrase);
+    expect(next.card.offerId).not.toBe(opening.card.offerId);
+    expect(next.card.round).toBe(opening.card.round + 1);
+    expect(next.card.trail[1].amount).toBe(12000);
+  });
+}
+
+for (const phrase of ["what's your best price on the size 10?", "is 151 your best?", "can you go any lower for 2 pairs of socks, size 10 to 12?", "can you go lower, I wear a 10?", "can you go lower, I'm a size-10?", "can you go lower, I'm 25?"]) {
+  test(`"${phrase}" is still a question: a size or a quoted figure is not a new offer`, async () => {
+    const say = await shop(`off-script-${phrase}`);
+    const opening = await say("Could you do $130? Buying today, price match.");
+    const asked = await say(phrase);
+    expect(asked.card.offerId).toBe(opening.card.offerId);
+    expect(asked.card.round).toBe(opening.card.round);
   });
 }
 
@@ -77,4 +98,50 @@ test("with no negotiation, asking for the best price invites a number and a reas
   expect(asked.reply).not.toMatch(/outfit/i);
   expect(asked.reply).toMatch(/number/i);
   expect(asked.reply).toMatch(/reason/i);
+});
+
+test("the six-turn walkthrough shows a shopper no engine vocabulary", async () => {
+  const say = await shop("walkthrough-words");
+  const ENGINE_WORDS = /reason:|\bintent\b|counter|bundle value|use case|seller|\bShop\b|from the server|offer card|\(/i;
+  const turns = ["Does this run true to size?", "Could you do $120? I'm buying socks too.", "How about $110? I'm a student on a tight budget.", "$40. Final.", "Ok what is the best you can do?", "One more try: $100 and I will tell all my friends."];
+  for (const message of turns) {
+    const result = await say(message);
+    const shown = [result.reply, result.card?.line, ...(result.card?.badges ?? []), ...(result.card?.trail ?? []).map((step: { label: string }) => step.label)].filter(Boolean);
+    for (const text of shown) expect(text).not.toMatch(ENGINE_WORDS);
+  }
+});
+
+test("the badge names the reason the shopper gave in this message", async () => {
+  const say = await shop("walkthrough-reason");
+  await say("Could you do $120? I'm buying socks too.");
+  const second = await say("How about $110? I'm a student on a tight budget.");
+  expect(second.card.badges).toContain("for a tight budget");
+  expect(second.card.badges).not.toContain("for a bigger cart");
+  expect(second.reply).toContain("A tight budget.");
+});
+
+test("the trail reads list price, the shopper's offer, the shopkeeper's price, in every round", async () => {
+  const say = await shop("walkthrough-trail");
+  const first = await say("Could you do $120? I'm buying socks too.");
+  const second = await say("How about $110? I'm a student on a tight budget.");
+  for (const card of [first.card, second.card]) expect(card.trail.map((step: { label: string }) => step.label)).toEqual(["List price", "You offered", "My price"]);
+});
+
+test("every item on the card carries its own list price, and they add up to the list total", async () => {
+  const say = await shop("walkthrough-anchor");
+  const { card } = await say("Could you do $120? I'm buying socks too.");
+  expect(card.option.items.length).toBeGreaterThan(1);
+  const sum = card.option.items.reduce((total: number, item: { listPrice: number; qty: number }) => total + item.listPrice * item.qty, 0);
+  expect(sum).toBe(card.option.listTotal);
+});
+
+test("a lowball leaves the shopkeeper offended, and a fair offer brings the mood back", async () => {
+  const say = await shop("walkthrough-mood");
+  const fair = await say("Could you do $120? I'm buying socks too.");
+  expect(fair.card.mood).not.toBe("offended");
+  const lowball = await say("$40. Final.");
+  expect(lowball.card.mood).toBe("offended");
+  expect(lowball.reply).toContain("that includes Merino Socks");
+  const again = await say("How about $115? I'm a student on a tight budget.");
+  expect(again.card.mood).not.toBe("offended");
 });

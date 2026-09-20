@@ -9,7 +9,7 @@ function db(): OwnerDatabase {
   return { merchantId: "merchant", async loadLatestPolicy() { return policy; }, async appendPolicy(next) { policy = { ...next, updatedAt: new Date().toISOString() }; return policy; }, async verifyBearerToken(value) { return value === "Bearer owner" ? { id: "merchant", ownerUserId: "owner", shopDomain: "test.myshopify.com" } : null; }, async insertDeal(deal) { return { ...deal, id: "deal", profit: deal.agreedTotal - deal.cost, createdAt: new Date().toISOString() }; } };
 }
 /** A shopkeeper LLM that answers every menu with `reply(menu)`. */
-async function offerWith(reply: (menu: Array<{ id: string; total: string }>) => string) {
+async function offerWith(reply: (menu: Array<{ id: string; total: string }>) => string, message = "Could you do $130? Buying today, price match.") {
   let menu: Array<{ id: string; total: string }> = [];
   const fetchImpl: typeof fetch = async (_url, init) => {
     menu = JSON.parse(JSON.parse(String(init?.body)).content.split("MENU: ")[1]);
@@ -19,7 +19,7 @@ async function offerWith(reply: (menu: Array<{ id: string; total: string }>) => 
   servers.push(server); await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const catalog = await (await fetch(`${base}/api/products`)).json();
-  const result = await (await fetch(`${base}/api/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shopperId: "check-shopper", product: catalog.items.find((p: { title: string }) => p.title === "Trail Runner 2"), productContextSource: "current", message: "Could you do $130? Buying today, price match." }) })).json();
+  const result = await (await fetch(`${base}/api/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shopperId: "check-shopper", product: catalog.items.find((p: { title: string }) => p.title === "Trail Runner 2"), productContextSource: "current", message }) })).json();
   return { result, menu };
 }
 const dollars = (cents: number) => `$${cents / 100}`;
@@ -48,4 +48,44 @@ test("private money words are replaced before the shopper sees them", async () =
   const { result, menu } = await offerWith(options => `OPTION: ${options[0]!.id}\nI can do ${options[0]!.total}, that is above our cost and floor.`);
   expect(dollars(result.card.option.total)).toBe(menu[0]!.total);
   expect(result.card.line).not.toMatch(/cost|floor|margin|profit/i);
+});
+
+test("the model's checked price sentence goes out behind the shopkeeper's answer to the shopper's reason", async () => {
+  const { result, menu } = await offerWith(options => `OPTION: ${options[0]!.id}\nI can do ${options[0]!.total}.`, "Could you do $130? I'm a student on a tight budget.");
+  expect(result.reply).toBe(`A tight budget. I've been there. I can do ${menu[0]!.total}.`);
+  expect(result.card.line).toBe(result.reply);
+  expectOnlyCardFigures(result);
+});
+
+test("with no reason given, the model's checked sentence goes out alone", async () => {
+  const { result, menu } = await offerWith(options => `OPTION: ${options[0]!.id}\nI can do ${options[0]!.total}.`, "Could you do $130?");
+  expect(result.reply).toBe(`I can do ${menu[0]!.total}.`);
+});
+
+test("with the model answering, the last round still sounds like the last round", async () => {
+  const fetchImpl: typeof fetch = async (_url, init) => {
+    const menu = JSON.parse(JSON.parse(String(init?.body)).content.split("MENU: ")[1]);
+    return new Response(`data: ${JSON.stringify({ type: "run_ended", status: "completed", thread_id: "thread", final_content: `OPTION: ${menu[0].id}\nI can do ${menu[0].total}.`, model_provider: "openai", model_name: "test", cost_usd: 0 })}\n\n`, { headers: { "Content-Type": "text/event-stream" } });
+  };
+  const server = await createBazaarServer({ ownerDb: db(), env: { BACKBOARD_API_KEY: "test", BACKBOARD_ASSISTANT_ID: "test", BACKBOARD_MEMORY_MODE: "off" }, fetchImpl });
+  servers.push(server); await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const catalog = await (await fetch(`${base}/api/products`)).json();
+  const product = catalog.items.find((p: { title: string }) => p.title === "Trail Runner 2");
+  let negotiationId: string | undefined;
+  const replies: { reply: string; card: { round: number; maxRounds: number } }[] = [];
+  for (const message of ["Could you do $130?", "Could you do $131?", "Could you do $132?", "Could you do $133?"]) {
+    const result = await (await fetch(`${base}/api/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shopperId: "last-round", negotiationId, product, productContextSource: "current", message }) })).json();
+    negotiationId = result.negotiationId;
+    replies.push(result);
+  }
+  const last = replies.at(-1)!;
+  expect(last.card.round).toBe(last.card.maxRounds);
+  expect(last.reply).toMatch(/last stop on this trail/i);
+  for (const earlier of replies.slice(0, -1)) expect(earlier.reply).not.toMatch(/last stop/i);
+});
+
+test("a model sentence that arrives without its full stop still goes out as a sentence", async () => {
+  const { result, menu } = await offerWith(options => `OPTION: ${options[0]!.id}\nI can do ${options[0]!.total}`, "Could you do $130? I'm a student on a tight budget.");
+  expect(result.reply).toBe(`A tight budget. I've been there. I can do ${menu[0]!.total}.`);
 });

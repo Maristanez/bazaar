@@ -68,6 +68,12 @@ export function applyNegotiationContext(reason: BuyerReason, context: { quantity
   };
 }
 
+/** The reason given in this message leads the wording; an earlier reason stands when this message gives none. The price never reads the label. */
+export function leadWithStatedReason(reason: BuyerReason, message: string): BuyerReason {
+  const stated = analyzeBuyerReason(message).label;
+  return stated ? { ...reason, label: stated } : reason;
+}
+
 export function priceOffer(
   main: NegotiationItem,
   offered: number,
@@ -85,11 +91,11 @@ export function priceOffer(
     ? floorOf(main.cost! * quantity, options.floorPct)
     : null;
   if (!validMoney || !main.inStock || main.cost === null || floor === null || floor > listTotal) {
-    return { kind: "closed", items: [mainQty], listTotal, total: listTotal, line: "I cannot safely haggle this item because it is not open to offers.", badges: [main.cost === null ? "missing cost" : "not open to offers"] };
+    return { kind: "closed", items: [mainQty], listTotal, total: listTotal, line: "This one isn't open to offers, so the tag price stands.", badges: ["not open to offers"] };
   }
-  if (!Number.isSafeInteger(offered) || offered <= 0) return { kind: "closed", items: [mainQty], listTotal, total: listTotal, line: "I cannot safely haggle this item because the offer is invalid.", badges: ["invalid offer"] };
+  if (!Number.isSafeInteger(offered) || offered <= 0) return { kind: "closed", items: [mainQty], listTotal, total: listTotal, line: "I couldn't read that as an offer. Name a price in dollars and we'll talk.", badges: ["invalid offer"] };
   if (offered >= listTotal && !reason.hasAddOnIntent) {
-    return { kind: "accepted", items: [mainQty], listTotal, total: listTotal, line: `${main.title} is already ${formatMoney(toShopper(main.list))}${quantity > 1 ? " each" : ""}. You can check out at list price, or send me a lower offer to haggle.`, badges: ["list price", "checkout ready"] };
+    return { kind: "accepted", items: [mainQty], listTotal, total: listTotal, line: `${main.title} is ${formatMoney(toShopper(main.list))}${quantity > 1 ? " each" : ""} on the tag, so you're already there. Check out at that, or name a lower number and we'll talk.`, badges: ["list price"] };
   }
   const capPct = discountCapOf(options.discountCapPct);
   const maxRounds = maxRoundsOf(options.maxRounds);
@@ -115,24 +121,27 @@ export function priceOffer(
     if (bundleFloor <= bundleList && bundleTotal > bundleCost && bundleTotal >= bundleFloor && bundleTotal <= bundleList) {
       const accepted = hasConvincingReason && safeOffered >= bundleTotal;
       const total = accepted ? Math.min(bundleList, safeOffered) : bundleTotal;
-      const itemSummary = bundleItems.map(item => `${item.qty || 1} × ${item.title}`).join(" plus ");
+      const itemSummary = bundleItems.map(item => (item.qty || 1) > 1 ? `${item.qty} × ${item.title}` : item.title).join(" plus ");
       const line = accepted
-        ? `${reasonPrefix(reason)}Deal, I can hold ${formatMoney(total)} for 15 minutes with ${itemSummary} included.`
-        : `${reasonPrefix(reason)}I would rather protect the single item price, but I can make the cart better: ${formatMoney(total)} with ${itemSummary} included.`;
-      return { kind: "bundle", items: [mainQty, ...bundleItems.map(item => ({ ...item, qty: item.qty || 1 }))], listTotal: bundleList, total, line, badges: reasonBadges(reason, [...bundleItems.map(item => `＋ ${item.qty || 1} × ${item.title}`), accepted ? "held 15:00" : "bundle value"]) };
+        ? `${reasonPrefix(reason)}Deal. I can hold ${formatMoney(total)} for 15 minutes with ${itemSummary} included.`
+        : `${reasonPrefix(reason)}I'd rather hold the price on one item, but I can make the whole cart better: ${formatMoney(total)} with ${itemSummary} included.`;
+      return { kind: "bundle", items: [mainQty, ...bundleItems.map(item => ({ ...item, qty: item.qty || 1 }))], listTotal: bundleList, total, line, badges: reasonBadges(reason, [...bundleItems.map(item => `＋ ${item.qty || 1} × ${item.title}`), ...(accepted ? ["held 15:00"] : [])]) };
     }
   }
   if (safeOffered >= floor && safeOffered >= sellerTarget && safeOffered <= listTotal && round >= 2 && hasConvincingReason) {
-    return { kind: "accepted", items: [mainQty], listTotal, total: safeOffered, line: `${reasonPrefix(reason)}Deal — I can hold ${formatMoney(safeOffered)} for 15 minutes.`, badges: reasonBadges(reason, ["good intent", "held 15:00"]) };
+    return { kind: "accepted", items: [mainQty], listTotal, total: safeOffered, line: `${reasonPrefix(reason)}Deal. I can hold ${formatMoney(safeOffered)} for 15 minutes.`, badges: reasonBadges(reason, ["held 15:00"]) };
   }
   const total = round === 1 && reason.score > 0 ? sellerAskFor(pricedMain, sellerTarget, 1, reason, options.now) : ask;
   const safeTotal = Math.min(listTotal, Math.max(floor, Math.ceil(listTotal * (1 - capPct / 100)), total));
-  const line = round === 1 && reason.score > 0
-    ? `${reasonPrefix(reason)}I can start at ${formatMoney(safeTotal)}. If you can show stronger intent — bundle, checkout today, or a real comparison — I may be able to sharpen it.`
-    : step >= 3 || wellUnderList
-      ? `I am going to hold firm at ${formatMoney(safeTotal)} on this one. I need a stronger reason to move lower — a real bundle, checkout today, or a fair comparison.`
-      : `${reason.score === 0 ? "I need a better reason before I move much. " : ""}${reasonPrefix(reason)}I can do ${formatMoney(safeTotal)} if you want to move forward.`;
-  return { kind: "counter", items: [mainQty], listTotal, total: safeTotal, line, badges: reasonBadges(reason, [round >= maxRounds ? "firm counter" : reason.score === 0 ? "reason needed" : "seller counter"]) };
+  const lastRound = round >= maxRounds;
+  const line = lastRound
+    ? `${reasonPrefix(reason)}Last stop on this trail: ${formatMoney(safeTotal)}. I can't go past it.`
+    : round === 1 && reason.score > 0
+      ? `${reasonPrefix(reason)}I can start at ${formatMoney(safeTotal)}. A bundle, buying today, or a price you've seen elsewhere could move it further.`
+      : step >= 3 || wellUnderList
+        ? `I'm holding at ${formatMoney(safeTotal)} on this one. A real bundle, buying today, or a fair comparison is what would move me.`
+        : `${reason.score === 0 ? "Give me a reason and I can move more. " : ""}${reasonPrefix(reason)}I can do ${formatMoney(safeTotal)}.`;
+  return { kind: "counter", items: [mainQty], listTotal, total: safeTotal, line, badges: reasonBadges(reason, lastRound ? ["final offer"] : reason.score === 0 ? ["needs a reason"] : []) };
 }
 
 /** The figure the shopkeeper suggests a shopper open with when they have not named one. A prompt to the shopper, never an offer from the shop. */
@@ -266,10 +275,31 @@ function sellerAskFor(
   return toShopper(askFor(item.list, sellerTarget, item.stockedAt, round, now));
 }
 
+/** Each reason label in the shopper's words: what the badge calls it, and how the shopkeeper answers it. Wording only. */
+const SHOPPER_WORDS: Record<string, { badge: string; reply: string }> = {
+  "budget": { badge: "for a tight budget", reply: "A tight budget. I've been there." },
+  "quantity intent": { badge: "for a bigger cart", reply: "A bigger cart. Now we're talking." },
+  "add-on intent": { badge: "for adding gear", reply: "Adding gear. Now we're talking." },
+  "repeat shopper": { badge: "for coming back", reply: "Good to see you back on the trail." },
+  "market comparison": { badge: "for a fair comparison", reply: "You've done your homework. Fair." },
+  "real use case": { badge: "for real plans", reply: "Something on the calendar. I like that." },
+  "ready to buy": { badge: "for buying today", reply: "Buying today helps." },
+};
+
+/** What the shopkeeper says after a last-round price, so the haggle has an ending. No figure. */
+export const LAST_ROUND_WORDS = "That's the last stop on this trail.";
+
+/** How the shopkeeper answers the shopper's reason, or "" when none was given. No figure, and nothing about the shop. */
+export function reasonReply(reason: BuyerReason): string {
+  return (reason.label && SHOPPER_WORDS[reason.label]?.reply) || "";
+}
+
 function reasonPrefix(reason: BuyerReason): string {
-  return reason.label ? `That gives me something to work with (${reason.label}). ` : "";
+  const reply = reasonReply(reason);
+  return reply ? `${reply} ` : "";
 }
 
 function reasonBadges(reason: BuyerReason, badges: string[]): string[] {
-  return reason.label ? [`reason: ${reason.label}`, ...badges] : badges;
+  const words = reason.label ? SHOPPER_WORDS[reason.label] : undefined;
+  return words ? [words.badge, ...badges] : badges;
 }

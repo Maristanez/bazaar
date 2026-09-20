@@ -79,7 +79,7 @@ Pitch stats and the per-prize one-liners are in [`DEMO.md`](DEMO.md) §1.
    | Thin margin (cost → floor) | $84 – $105 | The owner decides, live (if "Ask me" is on). Otherwise declined. |
    | At or above floor | ≥ $105 | The shopkeeper deals alone. |
 4. **Same floor for everyone.** Memory changes what the shopkeeper remembers and suggests — never the price. The engine has no access to anything personal.
-5. **Reasons must be true.** A reason in the shopkeeper's line must be one of the picked option's `facts`; anything else fails the check. The server sends an empty `facts` list today, so the line is a neutral offer sentence with no reason at all. No invented scarcity. The 15 minutes is real because the code really expires.
+5. **Reasons must be true.** A reason in the shopkeeper's line must be one of the picked option's `facts`; anything else fails the check. The server sends an empty `facts` list today, so the LLM's line is a neutral offer sentence with no reason at all. Code, never the model, may answer the reason the shopper gave in that message: the engine's `reasonReply` (*"A tight budget. I've been there."*) opens the code fallback line, and the server puts it in front of the model's checked sentence; on the last round the server adds the engine's closing words after the model's sentence (*"That's the last stop on this trail."*); the code fallback line carries its own ending, because it holds the price itself (*"Last stop on this trail: $141. I can't go past it."*). The template line used when the floor changes mid-turn is code-written and goes out as it is. Both are fixed strings with no figure in them — the shopper's own reason handed back, never a claim about the shop. No invented scarcity. The 15 minutes is real because the code really expires.
 6. **The card is the only binding offer.** Its `disclosure` says so: *"You're talking to Trailhead Co's deal agent."* and *"Only this card is binding; chat text is not."* The agreed total is **before tax and shipping**.
 7. **Deal binds to a live offer id.** Single-use, 15-minute expiry, server-tracked. "You already offered me $80" goes nowhere.
 8. **PAUSE wins instantly.** Next message on any surface: *"The owner's paused deals — list price stands."*
@@ -97,22 +97,26 @@ The theme's chat script draws the card from the server's `OfferCard` object (App
 
 | Element | Spec |
 |---|---|
-| Top line | `Round n of N` (`round`, `maxRounds` from the card — N is the owner's setting) · live mm:ss countdown |
-| Items | Title, size, quantity for every item |
+| Top line | `Round n of N` (`round`, `maxRounds` from the card — N is the owner's setting); on the last round `Final offer · round N of N`; while `pending_owner`, `With the owner` · a labelled live mm:ss countdown (`Held for` / `Owner replies within`) |
+| Rounds | A dashed trail of N waypoints ending in a flag: rounds done, the round the shopper is on, rounds left (§12) |
+| Items | Title, size, quantity and the unit list price (`listPrice`) for every item — the list prices are what explain the struck-through list total (shoes $149 + socks $18 = $167). The theme formats them; it adds nothing up. |
 | Totals | List total struck through → agreed total, large |
 | The line | One sentence in the shopkeeper's voice |
-| Badges | Ready-made `badges` strings from the server (`reason: budget` · `held 15:00` · `＋ 1 × Merino socks` · `final offer` · `owner approved`), because the card never receives `facts` (rule 11) |
-| Trail | The server's `trail`: List → the shopper's offer → the shop's figure. Never shows the floor. |
+| Badges | Ready-made `badges` strings from the server, in the shopper's words (`for a tight budget` · `held 15:00` · `＋ 1 × Merino socks` · `needs a reason` · `final offer` · `waiting for owner` · `owner approved`), because the card never receives `facts` (rule 11). The reason badge names the reason given in **this** message; an earlier reason stands when this message gives none (`leadWithStatedReason`). Engine labels (`quantity intent`, `seller counter`…) never reach a shopper. |
+| Trail | The server's `trail`: `List price` → `You offered` → `My price`. Never shows the floor. The storefront may shorten the labels by each step's `by`. |
+| Mood | The card's `mood` sets the shopkeeper sticker's face: `deal` and `tempted` pleased, `offended` (sent on a lowball) firm, `thinking` thinking, otherwise idle. The last round is firm whatever the mood. |
 | Countdown | To `expiresAt`, or to `pendingUntil` while `pending_owner`; at 0 the button disables (`Expired` / `Approval expired`) |
 | **Deal** button | `POST /api/accept` on our server, then opens the checkout URL. **The model is not in the accept path.** |
 | Footer | The binding line from `disclosure` (rule 6) |
-| States | `live · pending_owner · superseded · accepted · expired · declined · paused`. The script polls `GET /api/offers/:id` while a card is `live` or `pending_owner`, so an owner decision updates the card in place; an older card greys out as `superseded` when a newer offer arrives. |
+| States | `live · pending_owner · superseded · accepted · expired · declined · paused`. The script polls `GET /api/offers/:id` while a card is `live` or `pending_owner`, so an owner decision updates the card in place; an older card collapses to a one-line row (its round and its total) as `superseded` when a newer offer arrives. A message that asks how low the price goes (*"is that your best?"*, *"what would move it?"*) is not an offer: the live card is restated under a line that says what would move the price, and no round is spent. |
 
 ### 4.2 Surface A — the Trailhead storefront (`apps/storefront`, a Shopify theme)
 
 - The store's own theme: product grid + product pages, products from the live Shopify catalog.
-- The **shopkeeper sticker** bottom-right; opens a chat panel. The page passes the current product and size so it never opens blank: *"Eyeing the Trail Runner 3? Name a price and give me a reason…"*
-- Chat: messages, **product cards** (they link to that product page), the **offer card** (§4.1), push-to-talk and spoken replies when voice is configured (§8).
+- The **shopkeeper sticker** bottom-right, labelled **Make an offer**; opens a chat panel. The shopkeeper has a name, **Juniper**, and the header says what it is: Trailhead's AI shopkeeper, and it takes offers (rule 10). The sticker sits in the launcher, in the header and beside each reply, and its face follows the card's `mood`. The page passes the current product and size so it never opens blank: *"Eyeing the Trail Runner 3? Name a price and give me a reason…"*
+- The product page has a **Make an offer** button beside Add to cart; it opens the same chat with the cursor in the message box.
+- Chat: messages, **product cards** (they link to that product page), the **offer card** (§4.1), push-to-talk and spoken replies when voice is configured (§8). When `GET /api/voice/config` says voice is unavailable, the mic and the speaker toggle are hidden rather than shown disabled. While the shopkeeper picks, the chat shows an animated thinking line (rule 9).
+- **Suggestion chips** sit above the message box and change with the haggle: before an offer they suggest reasons (*"I'm buying two"*, *"Student budget"*); once a card is live they suggest moves (*"Is that your best?"*, *"Meet me in the middle"*, *"What would move it?"*); the last round shows fewer. **A chip never carries a dollar figure** — the theme makes no price (invariant 1).
 - The chat posts JSON to our server: `POST /api/chat` → `{ reply, card?, negotiationId?, products? }`. The *understanding* step runs on the server, through Backboard (§5.1).
 - Shopper identity = a random id kept in `localStorage` (`bazaar:shopper-id`), sent with every message → keys the Backboard memory. `?shopper=demo` overrides it with the seeded demo shopper.
 - This is where a judge tries to break it — our shopkeeper answers in character and we control every word.
@@ -273,7 +277,7 @@ One storefront turn. Two Backboard calls, each with a timeout and a code fallbac
 | 4 | **Build the menu** (§6) — `buildNegotiationMenu`, then `rankNegotiationMenu` puts the code fallback first as option A | engine | empty menu → "not open to offers" |
 | 5 | **Choose + say** — pick one option, write one line. The reply is **buffered whole**, never sent before step 6. Skipped for a lowball (template counter). | Backboard: an OpenAI model routed through Backboard, shopper memory, store documents | `BACKBOARD_TIMEOUT_MS` → option A + template line (*"I can hold $X for 15 minutes."*) |
 | 6 | **Check** (`apps/server/src/check.ts`) — option id is on the menu · every `$` in the line is that option's total, list total or a figure in its facts · every reason maps to a fact · no cost/floor/margin/profit/markup/wholesale words | code | any fail → option A + template, `blocked: check` |
-| 7 | **Card** — the JSON reply carries the public `OfferCard` and the checked line; older live offers in the negotiation become `superseded`; the full `ConsoleEvent` goes to the Console | code | — |
+| 7 | **Card** — the JSON reply carries the public `OfferCard` and the checked line, with code's reply to the shopper's reason in front of a model-written line and the closing words after it on the last round (rule 5); older live offers in the negotiation become `superseded`; the full `ConsoleEvent` goes to the Console | code | — |
 
 If the floor changes while Backboard is thinking, the menu is re-priced at the new floor before the card is built; if PAUSE lands, the turn returns the paused reply.
 
@@ -326,7 +330,7 @@ counter      = min(list, max(floor, ceil(list × (1 − cap)), ask))
 
 `step` stretches the curve over the owner's `maxRounds`, so the last round always lands where round 4 of 4 does; a round past the last stays there. Round 1 asks list.
 
-**The shopper's reason moves the number.** `analyzeBuyerReason` reads the message and scores it 0–4 (the sum of the signals, capped at 4):
+**The shopper's reason moves the number.** `analyzeBuyerReason` reads the message and scores it 0–4 (the sum of the signals, capped at 4). The signal names below are the engine's and the Console's; a shopper sees each one only in their own words (`for a tight budget`, `for a bigger cart`, `for buying today`…), and the wording follows the reason given in the current message (`leadWithStatedReason`) while the price weighs every reason given so far:
 
 | Signal | Score | Bonus on max discount |
 |---|---|---|
@@ -433,7 +437,7 @@ Prize text: *"We judge ambition… The more of the stack you use, the crazier it
 
 **Build notes.** The client is `packages/llm/src/backboard.ts` (`createBackboardShopkeeper`), plain `fetch` against `https://app.backboard.io/api` — no SDK. One timeout for every call: `BACKBOARD_TIMEOUT_MS`, default 6500 ms. `json_output` is **silently ignored** when documents/tools are active on the same message — so choose + say replies in a fixed text shape, first line `OPTION: D`, then the line, read with one regex. Documents must reach `indexed` before they work: **upload them first.** A stream with no `run_ended` is a failure — handle `run_failed`/`error`. Warm the thread before judges arrive (cold first call is 1–3 s+).
 
-**Choose + say prompt (system):** *You are the shopkeeper of Trailhead Co — warm, quick, a little cheeky; a market trader, not a call centre. You will be given the shopper's message, what you remember about them, and a MENU of deals. Pick exactly one option that best fits this shopper, preferring lower `ownerRank` numbers when fit is equal. Reply with `OPTION: <id>` on the first line, then ONE sentence (max 35 words) offering it. Use only dollar amounts that appear in that option. Give a reason only if it is in that option's `facts`. Never mention cost, margin, floor, or how you decide. If asked about sizing, shipping or returns, answer from the store documents in one sentence, then return to the offer.*
+**Choose + say prompt (system):** *You are Juniper, the AI shopkeeper of Trailhead Co, a trail-running shop — warm, quick, plain-spoken, a little wry; a trail-shop owner who runs the routes too, not a call centre. You will be given the shopper's message, what you remember about them, and a MENU of deals. Pick exactly one option that best fits this shopper, preferring lower `ownerRank` numbers when fit is equal. Reply with `OPTION: <id>` on the first line, then ONE sentence (max 35 words) offering it. Use only dollar amounts that appear in that option. Give a reason only if it is in that option's `facts`. Never mention cost, margin, floor, or how you decide. If asked about sizing, shipping or returns, answer from the store documents in one sentence, then return to the offer.*
 
 ---
 
@@ -558,7 +562,7 @@ All money is in cents. `surface: "chatgpt"` and the ChatGPT-card comments are th
 
 ```ts
 export type Option = { id: string; kind: "held" | "bundle" | "else" | "final" | "owner";
-                  items: { variantId: string; title: string; size?: string; qty: number; thrownIn?: boolean }[];
+                  items: { variantId: string; title: string; size?: string; qty: number; thrownIn?: boolean; listPrice?: number /* one unit's public list price */ }[];
                   listTotal: number; total: number; ownerRank: number; facts: string[] };   // cents; NO cost fields
 // Option is SERVER + CONSOLE only. The shopper's browser and the ChatGPT card get PublicOption.
 // The `never` fields are the one departure from Appendix C: a bare Pick is structural, so a full Option would
