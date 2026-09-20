@@ -264,6 +264,27 @@ export async function insertDeal(
   return dealFromRow(requireRow(data, "Inserted deal"));
 }
 
+const DEAL_COLUMNS = "id, merchant_id, offer_id, surface, items_json, list_total, agreed_total, cost, floor, profit, owner_approved, code, created_at";
+
+/**
+ * Settled deals for the owner's KPIs, newest first. Served by the
+ * `deals_merchant_created_idx` index; capped so one state load stays small.
+ */
+export async function listDeals(
+  client: SupabaseClientLike,
+  merchantId = SEEDED_MERCHANT_ID,
+  limit = 500,
+): Promise<Deal[]> {
+  const { data, error } = await client
+    .from("deals")
+    .select(DEAL_COLUMNS)
+    .eq("merchant_id", merchantId)
+    .order("created_at", { ascending: false })
+    .limit(limit) as unknown as QueryResult<DealRow[]>;
+  throwIfError(error);
+  return (data ?? []).map(dealFromRow);
+}
+
 export type SupabaseDb = {
   readonly merchantId: string;
   readonly client: SupabaseClientLike;
@@ -273,6 +294,7 @@ export type SupabaseDb = {
   isMerchantOwner(authorization: string | null | undefined): Promise<boolean>;
   appendPolicy(policy: PolicyInput): Promise<Policy>;
   insertDeal(deal: DealInput): Promise<Deal>;
+  listDeals(): Promise<Deal[]>;
 };
 
 export function createSupabaseDb(options: {
@@ -294,5 +316,6 @@ export function createSupabaseDb(options: {
     isMerchantOwner: (authorization) => isMerchantOwner(client, authorization, merchantId),
     appendPolicy: (policy) => appendPolicy(client, policy, merchantId),
     insertDeal: (deal) => insertDeal(client, deal),
+    listDeals: () => listDeals(client, merchantId),
   };
 }

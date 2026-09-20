@@ -7,6 +7,7 @@ import {
   dealFromRow,
   healthCheck,
   insertDeal,
+  listDeals,
   loadLatestPolicy,
   readSupabaseEnvironment,
   verifyBearerToken,
@@ -224,5 +225,30 @@ describe("Supabase queries", () => {
     const client = clientFor({ data: merchantRow, error: null });
     const db = createSupabaseDb({ client, merchantId: SEEDED_MERCHANT_ID });
     await expect(db.healthCheck()).resolves.toMatchObject({ id: SEEDED_MERCHANT_ID });
+  });
+});
+
+describe("settled deals for the owner's KPIs", () => {
+  it("lists one merchant's deals newest first, in the contract's shape", async () => {
+    const row = {
+      id: "deal-1", merchant_id: SEEDED_MERCHANT_ID, offer_id: "offer-1", surface: "storefront",
+      items_json: [{ variantId: "tr2-10", title: "Trail Runner 2", qty: 1 }],
+      list_total: 14900, agreed_total: 13300, cost: 7800, floor: 9750, profit: 5500,
+      owner_approved: false, code: "BAZAAR-1", created_at: "2026-09-19T20:09:00Z",
+    };
+    const builder = { select: vi.fn(() => builder), eq: vi.fn(() => builder), order: vi.fn(() => builder), limit: vi.fn(async () => ({ data: [row], error: null })) };
+    const client = { from: vi.fn(() => builder) } as unknown as SupabaseClient;
+
+    const deals = await listDeals(client);
+
+    expect(deals).toEqual([{
+      id: "deal-1", merchantId: SEEDED_MERCHANT_ID, offerId: "offer-1", surface: "storefront",
+      items: [{ variantId: "tr2-10", title: "Trail Runner 2", qty: 1 }],
+      listTotal: 14900, agreedTotal: 13300, cost: 7800, floor: 9750, profit: 5500,
+      ownerApproved: false, code: "BAZAAR-1", createdAt: "2026-09-19T20:09:00Z",
+    }]);
+    expect(client.from).toHaveBeenCalledWith("deals");
+    expect(builder.eq).toHaveBeenCalledWith("merchant_id", SEEDED_MERCHANT_ID);
+    expect(builder.order).toHaveBeenCalledWith("created_at", { ascending: false });
   });
 });
