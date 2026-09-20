@@ -63,6 +63,28 @@ describe("V12 — the chat keeps its shape out of the conversation's way", () =>
     expect(window.localStorage.getItem("bazaar:shape")).toBeNull();
   });
 
+  it("Juniper reshapes herself for an offer and for listening, says so, and never saves it as the shopper's size", () => {
+    const { chat, widget, window } = mount();
+    chat.open();
+    window.document.dispatchEvent(new window.CustomEvent("bazaar-voice:state", { detail: { on: true, state: "listening" } }));
+    expect(widget.getAttribute("data-juniper-shape")).toBe("voice");
+    expect(chat.shape.shapedBy()).toBe("juniper");
+    expect(must(widget.querySelector(".juniper-shape__note")).textContent).toBe("Juniper drew in to listen");
+    window.document.dispatchEvent(new window.CustomEvent("bazaar-voice:state", { detail: { on: false, state: "off" } }));
+    expect(chat.shape.size()).toBeNull();
+    expect(window.localStorage.getItem("bazaar:shape")).toBeNull();
+  });
+
+  it("the shopper's own size always wins over Juniper's", () => {
+    const { chat, widget, window } = mount();
+    chat.open();
+    chat.shape.resize({ w: 420, h: 500 });
+    window.document.dispatchEvent(new window.CustomEvent("bazaar-voice:state", { detail: { on: true, state: "listening" } }));
+    expect(widget.getAttribute("data-juniper-shape")).toBeNull();
+    expect(chat.shape.size()).toEqual({ w: 420, h: 500 });
+    expect(chat.shape.shapedBy()).toBe("shopper");
+  });
+
   it("opens at the size this browser remembered", () => {
     const { widget } = mount(JSON.stringify({ w: 480, h: 520 }));
     expect(widget.style.getPropertyValue("--juniper-shape-h")).toBe("520px");

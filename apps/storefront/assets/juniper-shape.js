@@ -7,6 +7,9 @@
 //              Size and place are remembered for this browser.
 //   minimise — the header's one way out folds the chat down to Juniper's launcher or voice pill. Nothing ends: the
 //              conversation and hands-free carry on, a reply that lands meanwhile peeks above her and leaves a dot.
+//   herself  — Juniper reshapes her own panel to fit the moment: it grows when she lays an offer card down and draws
+//              in while the shopper is only talking. Each change is traced round the panel's edge and said in a
+//              line, and it stops for good the moment the shopper picks a size of their own.
 //   rail     — suggestions sit on one line that scrolls sideways, with a fade and a "more" button where it runs on.
 (function () {
   var chat = window.BazaarChat;
@@ -24,6 +27,12 @@
     var MIN_W = 300;
     var MIN_H = 380;
     var MAX_W = 560;             // wider than this and the lines of a chat stop reading as a chat
+    var MAX_H = 860;             // taller than this and the header drifts out of reach of the foot
+    var SHAPES = {               // the forms Juniper gives herself
+      deal: { w: 480, h: 820, note: 'Juniper made room for your offer' },
+      voice: { w: 404, h: 560, note: 'Juniper drew in to listen' }
+    };
+    var NOTE_MS = 2600;
     var MARGIN = 40;             // critical.css keeps 2.5rem of page around the panel
     var ROOMY = { w: MAX_W, h: 2000 }; // the size button's larger stop; the height is clamped to the window
     var SHORT_H = 430;           // below this the suggestions step aside entirely
@@ -39,7 +48,7 @@
 
     function clamp(next) {
       var maxW = Math.max(MIN_W, Math.min(MAX_W, (window.innerWidth || 1200) - MARGIN));
-      var maxH = Math.max(MIN_H, (window.innerHeight || 800) - MARGIN);
+      var maxH = Math.max(MIN_H, Math.min(MAX_H, (window.innerHeight || 800) - MARGIN));
       return { w: Math.round(Math.min(maxW, Math.max(MIN_W, next.w))), h: Math.round(Math.min(maxH, Math.max(MIN_H, next.h))) };
     }
 
@@ -64,7 +73,8 @@
     function save() {
       try {
         if (!size && !place.x && !place.y) { window.localStorage.removeItem(SIZE_KEY); return; }
-        var box = size || {};
+        var box = (size && !selfShaped) ? size : {};
+        if (!box.w && !place.x && !place.y) { window.localStorage.removeItem(SIZE_KEY); return; }
         window.localStorage.setItem(SIZE_KEY, JSON.stringify({ w: box.w, h: box.h, x: place.x, y: place.y }));
       } catch (error) { /* this page only */ }
     }
@@ -73,8 +83,11 @@
       return !messages || messages.scrollHeight - messages.scrollTop - messages.clientHeight < 24;
     }
 
+    var selfShaped = false;      // true while the size on show is one Juniper chose, not the shopper
+
     function applySize(next, remember) {
       var pinned = pinnedToEnd();
+      if (remember) { selfShaped = false; widget.removeAttribute('data-juniper-shape'); }
       size = next ? clamp(next) : null;
       if (size) {
         widget.style.setProperty('--juniper-shape-w', size.w + 'px');
@@ -195,6 +208,48 @@
       if (closeButton.parentNode) closeButton.parentNode.insertBefore(sizeButton, closeButton);
     }
 
+    // ---- herself: Juniper picks her own form, until the shopper picks one ----
+    var note = document.createElement('p');
+    note.className = 'juniper-shape__note';
+    note.setAttribute('aria-hidden', 'true');
+    note.hidden = true;
+    panel.appendChild(note);
+    var noteTimer = null;
+    var hasCard = false;
+
+    function trace(text) {
+      widget.classList.remove('juniper-shape--tracing');
+      void panel.offsetWidth; // restart the sweep
+      widget.classList.add('juniper-shape--tracing');
+      note.textContent = text || '';
+      var bar = panel.querySelector('.ai-chat__header');
+      if (bar && bar.offsetHeight) note.style.top = (bar.offsetHeight + 10) + 'px'; // the header grows a line when narrow
+      note.hidden = !text;
+      if (noteTimer) window.clearTimeout(noteTimer);
+      noteTimer = window.setTimeout(function () {
+        note.hidden = true;
+        widget.classList.remove('juniper-shape--tracing');
+      }, NOTE_MS);
+    }
+
+    function shapeHerself(name) {
+      if (!desktop.matches || (size && !selfShaped)) return;   // the shopper's own size always wins
+      if ((widget.getAttribute('data-juniper-shape') || '') === (name || '')) return;
+      var shape = name ? SHAPES[name] : null;
+      selfShaped = Boolean(shape);
+      applySize(shape ? { w: shape.w, h: shape.h } : null, false);
+      if (shape) widget.setAttribute('data-juniper-shape', name); else widget.removeAttribute('data-juniper-shape');
+      if (chat.isOpen && chat.isOpen()) trace(shape ? shape.note : 'Juniper is back to her usual size');
+    }
+
+    chat.on('card', function () { hasCard = true; shapeHerself('deal'); });
+    document.addEventListener('bazaar-voice:state', function (event) {
+      var on = Boolean(event && event.detail && event.detail.on);
+      if (hasCard) return;
+      if (on) shapeHerself('voice');
+      else if (widget.getAttribute('data-juniper-shape') === 'voice') shapeHerself(null);
+    });
+
     // ---- a reply that lands while the chat is minimised ----
     var peek = document.createElement('button');
     peek.type = 'button';
@@ -289,6 +344,7 @@
 
     chat.shape = {
       size: function () { return size; },
+      shapedBy: function () { return size ? (selfShaped ? 'juniper' : 'shopper') : 'default'; },
       place: function () { return { x: place.x, y: place.y }; },
       resize: function (next) { applySize(next, true); },
       move: function (next) { applyPlace(next, true); },

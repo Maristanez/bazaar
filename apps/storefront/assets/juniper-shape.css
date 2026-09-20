@@ -23,6 +23,8 @@
       transform 220ms var(--ease) 60ms,
       rotate var(--juniper-motion-open, 0.28s) var(--ease),
       translate 240ms var(--ease),
+      width 460ms var(--ease),
+      height 460ms var(--ease),
       display var(--juniper-motion-open, 0.28s) allow-discrete;
   }
 
@@ -34,6 +36,8 @@
       transform 170ms var(--ease),
       rotate var(--juniper-motion-close, 0.2s) var(--ease),
       translate 200ms var(--ease),
+      width 460ms var(--ease),
+      height 460ms var(--ease),
       display var(--juniper-motion-close, 0.2s) allow-discrete;
   }
 
@@ -119,6 +123,68 @@
   .ai-chat .juniper-shape__size {
     display: none;
   }
+}
+
+/* ---- herself: when Juniper reshapes her own panel, one light runs the new edge and a line says what she did ---- */
+@property --juniper-shape-turn {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.ai-chat__panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  padding: 3px;
+  border-radius: inherit;
+  background: conic-gradient(from var(--juniper-shape-turn), transparent 0 62%, var(--sky) 74%, var(--sun) 88%, var(--coral) 97%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.juniper-shape--tracing .ai-chat__panel::after {
+  animation: juniper-shape-trace 1.5s cubic-bezier(0.3, 0, 0.2, 1) both;
+}
+
+@keyframes juniper-shape-trace {
+  0% { --juniper-shape-turn: 0deg; opacity: 0; }
+  12% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { --juniper-shape-turn: 540deg; opacity: 0; }
+}
+
+.ai-chat .juniper-shape__note {
+  position: absolute;
+  top: 4.4rem;
+  left: 50%;
+  z-index: 3;
+  translate: -50% 0;
+  margin: 0;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: var(--teal);
+  box-shadow: 0 10px 22px -10px rgb(47 22 4 / 55%);
+  color: var(--cream);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: juniper-shape-note 2.6s var(--ease) both;
+}
+
+.ai-chat .juniper-shape__note[hidden] {
+  display: none;
+}
+
+@keyframes juniper-shape-note {
+  0% { opacity: 0; translate: -50% -0.5rem; filter: blur(4px); }
+  14% { opacity: 1; translate: -50% 0; filter: blur(0); }
+  82% { opacity: 1; translate: -50% 0; }
+  100% { opacity: 0; translate: -50% -0.3rem; }
 }
 
 /* ---- a reply that lands while the chat is minimised ---- */
@@ -262,7 +328,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ai-chat .juniper-shape__peek {
+  .ai-chat .juniper-shape__peek,
+  .ai-chat .juniper-shape__note,
+  .juniper-shape--tracing .ai-chat__panel::after {
     animation: none;
   }
 }
