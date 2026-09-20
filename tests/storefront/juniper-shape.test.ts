@@ -21,7 +21,7 @@ describe("V12 — the chat keeps its shape out of the conversation's way", () =>
     chat.open();
     chat.shape.resize({ w: 500, h: 600 });
     expect(widget.style.getPropertyValue("--juniper-shape-w")).toBe("500px");
-    expect(JSON.parse(window.localStorage.getItem("bazaar:shape"))).toEqual({ w: 500, h: 600 });
+    expect(JSON.parse(window.localStorage.getItem("bazaar:shape"))).toEqual({ w: 500, h: 600, x: 0, y: 0 });
 
     find("[data-juniper-grip]").dispatchEvent(new window.KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
     expect(chat.shape.size().w).toBe(524);
@@ -33,6 +33,33 @@ describe("V12 — the chat keeps its shape out of the conversation's way", () =>
     find("[data-juniper-grip]").dispatchEvent(new window.MouseEvent("dblclick", { bubbles: true }));
     expect(chat.shape.size()).toBeNull();
     expect(widget.style.getPropertyValue("--juniper-shape-w")).toBe("");
+    expect(window.localStorage.getItem("bazaar:shape")).toBeNull();
+  });
+
+  it("never grows wider than a chat should", () => {
+    const { chat, window } = mount();
+    window.innerWidth = 2400;
+    chat.shape.resize({ w: 1800, h: 600 });
+    expect(chat.shape.size().w).toBe(560);
+  });
+
+  it("moves off the corner but never off the screen, and the launcher's corner is not what moves", () => {
+    const { chat, widget, window } = mount();
+    chat.open();
+    chat.shape.resize({ w: 400, h: 500 });
+    chat.shape.move({ x: -200, y: -100 });
+    expect(chat.shape.place()).toEqual({ x: -200, y: -100 });
+    expect(widget.style.getPropertyValue("--juniper-shape-x")).toBe("-200px");
+    expect(JSON.parse(window.localStorage.getItem("bazaar:shape"))).toEqual({ w: 400, h: 500, x: -200, y: -100 });
+
+    chat.shape.move({ x: 300, y: -99999 });
+    expect(chat.shape.place()).toEqual({ x: 0, y: -(window.innerHeight - 40 - 500) });
+
+    // The place rides on custom properties the panel reads; the widget itself — and so the launcher — is never moved.
+    expect(widget.style.translate || "").toBe("");
+    expect(widget.style.right || "").toBe("");
+    chat.shape.reset();
+    expect(chat.shape.place()).toEqual({ x: 0, y: 0 });
     expect(window.localStorage.getItem("bazaar:shape")).toBeNull();
   });
 

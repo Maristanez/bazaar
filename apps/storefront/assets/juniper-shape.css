@@ -11,6 +11,57 @@
   .ai-chat__panel:not([hidden]) {
     position: relative;
   }
+
+  /* place: only the open panel leaves the corner. Folded, it is back at Juniper's resting spot, so minimising flies
+     the chat home to the launcher and opening flies it out again. The lists restate juniper-motion.css's clocks
+     with `translate` added. */
+  .ai-chat__panel {
+    translate: var(--juniper-shape-x, 0) var(--juniper-shape-y, 0);
+    transition:
+      opacity 140ms linear,
+      scale 190ms var(--ease),
+      transform 220ms var(--ease) 60ms,
+      rotate var(--juniper-motion-open, 0.28s) var(--ease),
+      translate 240ms var(--ease),
+      display var(--juniper-motion-open, 0.28s) allow-discrete;
+  }
+
+  .ai-chat__panel[hidden] {
+    translate: 0 0;
+    transition:
+      opacity 110ms linear 90ms,
+      scale 150ms var(--ease) 50ms,
+      transform 170ms var(--ease),
+      rotate var(--juniper-motion-close, 0.2s) var(--ease),
+      translate 200ms var(--ease),
+      display var(--juniper-motion-close, 0.2s) allow-discrete;
+  }
+
+  @starting-style {
+    .ai-chat__panel:not([hidden]) {
+      translate: 0 0;
+    }
+  }
+
+  .ai-chat__header[data-juniper-move] {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .ai-chat__header[data-juniper-move] button {
+    cursor: pointer;
+  }
+}
+
+.juniper-shape--moving,
+.juniper-shape--moving * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+.juniper-shape--moving .ai-chat__panel {
+  transition: none;
 }
 
 .juniper-shape--dragging,

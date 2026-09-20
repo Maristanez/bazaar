@@ -1,7 +1,10 @@
 // V12 the chat keeps its shape out of the conversation's way (docs/PLAN.md). Talks to the chat only through
 // window.BazaarChat. Three jobs, one aim — the messages get the room:
 //   size     — the shopper drags the panel's top-left corner (it is anchored bottom-right) or taps the size button;
-//              the size is remembered for this browser. Phones keep the full-screen sheet.
+//              it stays a chat, never a page: there is a widest it goes. Phones keep the full-screen sheet.
+//   place    — the shopper drags the header to move the panel off whatever it covers. Only the open panel moves:
+//              Juniper's resting spot, the launcher's corner, never does, and minimising folds the chat back to it.
+//              Size and place are remembered for this browser.
 //   minimise — the header's one way out folds the chat down to Juniper's launcher or voice pill. Nothing ends: the
 //              conversation and hands-free carry on, a reply that lands meanwhile peeks above her and leaves a dot.
 //   rail     — suggestions sit on one line that scrolls sideways, with a fade and a "more" button where it runs on.
@@ -20,8 +23,9 @@
     var SIZE_KEY = 'bazaar:shape';
     var MIN_W = 300;
     var MIN_H = 380;
+    var MAX_W = 560;             // wider than this and the lines of a chat stop reading as a chat
     var MARGIN = 40;             // critical.css keeps 2.5rem of page around the panel
-    var ROOMY = { w: 544, h: 2000 }; // the size button's larger stop; the height is clamped to the window
+    var ROOMY = { w: MAX_W, h: 2000 }; // the size button's larger stop; the height is clamped to the window
     var SHORT_H = 430;           // below this the suggestions step aside entirely
     var STEP = 24;
     var PEEK_MS = 7000;
@@ -29,12 +33,40 @@
 
     // ---- size ----
     var size = null;
-    try { size = JSON.parse(window.localStorage.getItem(SIZE_KEY) || 'null'); } catch (error) { size = null; }
+    var saved = null;
+    try { saved = JSON.parse(window.localStorage.getItem(SIZE_KEY) || 'null'); } catch (error) { saved = null; }
+    if (saved && saved.w && saved.h) size = { w: saved.w, h: saved.h };
 
     function clamp(next) {
-      var maxW = Math.max(MIN_W, (window.innerWidth || 1200) - MARGIN);
+      var maxW = Math.max(MIN_W, Math.min(MAX_W, (window.innerWidth || 1200) - MARGIN));
       var maxH = Math.max(MIN_H, (window.innerHeight || 800) - MARGIN);
       return { w: Math.round(Math.min(maxW, Math.max(MIN_W, next.w))), h: Math.round(Math.min(maxH, Math.max(MIN_H, next.h))) };
+    }
+
+    // How far the open panel sits from its resting corner: never positive (it rests bottom-right), never off-screen.
+    var place = { x: 0, y: 0 };
+    if (saved && (saved.x || saved.y)) place = { x: Number(saved.x) || 0, y: Number(saved.y) || 0 };
+
+    function clampPlace(next, box) {
+      var roomX = Math.max(0, (window.innerWidth || 1200) - MARGIN - box.w);
+      var roomY = Math.max(0, (window.innerHeight || 800) - MARGIN - box.h);
+      return { x: Math.round(Math.min(0, Math.max(-roomX, next.x))), y: Math.round(Math.min(0, Math.max(-roomY, next.y))) };
+    }
+
+    function applyPlace(next, remember) {
+      place = desktop.matches ? clampPlace(next || { x: 0, y: 0 }, currentSize()) : { x: 0, y: 0 };
+      widget.style.setProperty('--juniper-shape-x', place.x + 'px');
+      widget.style.setProperty('--juniper-shape-y', place.y + 'px');
+      widget.classList.toggle('juniper-shape--moved', Boolean(place.x || place.y));
+      if (remember) save();
+    }
+
+    function save() {
+      try {
+        if (!size && !place.x && !place.y) { window.localStorage.removeItem(SIZE_KEY); return; }
+        var box = size || {};
+        window.localStorage.setItem(SIZE_KEY, JSON.stringify({ w: box.w, h: box.h, x: place.x, y: place.y }));
+      } catch (error) { /* this page only */ }
     }
 
     function pinnedToEnd() {
@@ -56,11 +88,8 @@
       if (pinned && messages) messages.scrollTop = messages.scrollHeight;
       renderSizeButton();
       measureRail();
-      if (!remember) return;
-      try {
-        if (size) window.localStorage.setItem(SIZE_KEY, JSON.stringify(size));
-        else window.localStorage.removeItem(SIZE_KEY);
-      } catch (error) { /* this page only */ }
+      applyPlace(place, false); // a bigger panel may no longer fit where it was put
+      if (remember) save();
     }
 
     function currentSize() {
@@ -71,7 +100,7 @@
     grip.type = 'button';
     grip.className = 'juniper-shape__grip';
     grip.setAttribute('data-juniper-grip', '');
-    grip.setAttribute('aria-label', 'Resize the chat. Drag, or use the arrow keys. Double-click to reset.');
+    grip.setAttribute('aria-label', 'Resize the chat. Drag, or use the arrow keys; Shift and an arrow moves it. Double-click to reset.');
     grip.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 9L9 2M2 14L14 2" /></svg>';
     panel.appendChild(grip);
 
@@ -96,18 +125,49 @@
     }
     grip.addEventListener('pointerup', endDrag);
     grip.addEventListener('pointercancel', endDrag);
-    grip.addEventListener('dblclick', function () { applySize(null, true); });
+    grip.addEventListener('dblclick', function () { place = { x: 0, y: 0 }; applySize(null, true); });
     grip.addEventListener('keydown', function (event) {
       var now = currentSize();
       var key = event.key;
-      if (key === 'ArrowLeft') applySize({ w: now.w + STEP, h: now.h }, true);
+      // Shift and an arrow moves the panel; an arrow alone resizes it.
+      if (event.shiftKey && key === 'ArrowLeft') applyPlace({ x: place.x - STEP, y: place.y }, true);
+      else if (event.shiftKey && key === 'ArrowRight') applyPlace({ x: place.x + STEP, y: place.y }, true);
+      else if (event.shiftKey && key === 'ArrowUp') applyPlace({ x: place.x, y: place.y - STEP }, true);
+      else if (event.shiftKey && key === 'ArrowDown') applyPlace({ x: place.x, y: place.y + STEP }, true);
+      else if (key === 'ArrowLeft') applySize({ w: now.w + STEP, h: now.h }, true);
       else if (key === 'ArrowRight') applySize({ w: now.w - STEP, h: now.h }, true);
       else if (key === 'ArrowUp') applySize({ w: now.w, h: now.h + STEP }, true);
       else if (key === 'ArrowDown') applySize({ w: now.w, h: now.h - STEP }, true);
-      else if (key === 'Home') applySize(null, true);
+      else if (key === 'Home') { place = { x: 0, y: 0 }; applySize(null, true); }
       else return;
       event.preventDefault();
     });
+
+    // ---- place: the header is the handle ----
+    var header = panel.querySelector('.ai-chat__header');
+    var move = null;
+    if (header) {
+      header.setAttribute('data-juniper-move', '');
+      header.addEventListener('pointerdown', function (event) {
+        if (!desktop.matches || event.button > 0) return;
+        if (event.target && event.target.closest && event.target.closest('button, a, input')) return;
+        move = { x: event.clientX, y: event.clientY, px: place.x, py: place.y };
+        widget.classList.add('juniper-shape--moving');
+        if (header.setPointerCapture) { try { header.setPointerCapture(event.pointerId); } catch (error) { /* no capture */ } }
+        event.preventDefault();
+      });
+      header.addEventListener('pointermove', function (event) {
+        if (move) applyPlace({ x: move.px + (event.clientX - move.x), y: move.py + (event.clientY - move.y) }, false);
+      });
+      var endMove = function () {
+        if (!move) return;
+        move = null;
+        widget.classList.remove('juniper-shape--moving');
+        save();
+      };
+      header.addEventListener('pointerup', endMove);
+      header.addEventListener('pointercancel', endMove);
+    }
 
     // The size button: the usual size, or as much room as the window gives.
     var sizeButton = document.createElement('button');
@@ -225,16 +285,18 @@
       });
     }
 
-    window.addEventListener('resize', function () { if (size) applySize(size, false); else measureRail(); });
+    window.addEventListener('resize', function () { if (size) applySize(size, false); else { applyPlace(place, false); measureRail(); } });
 
     chat.shape = {
       size: function () { return size; },
+      place: function () { return { x: place.x, y: place.y }; },
       resize: function (next) { applySize(next, true); },
-      reset: function () { applySize(null, true); }
+      move: function (next) { applyPlace(next, true); },
+      reset: function () { place = { x: 0, y: 0 }; applySize(null, true); }
     };
 
     renderSizeButton();
-    if (size) applySize(size, false);
+    if (size) applySize(size, false); else applyPlace(place, false);
     window.setTimeout(measureRail, 0);
   } catch (error) {
     if (window.console) window.console.error('[juniper-shape]', error);
