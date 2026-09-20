@@ -25,7 +25,15 @@
   <div class="product-shell__panel">
     <p class="product-shell__kicker">{{ product.type | default: 'Trail gear' }}</p>
     <h1>{{ product.title }}</h1>
-    <p class="product-shell__price">{{ product.price | money }}</p>
+    <p class="product-shell__price">
+      {%- if product.compare_at_price > product.price -%}
+        <s class="product-shell__was">{{ product.compare_at_price | money }}</s>
+        {{ product.price | money }}
+        <span class="product-shell__sale-badge">Sale</span>
+      {%- else -%}
+        {{ product.price | money }}
+      {%- endif -%}
+    </p>
 
     {% if product.description != blank %}
       <div class="product-shell__description">
@@ -162,6 +170,9 @@
 
   .product-shell__price {
     width: fit-content;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
     padding: 0.15rem 1rem;
     border-radius: 999px;
     background: var(--th-sun);
@@ -171,6 +182,21 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     transform: rotate(-2deg);
+  }
+  .product-shell__was {
+    font-size: 0.62em;
+    font-weight: 500;
+    opacity: 0.65;
+  }
+  .product-shell__sale-badge {
+    font-size: 0.5em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--th-coral);
+    color: var(--th-cream);
+    padding: 0.2em 0.55em;
+    border-radius: 999px;
   }
 
   .product-shell__description {

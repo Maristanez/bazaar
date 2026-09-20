@@ -13,7 +13,14 @@
   </a>
   <div class="product-card__details">
     <h3><a href="{{ product.url }}">{{ product.title | escape }}</a></h3>
-    <p class="product-card__price">{{ product.price | money_without_trailing_zeros }}</p>
+    <p class="product-card__price">
+      {%- if product.compare_at_price > product.price -%}
+        <s class="product-card__was">{{ product.compare_at_price | money_without_trailing_zeros }}</s>
+        {{ product.price | money_without_trailing_zeros }}
+      {%- else -%}
+        {{ product.price | money_without_trailing_zeros }}
+      {%- endif -%}
+    </p>
   </div>
 </article>
 
@@ -75,6 +82,9 @@
     text-underline-offset: 0.18em;
   }
   .product-card__price {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
     font-family: var(--th-display);
     font-weight: 600;
     font-size: 1.1rem;
@@ -82,6 +92,11 @@
     background: var(--th-sun);
     padding: 0.1rem 0.75rem;
     border-radius: 999px;
+  }
+  .product-card__was {
+    font-size: 0.75em;
+    font-weight: 500;
+    opacity: 0.6;
   }
 
   @media (max-width: 750px) {
