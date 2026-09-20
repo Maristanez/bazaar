@@ -28,6 +28,19 @@ describe("window.BazaarChat — the seam the juniper-* feature files use", () =>
     expect(document.querySelector("[data-ai-chat-prompts]")?.textContent).toBe("Is that your best?");
   });
 
+  it("remembers a request for spoken replies until the voice config arrives, then reads a line aloud", async () => {
+    const { chat, requests, settle } = mountWidget({ routes: { "/api/voice/config": () => ({ enabled: true }) }, before: (window) => { window.MediaRecorder = function () {}; Object.defineProperty(window.navigator, "mediaDevices", { value: { getUserMedia: async () => ({}) }, configurable: true }); window.URL.createObjectURL = () => "blob:x"; window.URL.revokeObjectURL = () => {}; window.Audio = function () { return { addEventListener() {}, play: async () => {}, pause() {} }; }; } });
+    const seen: boolean[] = [];
+    chat.on("spoken-replies", (detail: { on: boolean }) => seen.push(detail.on));
+    chat.setSpokenReplies(true);
+    await settle();
+    await settle();
+    expect(seen).toEqual([true]);
+    chat.say("Back at the Trail Runner 2?");
+    await settle();
+    expect(requests.some((request) => request.path === "/api/voice/speak" && request.body.text === "Back at the Trail Runner 2?")).toBe(true);
+  });
+
   it("keeps the conversation when the carry flag is set, and resets a plain ?shopper= visit", async () => {
     const carried = mountWidget({ url: "https://trailhead.test/products/trail-runner-2?shopper=demo", before: (window) => window.sessionStorage.setItem("bazaar:carry", "1") });
     const clean = mountWidget({ url: "https://trailhead.test/products/trail-runner-2?shopper=demo" });

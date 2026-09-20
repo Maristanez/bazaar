@@ -51,6 +51,7 @@
   var payloadExtenders = [];
   var chipProvider = null;
   var flags = { voiceStaysOnClose: false };
+  var spokenRepliesWanted = false;
   function emit(name, detail) {
     (listeners[name] || []).slice().forEach(function (listener) {
       try { listener(detail || {}); } catch (error) { if (window.console) window.console.error('[bazaar-chat:' + name + ']', error); }
@@ -328,6 +329,8 @@
       })
       .then(function (config) {
         voiceAvailable = Boolean(config && config.enabled && window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        // A feature file may have asked for spoken replies before the voice config arrived.
+        if (voiceAvailable && spokenRepliesWanted && !voiceEnabled) { voiceEnabled = true; emit('spoken-replies', { on: true }); }
         syncVoiceUi();
       })
       .catch(function () {
@@ -950,6 +953,8 @@
     voiceToggle.addEventListener('click', function () {
       if (!voiceAvailable) return;
       voiceEnabled = !voiceEnabled;
+      spokenRepliesWanted = voiceEnabled;
+      emit('spoken-replies', { on: voiceEnabled });
       if (!voiceEnabled) {
         if (recording) stopRecording();
         stopSpeaking();
@@ -1064,7 +1069,16 @@
     isOpen: function () { return !panel.hidden; },
     setMood: setMood,
     stopSpeaking: stopSpeaking,
-    setSpokenReplies: function (on) { voiceEnabled = Boolean(on) && voiceAvailable; syncVoiceUi(); return voiceEnabled; },
+    setSpokenReplies: function (on) {
+      spokenRepliesWanted = Boolean(on);
+      var next = spokenRepliesWanted && voiceAvailable;
+      if (next !== voiceEnabled) { voiceEnabled = next; emit('spoken-replies', { on: voiceEnabled }); }
+      syncVoiceUi();
+      return voiceEnabled;
+    },
+    // Shows a shopkeeper line and reads it aloud when spoken replies are on. The text must come from the server.
+    say: function (text) { var message = addMessage(String(text || ''), 'bot'); speakReply(String(text || '')); return message; },
+    restoreNegotiation: function (id, product) { negotiationId = id || null; negotiationProductKey = productKey(product || (activeProduct === currentProduct ? selectedProduct() : activeProduct)); },
     extendPayload: function (extend) { payloadExtenders.push(extend); },
     setChipProvider: function (provider) { chipProvider = provider; },
     renderChips: renderChips,
@@ -1073,7 +1087,7 @@
     stickerSvg: stickerSvg,
     apiUrl: apiUrl,
     flags: flags,
-    elements: { widget: widget, panel: panel, launcher: toggle, messages: messages, form: form, input: input, chips: promptsBox, listenBar: listenBar, wave: waveBox, mic: micButton },
+    elements: { widget: widget, panel: panel, foot: widget.querySelector('.ai-chat__foot'), launcher: toggle, messages: messages, form: form, input: input, chips: promptsBox, listenBar: listenBar, wave: waveBox, mic: micButton },
     state: function () {
       return { shopperId: shopperId, endpoint: endpoint, currentProduct: currentProduct, products: products, card: lastCard, negotiationId: negotiationId, sending: sending, mood: currentMood, voiceAvailable: voiceAvailable, spokenReplies: voiceEnabled };
     }
