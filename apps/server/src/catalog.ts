@@ -159,13 +159,32 @@ function explicitProduct(message: string, items: readonly NegotiationItem[], con
 
 function isIncludedAccessory(message: string, item: NegotiationItem, context: NegotiationItem): boolean {
   if (!item.isAddOn || item.productId === context.productId) return false;
-  const name = normalize(item.title);
-  const position = message.indexOf(name);
-  if (position < 0) return false;
+  const mention = accessoryMention(message, item);
+  if (!mention) return false;
+  const { position, length } = mention;
   const before = message.slice(0, position).trim();
-  const after = message.slice(position + name.length).trim();
-  return /\b(?:with|including|plus|and|without|no|skip|exclude|excluding|don t want|do not want)(?: the)?$/.test(before)
-    || /^(?:included|thrown in)\b/.test(after);
+  const after = message.slice(position + length).trim();
+  return /\b(?:with|including|plus|and|give me|you give me|without|no|skip|exclude|excluding|don t want|do not want)(?: the| a| an| one| \d+)?(?: pairs? of| pieces? of| items? of)?$/.test(before)
+    || /^(?:included|thrown in|too)\b/.test(after);
+}
+
+function accessoryMention(message: string, item: NegotiationItem): { position: number; length: number } | null {
+  const name = normalize(item.title);
+  const exactPosition = message.indexOf(name);
+  if (exactPosition >= 0) return { position: exactPosition, length: name.length };
+  const patterns: Array<[RegExp, RegExp]> = [
+    [/\bsocks?\b/, /\bsocks?\b/],
+    [/\bgaiters?\b/, /\bgaiters?\b/],
+    [/\bcap\b/, /\b(?:cap|caps|hat|hats)\b/],
+    [/\bflask\b/, /\b(?:flask|flasks|bottle|bottles)\b/],
+    [/\bvest\b/, /\bvests?\b/],
+  ];
+  for (const [titlePattern, messagePattern] of patterns) {
+    if (!titlePattern.test(name)) continue;
+    const match = messagePattern.exec(message);
+    if (match) return { position: match.index, length: match[0].length };
+  }
+  return null;
 }
 
 function isAccessoryContextMessage(message: string): boolean {
@@ -179,11 +198,21 @@ function productScore(message: string, item: NegotiationItem): number {
   let score = 0;
   if (title.length > 3 && haystack.includes(` ${title} `)) score += 100;
   if (handle.length > 3 && haystack.includes(` ${handle} `)) score += 90;
+  if (item.isAddOn && score === 0) {
+    const aliases: Array<[RegExp, RegExp]> = [
+      [/\bsocks?\b/, /\bsocks?\b/],
+      [/\bgaiters?\b/, /\bgaiters?\b/],
+      [/\bcap\b/, /\b(?:cap|caps|hat|hats)\b/],
+      [/\bflask\b/, /\b(?:flask|flasks|bottle|bottles)\b/],
+      [/\bvest\b/, /\bvests?\b/],
+    ];
+    if (aliases.some(([titlePattern, messagePattern]) => titlePattern.test(title) && messagePattern.test(message))) score += 60;
+  }
   return score;
 }
 
 function isGenericFollowup(message: string): boolean {
-  return /\b(same|these|those|them|they|it|this|that|shoes?|runner|pair)\b/.test(message) && !explicitModelWords(message);
+  return /\b(same|these|those|them|they|it|this|that|shoes?|runner|pair|discount|deal|offer|lower|cheaper|best price)\b/.test(message) && !explicitModelWords(message);
 }
 
 function isContextPreservingFollowup(message: string): boolean {

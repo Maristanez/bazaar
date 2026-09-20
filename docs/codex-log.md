@@ -267,3 +267,15 @@
 **Safety:** Every visible total still comes from engine code. Every cart line must have cost, stock and sufficient inventory. A requested line that cannot be priced causes the whole candidate menu to close instead of silently selling a smaller cart.
 
 **Verification:** Added end to end coverage for a three product cart, student context across turns and an unavailable socks substitution, plus direct engine regressions for several requested lines and an accessory as the current page item. All 283 tests across 37 files pass, workspace type checks pass, the production web build passes and the diff has no whitespace errors.
+
+### #14 · `Sat 20:27` · `Ricardo / Codex` · `Conversation intelligence repair`
+
+**Prompt:** Review the supplied shopper history, replace the weak model with a smarter one, explain why the behavior was dumb, fix it and push it.
+
+**What Codex found:** The model caused the LLM identity confusion, but most damaging behavior came from deterministic code. The money parser treated the quantity in “how much for 5 socks” as a five dollar offer. A several product sentence selected the last explicit dollar amount instead of combining its line prices. An included Trail Cap could become the new primary product, and a safe first round bundle could counter below a shopper offer that already met the target.
+
+**What changed:** The Backboard default is now OpenAI `gpt-5.6-terra`, which completed a real Backboard question call in 3,474 ms. Model identity questions bypass persona guessing and state the actual route. Quantity price questions calculate public list totals without opening negotiations. Explicit product line prices are summed into one cart offer, free additions count as zero, included accessory language preserves the current primary product, and a convincing safe bundle offer can be accepted on round one when it meets the engine target.
+
+**Live local replay:** The actual Backboard route answered the model question truthfully, returned five Merino Socks at the $90 public list total, accepted five socks plus one Trail Cap at the shopper's $110 combined offer, and kept both lines while countering $109 against a lower $100 free cap request. Offer wording calls used `gpt-5.6-terra` in 1,352 ms and 1,629 ms.
+
+**Verification:** Four transcript regressions were added. All 287 tests across 37 files pass, workspace type checks pass, the production web build passes and the diff has no whitespace errors. Hosted deployment remains to be verified after push.

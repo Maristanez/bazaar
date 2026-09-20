@@ -100,7 +100,7 @@ export function priceOffer(
     const bundleFloor = Math.max(bundleCost + 1, Math.ceil(bundleCost * (1 + options.floorPct / 100)));
     const bundleTotal = roundToShopper(Math.max(ask + bundlePart, bundleFloor));
     if (bundleFloor <= bundleList && bundleTotal > bundleCost && bundleTotal >= bundleFloor && bundleTotal <= bundleList) {
-      const accepted = round >= 2 && hasConvincingReason && safeOffered >= bundleTotal;
+      const accepted = hasConvincingReason && safeOffered >= bundleTotal;
       const total = accepted ? Math.min(bundleList, safeOffered) : bundleTotal;
       const itemSummary = bundleItems.map(item => `${item.qty || 1} × ${item.title}`).join(" plus ");
       const line = accepted

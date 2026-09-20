@@ -28,7 +28,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 
 const backboardProvider = env.BACKBOARD_MODEL_PROVIDER || "openai";
-const backboardModel = env.BACKBOARD_MODEL_NAME || "gpt-4.1-mini";
+const backboardModel = env.BACKBOARD_MODEL_NAME || "gpt-5.6-terra";
 const backboardAssistantId = env.BACKBOARD_ASSISTANT_ID || "16072e36-597a-4720-94c3-1d4cf2f520f9";
 const backboardTimeoutMs = Number(env.BACKBOARD_TIMEOUT_MS || 6500);
 const backboard = env.BACKBOARD_API_KEY
@@ -242,7 +242,8 @@ const server = createServer(async (request, response) => {
       const shopperId = requireShopperId(payload);
       const prior = resolveShopperContext(shopperId, mirror, payload.negotiationId);
       const matched = findProductFromPayload({ ...payload, text: message }, mirror, { contextItem: prior?.item });
-      const quantity = matched && prior && matched.item.productId === prior.item.productId ? prior.quantity : 1;
+      const questionQuantity = matched ? parseQuantity(message, null) : null;
+      const quantity = questionQuantity || (matched && prior && matched.item.productId === prior.item.productId ? prior.quantity : 1);
       const negotiation = matched ? negotiationFor(payload, matched.item, quantity) : null;
       const negotiationId = negotiation?.id || `catalog:${shopperId}`;
       if (matched) rememberShopperContext(shopperId, matched.item, quantity, negotiationId);
@@ -250,6 +251,7 @@ const server = createServer(async (request, response) => {
         message,
         shopperId,
         negotiationId,
+        model: `${backboardProvider}/${backboardModel}`,
         pageUrl: stringOrNull(payload.pageUrl),
         product: matched?.publicProduct || enrichPublicProduct(publicObjectOrNull(payload.product), mirror),
         products: publicProducts(mirror),
@@ -257,7 +259,7 @@ const server = createServer(async (request, response) => {
       };
       const deterministic = deterministicReply(context);
       const sizingQuestion = isSizingQuestion(message);
-      const useLocalReply = Boolean(deterministic?.memoryProducts?.length) && !sizingQuestion;
+      const useLocalReply = Boolean(deterministic?.local || deterministic?.memoryProducts?.length) && !sizingQuestion;
       if (useLocalReply) rememberShopperProducts(shopperId, deterministic.memoryProducts);
       const reply = useLocalReply ? deterministic.reply : await answerWithBackboard(context, deterministic?.reply);
       if (owner.getPolicy().paused) { sendJson(response, request, 200, pausedReply(payload)); return; }
@@ -659,6 +661,10 @@ async function makeOfferTurn(payload, message) {
     ? payload.quantity : undefined;
   const terms = parseOfferTerms(message, payload, understanding, { fallbackQuantity: selectedQuantity ?? (sameContextItem ? shopperContext.quantity : 1) });
   if (cartRequest.mainQuantity) terms.quantity = cartRequest.mainQuantity;
+  if (cartRequest.quotedTotalDollars !== null) {
+    terms.dollars = cartRequest.quotedTotalDollars;
+    terms.perUnit = false;
+  }
   if (!Number.isSafeInteger(terms.quantity) || terms.quantity < 1 || terms.quantity > MAX_OFFER_QUANTITY) {
     return { reply: `Please choose a quantity from 1 to ${MAX_OFFER_QUANTITY}.` };
   }
@@ -1110,12 +1116,15 @@ function requestedCartFromMessage(message, mirror, main) {
   let mainQuantity = null;
   const requestedItems = [];
   const unavailable = [];
+  const quotedLineAmounts = [];
   for (const variants of groups.values()) {
     const sample = variants[0];
     const mention = productMention(text, sample);
     if (!mention) continue;
     const explicitQuantity = quantityBeforeProduct(text, mention.index);
     const quantity = explicitQuantity || 1;
+    const quotedLineAmount = quotedLinePrice(text, mention);
+    if (quotedLineAmount !== null) quotedLineAmounts.push(quotedLineAmount);
     if (sample.productId === main.productId) {
       mainQuantity = explicitQuantity;
       const selected = variants.find(item => item.variantId === main.variantId) || main;
@@ -1126,7 +1135,12 @@ function requestedCartFromMessage(message, mirror, main) {
     if (!available) unavailable.push({ ...sample, quantity });
     else requestedItems.push({ variantId: available.variantId, quantity });
   }
-  return { mainQuantity, requestedItems, unavailable };
+  return {
+    mainQuantity,
+    requestedItems,
+    unavailable,
+    quotedTotalDollars: quotedLineAmounts.length >= 2 ? quotedLineAmounts.reduce((sum, amount) => sum + amount, 0) : null,
+  };
 }
 
 function productMention(text, item) {
@@ -1158,6 +1172,16 @@ function quantityBeforeProduct(text, index) {
   const words = prefix.match(new RegExp(`\\b(${NUMBER_WORD_PATTERN}(?:\\s+${NUMBER_WORD_PATTERN})*)\\s*(?:pairs?\\s+of|pieces?\\s+of|items?\\s+of)?\\s*$`, "i"));
   const parsed = words ? parseNumberWords(words[1]) : null;
   return parsed && Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+function quotedLinePrice(text, mention) {
+  const prefix = text.slice(Math.max(0, mention.index - 90), mention.index);
+  const suffix = text.slice(mention.index + mention[0].length, mention.index + mention[0].length + 50);
+  if (/\bfree(?:\s+\w+){0,2}\s*$/.test(prefix) || /^\s*(?:for\s+)?free\b/.test(suffix)) return 0;
+  const after = suffix.match(/^\s*(?:for|at)\s+(\d+(?:\.\d+)?)\s*(?:dollars?|bucks?)?\b/);
+  if (after) return Number(after[1]);
+  const before = prefix.match(new RegExp(`\\b(\\d+(?:\\.\\d+)?)\\s+(?:total\\s+)?for\\s+(?:\\d+|${NUMBER_WORD_PATTERN}(?:\\s+${NUMBER_WORD_PATTERN})*)\\s*(?:pairs?\\s+of|pieces?\\s+of|items?\\s+of)?\\s*$`, "i"));
+  return before ? Number(before[1]) : null;
 }
 
 function unavailableCartReply(unavailable, mirror, main) {
@@ -1269,6 +1293,11 @@ function deterministicReply(context) {
   const message = String(context.message || "").toLowerCase();
   const products = Array.isArray(context.products) ? context.products : [];
   const lastProducts = Array.isArray(context.lastProducts) ? context.lastProducts : [];
+  if (isModelIdentityQuestion(message)) {
+    return { reply: `This shopkeeper uses ${context.model} through Backboard. Server code, not the language model, calculates every offer total.`, local: true };
+  }
+  const quantityPrice = quantityPriceReply(message, products);
+  if (quantityPrice) return { reply: quantityPrice.reply, memoryProducts: [quantityPrice.product] };
   if (isTotalQuestion(message)) {
     const scopedProducts = lastProducts.length ? lastProducts : products;
     return { reply: totalReply(scopedProducts), memoryProducts: scopedProducts };
@@ -1286,6 +1315,25 @@ function deterministicReply(context) {
     return { reply: "Shipping and returns are handled in Shopify Checkout. For this demo, use the checkout page as the source of truth for shipping, taxes, and the final total." };
   }
   return null;
+}
+
+function isModelIdentityQuestion(message) {
+  const text = normalizeSearchText(message);
+  if (/\b(?:shoe|shoes|runner|product|tee|shirt|socks?)\b/.test(text)) return false;
+  return /\b(?:model|llm)\b/.test(text) && /\b(?:you|your|using|use|powered|llm|ai|language)\b/.test(text);
+}
+
+function quantityPriceReply(message, products) {
+  if (!/\b(?:how much|what does|what do|cost|price)\b/i.test(message)) return null;
+  const quantity = parseQuantity(message, null);
+  if (!Number.isSafeInteger(quantity) || quantity < 1) return null;
+  const text = normalizeSearchText(message);
+  const product = products.find(candidate => productMention(text, candidate));
+  if (!product || !Number.isSafeInteger(product.listPrice) || product.listPrice <= 0) return null;
+  return {
+    product,
+    reply: `${quantity} ${product.title} cost ${formatMoney(product.listPrice * quantity)} at the storefront price. If you want to negotiate, tell me your total and give me a reason.`,
+  };
 }
 
 function outfitReply(products) {
@@ -1350,8 +1398,7 @@ function isOfferIntent(text) {
   const message = String(text || "");
   const hasMoney = parseMoney(message) !== null;
   const hasOfferLanguage = /\b(offer|deal|discount|haggle|checkout|could you do|can you do|would you take|best price|can i get|could i get|give it to me|give them to me|buy|take|grab|order|lower|cheaper|knock|meet me|split the difference|work with me|out the door|otd)\b/i.test(message);
-  const hasCasualPriceLanguage = /\b(?:for|at|around|about|under|to|do|take|pay|price|make|call it)\s+(?:\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fourty|fifty|sixty|seventy|eighty|ninety|hundred|benjamin)\b/i.test(message);
-  return hasMoney || hasOfferLanguage || hasCasualPriceLanguage;
+  return hasMoney || hasOfferLanguage;
 }
 
 function parseOfferTerms(message, payload = {}, understanding = {}, options = {}) {
@@ -1370,8 +1417,12 @@ function parseMoney(value) {
   const text = String(value || "");
   const match = text.match(/(?:c\$|\$)\s*(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s*(?:\$|cad|dollars?|bucks?|each|ea|apiece|a piece|a pop|per\b|\/\s*ea|all in|all-in|total|altogether|otd|out the door)/i);
   if (match) return Number(match[1] || match[2]);
-  const prefixedNumber = text.match(/\b(?:for|at|around|about|under|to|do|take|offer|pay|price|give|make|call it|down to|knock(?: them| it)? down to|meet me at|what about)\s+(\d+(?:\.\d{1,2})?)\b/i);
-  if (prefixedNumber) return Number(prefixedNumber[1]);
+  const prefixedNumber = text.match(/\b(for|at|around|about|under|to|do|take|offer|pay|price|give|make|call it|down to|knock(?: them| it)? down to|meet me at|what about)\s+(\d+(?:\.\d{1,2})?)\b/i);
+  if (prefixedNumber) {
+    const tail = text.slice((prefixedNumber.index || 0) + prefixedNumber[0].length);
+    const isQuantity = prefixedNumber[1].toLowerCase() === "for" && /^\s*(?:x|pcs?|pieces?|items?|tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?)\b/i.test(tail);
+    if (!isQuantity) return Number(prefixedNumber[2]);
+  }
   const wordMoney = parseMoneyWords(text);
   if (wordMoney !== null) return wordMoney;
   if (/^\s*\d+(?:\.\d{1,2})?\s*$/.test(text)) return Number(text);

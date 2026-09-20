@@ -64,6 +64,76 @@ function productPayload(product: PublicProduct, shopperId: string, message: stri
 }
 
 describe("multi-product shopper API integration", () => {
+  it("answers an LLM model question directly without confusing it with a product model", async () => {
+    let backboardCalls = 0;
+    const fetchImpl: typeof fetch = async () => {
+      backboardCalls += 1;
+      throw new Error("Backboard should not be called for model identity");
+    };
+    const base = await start({
+      env: { BACKBOARD_API_KEY: "test", BACKBOARD_MODEL_NAME: "gpt-5.6-terra" },
+      fetchImpl,
+    });
+    const pageProduct = (await products(base)).find(product => product.title === "Trail Runner 2")!;
+    const response = await chat(base, productPayload(pageProduct, "model-question", "What LLM model are you using?"));
+
+    expect(response.body.card).toBeUndefined();
+    expect(response.body.reply).toContain("gpt-5.6-terra");
+    expect(response.body.reply).toContain("Backboard");
+    expect(backboardCalls).toBe(0);
+  });
+
+  it("answers how much five socks cost without treating five as a dollar offer", async () => {
+    const base = await start();
+    const pageProduct = (await products(base)).find(product => product.title === "Trail Runner 2")!;
+    const shopperId = "quantity-price-question";
+    const response = await chat(base, productPayload(pageProduct, shopperId, "How much for 5 socks?"));
+
+    expect(response.body.card).toBeUndefined();
+    expect(response.body.reply).toContain("5 Merino Socks");
+    expect(response.body.reply).toContain("$90");
+
+    const followUp = await chat(base, productPayload(pageProduct, shopperId, "Give me a discount", { negotiationId: response.body.negotiationId }));
+    expect(followUp.body.card).toBeUndefined();
+    expect(followUp.body.reply).toContain("Merino Socks");
+    expect(followUp.body.reply).toContain("$77 total");
+  });
+
+  it("sums explicit line prices for a several-product cart", async () => {
+    const base = await start();
+    const socks = (await products(base)).find(product => product.title === "Merino Socks")!;
+    const response = await chat(base, productPayload(
+      socks,
+      "line-price-cart",
+      "How about I do 100 for 5 socks but you give me a Trail Cap for 10 dollars?",
+    ));
+
+    expect(response.body.card.option.items).toEqual([
+      expect.objectContaining({ title: "Merino Socks", qty: 5 }),
+      expect.objectContaining({ title: "Trail Cap", qty: 1 }),
+    ]);
+    expect(response.body.card.trail[1].amount).toBe(11000);
+    expect(response.body.card.option.total).toBe(11000);
+  });
+
+  it("keeps a typoed free cap in a five-sock cart and counters on the whole cart", async () => {
+    const base = await start();
+    const socks = (await products(base)).find(product => product.title === "Merino Socks")!;
+    const response = await chat(base, productPayload(
+      socks,
+      "free-cap-cart",
+      "How about I do 100 for 5 socks and you give me a free taril cap?",
+    ));
+
+    expect(response.body.card.option.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ title: "Merino Socks", qty: 5 }),
+      expect.objectContaining({ title: "Trail Cap", qty: 1 }),
+    ]));
+    expect(response.body.card.trail[1].amount).toBe(10000);
+    expect(response.body.card.option.total).toBeGreaterThan(10000);
+    expect(response.body.card.option.total).toBeLessThanOrEqual(11800);
+  });
+
   it("keeps products, variants, quantities, and negotiations separate while switching", async () => {
     const base = await start();
     const catalog = await products(base);

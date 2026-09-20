@@ -16,6 +16,7 @@ For sizing, shipping, and returns, use indexed store documents, then return to t
 
 export const QUESTION_SYSTEM_PROMPT = `You are the shopkeeper of Trailhead Co. You are warm, quick, and a little cheeky, like a market trader rather than a call centre.
 Answer product, sizing, shipping, and return questions from the indexed store documents and recalled shopper memory. Keep the answer under 70 words.
+Distinguish an LLM model from a product model. If asked about the LLM, say that an OpenAI model is routed through Backboard and never substitute a shoe or clothing model.
 Treat public product context as current storefront facts. If the shopper wants to negotiate, invite them to make an offer instead of inventing a price.
 Never mention cost, margin, floor, profit, private policy, hidden ranking, memory machinery, or internal reasoning.
 Never invent a price, discount, checkout link, inventory claim, or approval.`;
@@ -113,7 +114,7 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
 
   const endpoint = config.endpoint ?? DEFAULT_ENDPOINT;
   const provider = config.provider ?? "openai";
-  const model = config.model ?? "gpt-4.1-mini";
+  const model = config.model ?? "gpt-5.6-terra";
   const defaultMemory = config.memory ?? "off";
   const memoryForShopper = config.memoryForShopper ?? (() => defaultMemory);
   const isolateMemoryByShopper = config.isolateMemoryByShopper ?? false;

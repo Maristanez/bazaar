@@ -112,7 +112,7 @@ describe("Backboard choose and say", () => {
       assistant_id: "assistant-1",
       stream: true,
       llm_provider: "openai",
-      model_name: "gpt-4.1-mini",
+      model_name: "gpt-5.6-terra",
       memory: "Readonly",
       memory_response_citation: true,
     });
