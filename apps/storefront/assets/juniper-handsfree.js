@@ -308,6 +308,20 @@
     chat.addMessage("Hands-free is on: just talk, and pause when you're done. While it's on, Chrome's speech service hears the audio to turn it into words. Press Esc or tap Done talking to stop.", 'bot');
   }
 
+  // A click has every other feature's script long since run, so the pill (if any) already exists: decide now.
+  // A quiet, page-load start races juniper-motion.js, which is listed after us in theme.liquid and has not run its
+  // own script yet — give it the rest of this tick (a deferred script cannot be interrupted by a timer) before
+  // assuming there is no pill to show hands-free's state.
+  function openUnlessPilled(quiet) {
+    if (!quiet) {
+      if (!chat.isOpen() && !chat.elements.widget.querySelector('[data-juniper-pill]')) chat.open();
+      return;
+    }
+    window.setTimeout(function () {
+      if (on && !chat.isOpen() && !chat.elements.widget.querySelector('[data-juniper-pill]')) chat.open();
+    }, 0);
+  }
+
   function start(options) {
     if (on) return true;
     quiet = Boolean(options && options.quiet);
@@ -319,7 +333,7 @@
     spokenRepliesBefore = Boolean(chat.state().spokenReplies);
     chat.setSpokenReplies(true);
     if (!quiet) tellOnce();
-    if (!chat.isOpen() && !chat.elements.widget.querySelector('[data-juniper-pill]')) chat.open();
+    openUnlessPilled(quiet);
     if (chat.state().sending) setState('thinking');
     else listen();
     return on;
@@ -393,7 +407,6 @@
     pendingTimer = clearTimer(pendingTimer);
     resetTurn();
     stopRecognition();
-    chat.setSpokenReplies(true); // the voice config may have loaded since hands-free began
     setState('thinking');
   });
 

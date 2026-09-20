@@ -144,6 +144,36 @@ describe("juniper-handsfree — V1 hands-free conversation", () => {
     expect(chatRequests()).toHaveLength(0);
   });
 
+  it("asks for spoken replies once, on start, and does not repeat the ask on every turn", async () => {
+    const speech = fakeSpeech();
+    const { chat, button, tick, emit } = mount(speech, { chat: () => ({ reply: "Noted." }) });
+    const calls: boolean[] = [];
+    const real = chat.setSpokenReplies;
+    chat.setSpokenReplies = (value: boolean) => { calls.push(value); return real(value); };
+    button()!.click();
+    expect(calls).toEqual([true]);
+    emit("turn:start", { text: "hi" });
+    speech.latest().hear(["Any deal?", true]);
+    await tick(1200);
+    expect(calls).toEqual([true]); // the seam's own wish now sticks; asking again on every turn is dead weight
+  });
+
+  it("does not fight chat-demo's own mood reset while it is listening or hearing", () => {
+    const speech = fakeSpeech();
+    const { chat, button } = mount(speech);
+    button()!.click();
+    expect(chat.state().mood).toBe("listening");
+    // chat-demo.js resets an idle-eligible mood back to idle whenever it re-syncs its voice controls
+    // (loadVoiceConfig resolving, the mic/voice buttons, setLoading...). Hands-free must put it back while
+    // the mic is open, or Juniper's face goes blank mid-turn for a reason the shopper never caused.
+    chat.setMood("idle");
+    expect(chat.state().mood).toBe("listening");
+    speech.latest().hear("two pairs");
+    expect(chat.state().mood).toBe("listening");
+    chat.setMood("idle");
+    expect(chat.state().mood).toBe("listening");
+  });
+
   it("says once where the audio goes and how to stop", () => {
     const speech = fakeSpeech();
     const { document, button } = mount(speech);
@@ -291,9 +321,23 @@ describe("juniper-handsfree — V1 hands-free conversation", () => {
       expect(notices(document)).toHaveLength(1);
     });
 
-    it("opens the panel when there is no pill to show the state", () => {
-      const { chat } = mount(fakeSpeech(), always());
+    it("opens the panel when there is no pill to show the state", async () => {
+      const { chat, tick } = mount(fakeSpeech(), always());
+      await tick(0);
       expect(chat.isOpen()).toBe(true);
+    });
+
+    it("waits a tick for a pill from a feature script that has not run yet, so it does not open beside it", async () => {
+      // juniper-motion.js is listed after juniper-handsfree.js in theme.liquid: on a real page its pill does not
+      // exist the instant our script runs. Simulate that by adding the pill one tick after mount, not before.
+      const speech = fakeSpeech();
+      const { chat, document, tick } = mount(speech, always());
+      expect(chat.isOpen()).toBe(false); // no decision made yet
+      const pill = document.createElement("div");
+      pill.setAttribute("data-juniper-pill", "");
+      document.querySelector(".ai-chat")!.appendChild(pill);
+      await tick(0);
+      expect(chat.isOpen()).toBe(false);
     });
 
     it("does nothing by itself for any other flag value", () => {
