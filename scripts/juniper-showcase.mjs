@@ -18,14 +18,14 @@ const endpoint = `http://localhost:${port}`;
 const types = { ".js": "application/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".woff2": "font/woff2", ".ttf": "font/ttf", ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp" };
 
 const TRY = [
-  ["V1 Hands-free", "Open the chat, click “Talk to Juniper”, then just talk. Pause ~1 s and your turn sends itself; when she finishes speaking the mic reopens."],
+  ["V1 Hands-free", "Open the chat, click the small mic, then just talk. Pause ~1 s and your turn sends itself; when she finishes speaking the mic reopens. Add ?listen=always to the URL and she listens from page load."],
   ["V2 Survives navigation", "Haggle on a product, then click a product card inside the chat. The transcript and card come with you. Pasting the URL in a new tab starts clean."],
   ["V3 Motion + pill", "Open and close the chat. With hands-free on, close it: a listening pill stays."],
   ["V4 Live presence", "With hands-free on, watch the halo and bars follow your voice, and Juniper’s mouth follow hers."],
   ["V5 Page awareness", "On All products or Cart, ask “what about this one?” or mention what is in your cart. (The spoken page-aware opening needs the server change deployed.)"],
   ["V6 Chips that change", "Compare the chips here, on a product page at quantity 1 and 2, and after each offer. A used chip never comes back."],
   ["V7 Juniper points", "On All products, ask “what’s good for muddy trails?” — the product she names is scrolled to and ringed."],
-  ["V8 “Jarvis”", "In the chat, turn on Hey Jarvis, close the chat, say “Jarvis”. An ear on the launcher shows whenever it listens."],
+  ["V8 “Hey Jarvis”", "With the chat closed, say “Hey Jarvis”: the chat opens and she is listening. The ear on the launcher shows it is armed; allow the microphone when Chrome asks."],
   ["V9 Nudge", "On a product page, leave the chat closed for 20 s. Once per session."],
   ["V10 Sounds + status", "With voice on: a soft rising note when listening starts, a low note when the reply is ready."],
   ["V11 Filler", "With spoken replies on, a slow reply (> 1.5 s) gets one short spoken filler."],
@@ -51,13 +51,22 @@ function widgetMarkup() {
 }
 
 function featureTags() {
-  const assets = readdirSync(`${themeRoot}/assets`).filter((file) => file.startsWith("juniper-")).sort();
+  // Same order as layout/theme.liquid loads them, so load-order bugs show up here too.
+  const order = [...readFileSync(`${themeRoot}/layout/theme.liquid`, "utf8").matchAll(/'(juniper-[a-z]+\.js)'/g)].map((match) => match[1]);
+  const rank = (file) => (order.indexOf(file.replace(/\.css$/, ".js")) + 1) || 99;
+  const assets = readdirSync(`${themeRoot}/assets`).filter((file) => file.startsWith("juniper-")).sort((a, b) => rank(a) - rank(b));
   const css = assets.filter((file) => file.endsWith(".css")).map((file) => `<link rel="stylesheet" href="/assets/${file}">`);
   const js = assets.filter((file) => file.endsWith(".js")).map((file) => `<script src="/assets/${file}" defer></script>`);
   return [...css, ...js].join("\n");
 }
 
-function withShopper(path, shopper) { return shopper ? `${path}${path.includes("?") ? "&" : "?"}shopper=${encodeURIComponent(shopper)}` : path; }
+let listenMode = "";
+function withShopper(path, shopper) {
+  const query = new URLSearchParams();
+  if (shopper) query.set("shopper", shopper);
+  if (listenMode) query.set("listen", listenMode);
+  return query.size ? `${path}?${query}` : path;
+}
 
 function productCard(product, shopper) {
   const url = withShopper(product.url, shopper);
@@ -68,6 +77,7 @@ function productCard(product, shopper) {
 async function page(url) {
   const all = await loadProducts();
   const shopper = url.searchParams.get("shopper") || "";
+  listenMode = url.searchParams.get("listen") === "always" ? "always" : "";
   const handle = url.pathname.startsWith("/products/") ? decodeURIComponent(url.pathname.slice("/products/".length)) : "";
   const current = handle ? all.find((product) => product.handle === handle) : null;
   const isCart = url.pathname === "/cart";
@@ -110,6 +120,7 @@ ${nav}<main>${main}</main>${rail}
 ${widgetMarkup()}
 <script type="application/json" data-ai-chat-products>${json(all.map((product) => ({ productId: product.productNumericId, handle: product.handle, title: product.title, url: product.url, type: product.type, price: product.price, listPrice: product.listPrice, available: true, selectedVariantId: product.selectedVariantNumericId })))}</script>
 ${current ? `<script type="application/json" data-ai-chat-current-product>${json({ ...current, productId: current.productNumericId, selectedVariantId: current.selectedVariantNumericId })}</script>` : ""}
+<script>window.BazaarChatFlags = ${json(url.searchParams.get("listen") === "always" ? { autoListen: "always" } : {})};</script>
 <script src="/assets/chat-demo.js" defer></script>
 <script type="application/json" data-ai-chat-page>${json(context)}</script>
 ${featureTags()}

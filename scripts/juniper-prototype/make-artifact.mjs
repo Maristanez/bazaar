@@ -6,11 +6,14 @@ import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 
 const [themeRoot, out, title, tryHtml, ...only] = process.argv.slice(2);
 const assets = `${themeRoot}/assets`;
-const features = readdirSync(assets).filter((file) => file.startsWith("juniper-")).map((file) => file.replace(/^juniper-|\.(js|css)$/g, "")).filter((name, index, all) => all.indexOf(name) === index).filter((name) => !only.length || only.includes(name)).sort();
+const features = readdirSync(assets).filter((file) => file.startsWith("juniper-")).map((file) => file.replace(/^juniper-|\.(js|css)$/g, "")).filter((name, index, all) => all.indexOf(name) === index).filter((name) => !only.length || only.includes(name));
 const read = (file) => { try { return readFileSync(`${assets}/${file}`, "utf8"); } catch { return ""; } };
 const inlineJs = (source) => source.replace(/<\/script/gi, "<\\/script");
 const liquid = readFileSync(`${themeRoot}/layout/theme.liquid`, "utf8");
 const widget = liquid.slice(liquid.indexOf('<div\n      class="ai-chat"'), liquid.indexOf('<script type="application/json" data-ai-chat-products>')).replace("{{ settings.ai_chat_endpoint | escape }}", "https://juniper.prototype");
+// Same order as the theme loads them, so load-order bugs show up here too.
+const themeOrder = [...liquid.matchAll(/'juniper-([a-z]+)\.js'/g)].map((match) => match[1]);
+features.sort((a, b) => (themeOrder.indexOf(a) + 1 || 99) - (themeOrder.indexOf(b) + 1 || 99));
 const css = read("critical.css").replace(/@font-face\s*{[^}]*}/g, "");
 
 const products = [
@@ -62,9 +65,8 @@ ${features.map((name) => read(`juniper-${name}.css`)).join("\n")}
     ${tryHtml}
     <div class="proto-modes" role="group" aria-label="When does Juniper start listening">
       <span>Listening starts:</span>
-      <button type="button" data-proto-mode="">on a click</button>
-      <button type="button" data-proto-mode="always">by itself</button>
-      <button type="button" data-proto-mode="keyword">on “Jarvis”</button>
+      <button type="button" data-proto-mode="">on “Hey Jarvis” or a click</button>
+      <button type="button" data-proto-mode="always">by itself, from page load</button>
     </div>
     <form class="proto-say" data-proto-say hidden>
       <label class="visually-hidden" for="proto-say-input">Say something (simulated microphone)</label>
