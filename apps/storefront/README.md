@@ -57,7 +57,9 @@ Events via `on(name, fn)`: `open`, `close`, `turn:start`, `reply`, `turn:error`,
 ### Try it and test it
 
 - `pnpm exec vitest run tests/storefront` runs every feature against the real `theme.liquid` markup in jsdom (`tests/storefront/widget.ts` mounts it).
-- `node scripts/juniper-showcase.mjs` serves a localhost stand-in store with the real widget, a stand-in cart and a relay to the live server, where a microphone works. `?ears=server` and `?listen=always` set the flags.
+- `node scripts/jarvis/showcase.mjs` serves a localhost stand-in store with the real widget, a stand-in cart and a relay to the live server, where a microphone works. `?ears=server` and `?listen=always` set the flags.
+- `node scripts/jarvis/make-artifact.mjs <themeRoot> <out.html> "<Title>" "<what to try>" [feature ...]` builds a self-contained page of the real widget with a scripted shopkeeper, for showing a feature where there is no server.
+- Shopify serves `assets/` flat, with no sub-folders, so the agent's files are grouped by the `juniper-` prefix rather than by directory.
 - Set `localStorage['bazaar:debug'] = '1'` for `[juniper-ears]` and `[hey-jarvis]` traces.
 - **Never click Deal while testing**: it mints a real Shopify discount.
 

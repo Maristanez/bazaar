@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 // Showcase for the immersive shopkeeper (PLAN V1–V11): a stand-in Trailhead store on localhost — where the microphone
 // works — with the REAL widget markup from layout/theme.liquid and every juniper-* feature file of the chosen theme folder.
-//   node scripts/juniper-showcase.mjs                      # this checkout's theme
-//   THEME_ROOT=/path/to/worktree/apps/storefront node scripts/juniper-showcase.mjs
+//   node scripts/jarvis/showcase.mjs                      # this checkout's theme
+//   THEME_ROOT=/path/to/worktree/apps/storefront node scripts/jarvis/showcase.mjs
 // The chat is relayed to the LIVE server, so NEVER click Deal: it mints a real discount.
 import { createServer } from "node:http";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const repo = resolve(fileURLToPath(new URL("..", import.meta.url)));
+const repo = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const themeRoot = resolve(process.env.THEME_ROOT || `${repo}/apps/storefront`);
 const port = Number(process.env.SHOWCASE_PORT || 9294);
 const upstream = process.env.BAZAAR_SERVER_URL || "https://bazaar-chat-production.up.railway.app";

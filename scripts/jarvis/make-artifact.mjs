@@ -1,7 +1,7 @@
 // Builds one self-contained artifact page: the real widget (theme.liquid markup, critical.css, chat-demo.js and the
 // chosen juniper-* files) on a stand-in Trailhead store, with a scripted shopkeeper in place of the server
 // (artifact pages cannot reach the network) and a simulated microphone when the page is not allowed a real one.
-//   node make-artifact.mjs <themeRoot> <out.html> "<Title>" "<what to try html>" [feature ...]   (no features = all)
+//   node scripts/jarvis/make-artifact.mjs <themeRoot> <out.html> "<Title>" "<what to try html>" [feature ...]   (no features = all)
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 
 const [themeRoot, out, title, tryHtml, ...only] = process.argv.slice(2);
