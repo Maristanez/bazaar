@@ -138,6 +138,28 @@ describe("juniper-page — the page-aware opening in hands-free", () => {
     expect(greetings(mounted.requests)).toHaveLength(0);
   });
 
+  // juniper-persist.js (V2) restores a carried conversation before this line ever shows: replaying the shopper's own
+  // past words through addMessage, or putting a live card back on screen. Either one means this is not a cold open.
+  it("a carried conversation with the shopper's own restored words is not asked for, or is asked but not shown", async () => {
+    const mounted = mount({ routes, before: (window) => window.sessionStorage.setItem("bazaar:handsfree", "1") });
+    // Simulates V2's restore(), which replays saved lines through addMessage before this feature's opening can land.
+    mounted.chat.addMessage("Would you do $120 on the trail runners?", "user");
+    await settled(mounted);
+    expect(mounted.document.body.textContent).not.toContain("Back among the socks");
+  });
+
+  it("a carried conversation with a live offer card already showing is not shown a fresh opening", async () => {
+    const mounted = mount({ routes, before: (window) => window.sessionStorage.setItem("bazaar:handsfree", "1") });
+    // Simulates V2's restoreCard(), which puts the card back on screen without going through addMessage.
+    mounted.chat.addOfferCard({
+      negotiationId: "n1", offerId: "o1", status: "live", round: 2, maxRounds: 4, line: "Here is my offer.", mood: "tempted", badges: [], trail: [],
+      option: { id: "A", kind: "final", items: [{ variantId: "v1", title: "Trail Runner 2", qty: 1 }], listTotal: 15000, total: 13500 },
+      expiresAt: new Date(Date.now() + 15 * 60000).toISOString(), disclosure: ["Deal agent.", "Only this card is binding."],
+    });
+    await settled(mounted);
+    expect(mounted.document.body.textContent).not.toContain("Back among the socks");
+  });
+
   // The recogniser reports a caption well before a turn is committed (it waits out ~1.2s of quiet first). If the
   // opening only watched for "turn:start" it could still land — and be read aloud — over a shopper already talking.
   it("a caption heard before the greeting lands cancels it, even with no committed turn yet", async () => {

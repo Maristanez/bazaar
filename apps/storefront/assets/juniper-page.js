@@ -109,8 +109,25 @@
     try { return window.sessionStorage.getItem('bazaar:handsfree') === '1'; } catch (error) { return false; }
   }
 
+  // True once a carried conversation (juniper-persist.js) has put something on screen: a card is live, or the
+  // shopper's own words are already there. Checked lazily, right before showing the opening — persist.js restores
+  // synchronously but loads after this file, so nothing has landed yet the moment this script itself runs.
+  function conversationAlreadyShowing() {
+    try {
+      var state = chat.state();
+      if (state && state.card && (state.card.status === 'live' || state.card.status === 'pending_owner')) return true;
+    } catch (error) { /* fall through to the transcript */ }
+    try {
+      var messages = chat.elements && chat.elements.messages;
+      return Boolean(messages && messages.querySelector && messages.querySelector('.ai-chat__message--user, .ai-chat__offer-card'));
+    } catch (error) {
+      return false;
+    }
+  }
+
   // The spoken opening for this page: asked of the server at most once per page load, and never once the shopper
-  // has said something here. Whatever comes back is shown as it is; nothing comes back, nothing is shown.
+  // has said something here — typed, spoken, or restored from a carried conversation. Whatever comes back is shown
+  // as it is; nothing comes back, nothing is shown.
   function askForOpening() {
     if (greetingAsked || shopperHasSpoken || typeof window.fetch !== 'function') return;
     greetingAsked = true;
@@ -127,6 +144,9 @@
       return response && response.ok ? response.json() : null;
     }).then(function (data) {
       if (shopperHasSpoken || !data || typeof data.greeting !== 'string' || !data.greeting.trim()) return;
+      // A carried conversation already on screen (a live card, or the shopper's own restored words) is not a cold
+      // open: a fresh "Browsing the whole shelf?" on top of it would talk over a negotiation already under way.
+      if (conversationAlreadyShowing()) return;
       // say() (not addMessage) so the line is read aloud when spoken replies are on — a silent bubble in hands-free
       // would leave the shopper waiting on a voice that never speaks.
       if (typeof chat.say === 'function') chat.say(data.greeting.trim());
@@ -151,6 +171,10 @@
     // Hands-free hears the shopper well before a turn is committed (the recogniser waits out ~1.2s of quiet first);
     // treating any caption as "spoken" stops Juniper's page-aware opening from landing over the shopper mid-sentence.
     document.addEventListener('bazaar-voice:caption', function () { shopperHasSpoken = true; });
+
+    // juniper-persist.js restores a carried conversation by replaying it through addMessage, which emits 'message'
+    // for each line — a restored user line is the shopper having spoken, just on an earlier page.
+    chat.on('message', function (detail) { if (detail && detail.type === 'user') shopperHasSpoken = true; });
 
     document.addEventListener('change', function (event) {
       var target = event.target;
