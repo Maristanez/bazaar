@@ -1,1 +1,131 @@
 /* V8 the "Jarvis" keyword (docs/PLAN.md). */
+
+/* The opt-in, at the bottom of the chat's foot: one quiet line, and the plain explanation before it is turned on. */
+.juniper-keyword__control {
+  margin: 0;
+  color: var(--bark-soft);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.juniper-keyword__line,
+.juniper-keyword__note {
+  margin: 0;
+}
+
+.juniper-keyword__note {
+  max-width: 34ch;
+  margin: 0.2rem auto 0;
+  color: var(--bark-soft);
+  text-wrap: pretty;
+}
+
+.juniper-keyword__status {
+  color: var(--bark);
+  font-weight: 600;
+}
+
+.juniper-keyword__status::before {
+  content: "";
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  background: var(--coral);
+  vertical-align: 0.05em;
+}
+
+.juniper-keyword__toggle {
+  min-height: 1.5rem;
+  padding: 0 0.15rem;
+  border: 0;
+  background: none;
+  color: var(--teal);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+
+.juniper-keyword__toggle:hover {
+  color: var(--coral-deep);
+}
+
+.juniper-keyword__toggle:focus-visible {
+  border-radius: 0.25rem;
+  outline: 2px solid var(--coral);
+  outline-offset: 2px;
+}
+
+/* The ear: a small die-cut sticker riding on the launcher (and the hands-free pill) whenever the word is listened for. */
+.juniper-keyword__ear {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  margin-left: 0.35rem;
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  background: var(--cream);
+  box-shadow: 0 2px 0 rgb(47 22 4 / 22%);
+  rotate: -6deg;
+  animation: juniper-keyword-slap 0.55s var(--ease) both;
+}
+
+.juniper-keyword__ear svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  overflow: visible;
+  fill: none;
+  stroke: var(--coral);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.juniper-keyword__ear-lobe {
+  stroke: var(--coral-deep);
+}
+
+.juniper-keyword__ear-beat {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: juniper-keyword-beat 2.4s var(--ease) infinite;
+}
+
+.juniper-keyword__ear-beat--two {
+  animation-delay: 0.18s;
+}
+
+@keyframes juniper-keyword-slap {
+  from {
+    scale: 1.06;
+    rotate: 1.2deg;
+    opacity: 0;
+    filter: blur(3px);
+  }
+}
+
+/* Two beats, then rest. */
+@keyframes juniper-keyword-beat {
+  0%, 36%, 100% { opacity: 0.45; transform: scale(0.92); }
+  9%, 27% { opacity: 1; transform: scale(1.08); }
+  18% { opacity: 0.6; transform: scale(0.96); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .juniper-keyword__ear,
+  .juniper-keyword__ear-beat {
+    animation: none;
+  }
+
+  .juniper-keyword__ear-beat {
+    opacity: 1;
+  }
+}
