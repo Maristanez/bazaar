@@ -5,7 +5,7 @@ import { extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const themeRoot = resolve(root, "shopify-theme");
+const themeRoot = resolve(root, "apps/storefront");
 const port = Number(process.env.BAZAAR_PREVIEW_PORT || 9293);
 const upstream = process.env.BAZAAR_SERVER_URL || "http://127.0.0.1:3000";
 

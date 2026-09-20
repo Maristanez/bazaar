@@ -53,6 +53,8 @@ create table if not exists policies (
   floor_pct numeric(5,2) not null check (floor_pct >= 0 and floor_pct <= 60),
   ask_owner boolean not null default true,
   paused boolean not null default false,
+  -- Owner settings beyond the floor (SPEC §4.4.1). Databases made before 20 Sep get it from migrations/20260920_policy_settings.sql.
+  settings jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now()
 );
 

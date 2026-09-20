@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { JSDOM } from "jsdom";
 
-const script = readFileSync("shopify-theme/assets/chat-demo.js", "utf8");
+const script = readFileSync("apps/storefront/assets/chat-demo.js", "utf8");
 
 function product() {
   return {

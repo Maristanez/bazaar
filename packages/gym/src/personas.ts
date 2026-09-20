@@ -13,7 +13,7 @@ type PersonaRule = {
   bundleRate: number;
 };
 
-// PART-B-BUILD §A. These rule-based shoppers are not LLM agents. Values are pinned and must not be tuned from results.
+// SPEC §9.1. These rule-based shoppers are not LLM agents. Values are pinned and must not be tuned from results.
 export const PERSONAS: readonly PersonaRule[] = [
   { persona: "bargain", share: 0.30, willingness: [0.70, 0.90], opening: [0.55, 0.70], patience: 4, bundleRate: 0.30 },
   { persona: "budgeted", share: 0.35, willingness: [0.78, 0.98], opening: [0.70, 0.85], patience: 3, bundleRate: 0.50 },
