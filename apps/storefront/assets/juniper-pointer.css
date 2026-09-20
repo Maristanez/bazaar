@@ -1,1 +1,80 @@
-/* V7 Juniper points at the page (docs/PLAN.md). */
+/* V7 Juniper points at the page. The ring and its sticker are pseudo-elements on the product card, absolutely
+   placed, so nothing on the page moves when they land. They sit outside .ai-chat, so the reduced-motion rule
+   at the bottom is this file's own. */
+
+.juniper-pointer__ring {
+  position: relative;
+  scroll-margin-block: 5rem;
+}
+
+/* The marker ring: a coral loop drawn a little off-square, like a circle on a trail map. */
+.juniper-pointer__ring::before {
+  content: '';
+  position: absolute;
+  inset: -0.85rem -0.8rem -0.75rem;
+  z-index: 3;
+  border: 3px solid var(--coral, #f3675a);
+  border-radius: 1.9rem 1.4rem 2.1rem 1.5rem / 1.5rem 2rem 1.4rem 2.1rem;
+  rotate: -1.1deg;
+  pointer-events: none;
+  animation: juniper-pointer-slap 0.55s var(--ease, cubic-bezier(0.16, 1, 0.3, 1)) both;
+  transition: opacity 200ms var(--ease, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+/* The die-cut label, stuck over the ring's top-left corner. */
+.juniper-pointer__ring::after {
+  content: "Juniper's pick";
+  position: absolute;
+  top: -1.55rem;
+  left: -0.35rem;
+  z-index: 4;
+  padding: 0.22rem 0.7rem 0.26rem;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: var(--coral-deep, #c9483c);
+  color: #fff;
+  font-family: var(--display, 'Fredoka', ui-rounded, system-ui, sans-serif);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  rotate: -4deg;
+  box-shadow: 0 8px 14px -8px rgb(47 22 4 / 55%), 0 2px 4px rgb(47 22 4 / 14%);
+  pointer-events: none;
+  animation: juniper-pointer-slap 0.55s var(--ease, cubic-bezier(0.16, 1, 0.3, 1)) 0.12s both;
+  transition: opacity 200ms var(--ease, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.juniper-pointer__ring--leaving::before,
+.juniper-pointer__ring--leaving::after {
+  opacity: 0;
+}
+
+/* The shared slap, ending on each piece's own resting tilt (the `rotate` it declares). */
+@keyframes juniper-pointer-slap {
+  from { scale: 1.06; rotate: 1.2deg; opacity: 0; filter: blur(3px); }
+  to { scale: 1; opacity: 1; filter: blur(0); }
+}
+
+@media (max-width: 750px) {
+  .juniper-pointer__ring::before {
+    inset: -0.5rem -0.4rem -0.45rem;
+    border-width: 2.5px;
+    border-radius: 1.3rem 1rem 1.4rem 1.05rem / 1.05rem 1.35rem 1rem 1.4rem;
+  }
+  .juniper-pointer__ring::after {
+    top: -1.2rem;
+    left: -0.1rem;
+    font-size: 0.74rem;
+    border-width: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .juniper-pointer__ring::before,
+  .juniper-pointer__ring::after {
+    animation: none;
+    transition: none;
+  }
+}
