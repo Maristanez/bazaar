@@ -43,7 +43,7 @@ function mount(options: { onProduct?: boolean; features?: string[]; reply?: stri
   return { ...mounted, calls, went, understand, steps };
 }
 
-describe("V13 — Juniper's hands", () => {
+describe("V13 — Jarvis's hands", () => {
   it("reads a chore out of plain speech", () => {
     const { understand } = mount({ onProduct: true });
     expect(understand("Add it to my cart")).toMatchObject({ kind: "add", product: { handle: "trail-runner-3" } });

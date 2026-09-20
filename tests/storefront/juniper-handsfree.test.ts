@@ -185,7 +185,7 @@ describe("juniper-handsfree — V1 hands-free conversation", () => {
     expect(chat.state().mood).toBe("listening");
     // chat-demo.js resets an idle-eligible mood back to idle whenever it re-syncs its voice controls
     // (loadVoiceConfig resolving, the mic/voice buttons, setLoading...). Hands-free must put it back while
-    // the mic is open, or Juniper's face goes blank mid-turn for a reason the shopper never caused.
+    // the mic is open, or Jarvis's face goes blank mid-turn for a reason the shopper never caused.
     chat.setMood("idle");
     expect(chat.state().mood).toBe("listening");
     speech.latest().hear("two pairs");
@@ -468,10 +468,10 @@ describe("juniper-handsfree — V1 hands-free conversation", () => {
   });
 
   describe("the theme's own mic button, taken over as the hands-free control", () => {
-    it("injects no separate 'Talk to Juniper' control — the mic itself is the only control", async () => {
+    it("injects no separate 'Talk to Jarvis' control — the mic itself is the only control", async () => {
       const { document } = await mount(fakeSpeech());
       expect(document.querySelector(".juniper-handsfree__toggle")).toBeNull();
-      const bigControl = Array.from(document.querySelectorAll("button")).find((node) => /Talk to Juniper/i.test(node.textContent || ""));
+      const bigControl = Array.from(document.querySelectorAll("button")).find((node) => /Talk to Jarvis/i.test(node.textContent || ""));
       expect(bigControl).toBeUndefined();
       // Only the listening bar (hidden while off) lives in hands-free's own root; no toggle button of its own.
       expect(document.querySelectorAll(".juniper-handsfree > button")).toHaveLength(0);
@@ -496,17 +496,17 @@ describe("juniper-handsfree — V1 hands-free conversation", () => {
       const button = mic()!;
       expect(button.classList.contains("is-recording")).toBe(false);
       expect(button.getAttribute("aria-pressed")).toBe("false");
-      expect(button.getAttribute("aria-label")).toBe("Talk to Juniper");
+      expect(button.getAttribute("aria-label")).toBe("Talk to Jarvis");
 
       button.click();
       expect(button.classList.contains("is-recording")).toBe(true);
       expect(button.getAttribute("aria-pressed")).toBe("true");
-      expect(button.getAttribute("aria-label")).toBe("Stop talking to Juniper");
+      expect(button.getAttribute("aria-label")).toBe("Stop talking to Jarvis");
 
       button.click();
       expect(button.classList.contains("is-recording")).toBe(false);
       expect(button.getAttribute("aria-pressed")).toBe("false");
-      expect(button.getAttribute("aria-label")).toBe("Talk to Juniper");
+      expect(button.getAttribute("aria-label")).toBe("Talk to Jarvis");
     });
 
     it("is never left disabled while a turn is in flight, though chat-demo's own sync would disable it", async () => {
@@ -526,7 +526,7 @@ describe("juniper-handsfree — V1 hands-free conversation", () => {
     });
   });
 
-  describe("while Juniper is speaking", () => {
+  describe("while Jarvis is speaking", () => {
     async function speaking(flags?: Record<string, unknown>) {
       const speech = fakeSpeech();
       const mounted = await mount(speech, { before: (win) => { if (flags) win.BazaarChatFlags = flags; } });

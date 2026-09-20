@@ -167,7 +167,7 @@ describe("V2 — the conversation survives navigation", () => {
     expect(second.requests.find((request) => request.path === "/api/chat")?.body.negotiationId).toBe("neg-1");
   });
 
-  it("hides the panel's cold-open line once a real transcript comes back, so Juniper does not re-invite a shopper mid-haggle", async () => {
+  it("hides the panel's cold-open line once a real transcript comes back, so Jarvis does not re-invite a shopper mid-haggle", async () => {
     const first = await haggleOnPageOne();
     leaveByProductLink(first);
     const second = mount({ url: PAGE_TWO, before: carryStorage(first.window), routes: { "/api/offers/offer-1": () => ({ card: offerCard() }) } });

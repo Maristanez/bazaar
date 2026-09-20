@@ -12,7 +12,7 @@
     var launcher = elements.launcher;
     if (!widget || !launcher || !document.createElement) return;
 
-    var STATE_WORDS = { listening: 'Listening', hearing: 'Listening', thinking: 'Thinking', speaking: 'Juniper is speaking' };
+    var STATE_WORDS = { listening: 'Listening', hearing: 'Listening', thinking: 'Thinking', speaking: 'Jarvis is speaking' };
     var CAPTION_HARD_CAP = 400; // a sanity bound only — the CSS (direction: rtl) shows the true tail at any length up to this
     var voiceOn = false;
     var voiceState = 'off';
@@ -32,7 +32,7 @@
     pill.className = 'juniper-motion__pill';
     pill.setAttribute('data-juniper-pill', '');
     pill.setAttribute('role', 'group');
-    pill.setAttribute('aria-label', 'Juniper, hands-free');
+    pill.setAttribute('aria-label', 'Jarvis, hands-free');
     pill.hidden = true;
     pill.innerHTML =
       '<button class="juniper-motion__pill-open" type="button" data-juniper-pill-open aria-controls="ai-chat-panel">' +
@@ -78,7 +78,7 @@
       var showPill = voiceOn && !(chat.isOpen && chat.isOpen());
       textBox.textContent = captionText && shopperIsSpeaking() ? captionText : word;
       pill.setAttribute('data-state', voiceState);
-      openButton.setAttribute('aria-label', word + '. Open the chat with Juniper');
+      openButton.setAttribute('aria-label', word + '. Open the chat with Jarvis');
       if (chat.flags) chat.flags.voiceStaysOnClose = voiceOn;
       pill.hidden = !showPill;
       launcher.hidden = showPill;

@@ -19,9 +19,9 @@
   var FLAG_KEY = 'bazaar:handsfree';
   var TOLD_KEY = 'bazaar:handsfree:told';
   var OFF_KEY = 'bazaar:handsfree:off';   // the shopper turned it off: no auto-start for the rest of the session
-  var STATE_WORDS = { off: '', listening: 'Listening', hearing: 'Hearing you', thinking: 'Juniper is thinking', speaking: 'Juniper is talking' };
-  var ON_LABEL = 'Stop talking to Juniper';
-  var OFF_LABEL = 'Talk to Juniper';
+  var STATE_WORDS = { off: '', listening: 'Listening', hearing: 'Hearing you', thinking: 'Jarvis is thinking', speaking: 'Jarvis is talking' };
+  var ON_LABEL = 'Stop talking to Jarvis';
+  var OFF_LABEL = 'Talk to Jarvis';
 
   // juniper-ears.js chooses between Chrome's recogniser and our server's transcription; without it, Chrome's alone.
   var Recognition = (chat.ears && chat.ears.Recognition) || window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -452,7 +452,7 @@
     stateWord = root.querySelector('.juniper-handsfree__state');
     caption = root.querySelector('.juniper-handsfree__caption');
     stopButton = root.querySelector('.juniper-handsfree__stop');
-    stopButton.setAttribute('aria-label', 'Stop Juniper talking');
+    stopButton.setAttribute('aria-label', 'Stop Jarvis talking');
     foot.insertBefore(root, form);
     stopButton.addEventListener('click', function () { guarded(bargeIn); });
 

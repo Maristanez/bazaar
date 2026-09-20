@@ -329,7 +329,7 @@ describe("juniper-presence — the halo, the wave and the mouth follow real audi
     expect(late.classList.contains("juniper-presence--live")).toBe(false);
   });
 
-  it("drives the same bars from Juniper's reply audio when she speaks, and zeroes them when she stops", async () => {
+  it("drives the same bars from Jarvis's reply audio when she speaks, and zeroes them when she stops", async () => {
     const rig = fakeAudio();
     const { click, speak, document, widget } = mount(rig);
     click();

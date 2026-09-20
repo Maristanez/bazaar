@@ -59,7 +59,7 @@ describe("V10 — earcons and the spoken voice status", () => {
     expect(line.classList.contains("visually-hidden")).toBe(true);
   });
 
-  it('announces "Listening", "Thinking", "Juniper is speaking" and "Voice off" in words', () => {
+  it('announces "Listening", "Thinking", "Jarvis is speaking" and "Voice off" in words', () => {
     const { voice, status } = mount();
     voice(true, "listening");
     expect(status().textContent).toBe("Listening");
@@ -68,7 +68,7 @@ describe("V10 — earcons and the spoken voice status", () => {
     voice(true, "thinking");
     expect(status().textContent).toBe("Thinking");
     voice(true, "speaking");
-    expect(status().textContent).toBe("Juniper is speaking");
+    expect(status().textContent).toBe("Jarvis is speaking");
     voice(false, "off");
     expect(status().textContent).toBe("Voice off");
   });
@@ -84,7 +84,7 @@ describe("V10 — earcons and the spoken voice status", () => {
     chat.setMood("speaking");
     voice(true, "speaking");
     await settle();
-    expect(said).toEqual(["Listening", "Juniper is speaking"]);
+    expect(said).toEqual(["Listening", "Jarvis is speaking"]);
   });
 
   it("announces the push-to-talk moods when hands-free is not there at all", () => {
@@ -94,7 +94,7 @@ describe("V10 — earcons and the spoken voice status", () => {
     chat.setMood("thinking");
     expect(status().textContent).toBe("Thinking");
     chat.setMood("speaking");
-    expect(status().textContent).toBe("Juniper is speaking");
+    expect(status().textContent).toBe("Jarvis is speaking");
   });
 
   it("plays the rising two notes when listening starts, quietly, and only after a gesture", () => {

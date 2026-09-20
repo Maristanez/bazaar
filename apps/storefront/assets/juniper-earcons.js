@@ -5,7 +5,7 @@
   if (!chat) return;
   try {
     var PEAK = 0.05; // never above 0.06
-    var WORDS = { listening: 'Listening', hearing: 'Listening', thinking: 'Thinking', speaking: 'Juniper is speaking', off: 'Voice off' };
+    var WORDS = { listening: 'Listening', hearing: 'Listening', thinking: 'Thinking', speaking: 'Jarvis is speaking', off: 'Voice off' };
     var elements = chat.elements || {};
     var handsfree = false;
     var voiceState = 'off';

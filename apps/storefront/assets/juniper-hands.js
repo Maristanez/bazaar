@@ -407,7 +407,7 @@
     if (!action) return;
     var line;
     if (action.kind === 'cart') {
-      line = step('Juniper is opening your cart');
+      line = step('Jarvis is opening your cart');
       travel(document.querySelector('header a[href$="/cart"], a[href="/cart"], a[aria-label="Cart"]'), function () { line.done('Opening your cart'); afterTurn(function () { go('/cart'); }); });
       return;
     }
@@ -417,7 +417,7 @@
       return;
     }
     if (action.kind === 'clear') {
-      line = step('Juniper is emptying your cart');
+      line = step('Jarvis is emptying your cart');
       json('/cart.js').then(function (cart) {
         var had = (cart.items || []).map(function (item) { return { id: item.variant_id || item.id, quantity: item.quantity }; });
         if (!had.length) { line.done('Your cart is already empty'); return null; }
@@ -436,7 +436,7 @@
     if (action.kind === 'remove') {
       if (action.orUndo && lastAdd) { run({ kind: 'undo' }); return; }
       var gone = action.product;
-      line = step('Juniper is taking the ' + gone.title + ' out of your cart');
+      line = step('Jarvis is taking the ' + gone.title + ' out of your cart');
       json('/cart.js').then(function (cart) {
         var lines = (cart.items || []).filter(function (item) { return lower(item.handle) === lower(gone.handle) || lower(item.product_title || item.title) === lower(gone.title); });
         if (!lines.length) { line.fail('There is no ' + gone.title + ' in your cart'); return null; }
@@ -470,14 +470,14 @@
       return;
     }
     if (action.kind === 'scroll') {
-      line = step('Juniper is scrolling');
+      line = step('Jarvis is scrolling');
       var top = action.where === 'top' ? 0 : action.where === 'bottom' ? document.documentElement.scrollHeight : window.scrollY + (action.where === 'up' ? -1 : 1) * Math.round(window.innerHeight * 0.8);
       try { window.scrollTo({ top: top, behavior: 'smooth' }); } catch (error) { window.scrollTo(0, top); }
       line.done(action.where === 'top' ? 'Top of the page' : action.where === 'bottom' ? 'Bottom of the page' : 'Scrolled ' + action.where);
       return;
     }
     if (action.kind === 'back') {
-      line = step('Juniper is taking you back');
+      line = step('Jarvis is taking you back');
       var from = '';
       try {
         var came = document.referrer ? new URL(document.referrer) : null;
@@ -489,13 +489,13 @@
       return;
     }
     if (action.kind === 'home') {
-      line = step('Juniper is taking you home');
+      line = step('Jarvis is taking you home');
       line.done('Heading to the front of the shop');
       afterTurn(function () { go('/'); });
       return;
     }
     if (action.kind === 'browse') {
-      line = step('Juniper is taking you back to the shelves');
+      line = step('Jarvis is taking you back to the shelves');
       var onShelves = /\/collections\//.test(window.location.pathname) || Boolean(action.point && document.querySelector('a[href*="/products/' + action.point + '"]'));
       if (onShelves && action.point && chat.pointer && chat.pointer.point) { chat.pointer.point(action.point); line.done('Here they are'); return; }
       line.done('Heading to the shelves');
@@ -505,28 +505,28 @@
     if (action.kind === 'show') {
       var current = state().currentProduct;
       if (current && lower(current.handle) === lower(action.product.handle)) { step('').done('You are looking at the ' + action.product.title); return; }
-      line = step('Juniper is pulling up the ' + action.product.title);
+      line = step('Jarvis is pulling up the ' + action.product.title);
       var card = document.querySelector('a[href*="/products/' + action.product.handle + '"]');
       travel(card, function () { line.done('Opening the ' + action.product.title); afterTurn(function () { go(action.product.url || '/products/' + action.product.handle); }); });
       return;
     }
     if (action.kind === 'fit') {
       if (!productForm().select && !productForm().quantity) { step('').fail('Open a product first and I will set that up'); return; }
-      line = step('Juniper is setting that up');
+      line = step('Jarvis is setting that up');
       fit(action, function (said, problem) { if (problem) line.fail(problem); else if (said.length) line.done('Set ' + said.join(', ')); else line.fail('Nothing to change here'); });
       return;
     }
     if (action.kind === 'undo') {
       if (!lastAdd && action.product) { run({ kind: 'remove', product: action.product }); return; }
       if (!lastAdd) { step('').fail('Nothing to take back. Tell me what to remove, or say clear my cart'); return; }
-      line = step('Juniper is taking that back out');
+      line = step('Jarvis is taking that back out');
       undoAdd(line).catch(function () { line.fail('The cart did not answer. It is still in there.'); });
       return;
     }
     if (action.kind === 'add') {
       if (!action.product) { step('').fail('Tell me which one and I will add it'); return; }
       var title = action.product.title;
-      line = step('Juniper is adding the ' + title + ' to your cart');
+      line = step('Jarvis is adding the ' + title + ' to your cart');
       var current2 = state().currentProduct;
       var onPage = current2 && lower(current2.handle) === lower(action.product.handle);
       var add = function () {
@@ -570,7 +570,7 @@
     var product = firstNamed(plain(replyText), current.products);
     if (!product || (current.currentProduct && lower(current.currentProduct.handle) === lower(product.handle))) return;
     var cancelled = false;
-    var line = step('Juniper is taking you to the ' + product.title);
+    var line = step('Jarvis is taking you to the ' + product.title);
     var stay = document.createElement('button');
     stay.type = 'button';
     stay.className = 'juniper-hands__undo';

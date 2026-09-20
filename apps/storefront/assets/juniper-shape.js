@@ -29,8 +29,8 @@
     var MAX_W = 560;             // wider than this and the lines of a chat stop reading as a chat
     var MAX_H = 860;             // taller than this and the header drifts out of reach of the foot
     var SHAPES = {               // the forms Juniper gives herself
-      deal: { w: 480, h: 820, note: 'Juniper made room for your offer' },
-      voice: { w: 376, h: 480, note: 'Juniper drew in to listen' }
+      deal: { w: 480, h: 820, note: 'Jarvis made room for your offer' },
+      voice: { w: 376, h: 480, note: 'Jarvis drew in to listen' }
     };
     var NOTE_MS = 2600;
     var MARGIN = 40;             // critical.css keeps 2.5rem of page around the panel
@@ -203,7 +203,7 @@
     // ---- minimise: the header's one way out ----
     var closeButton = panel.querySelector('[data-ai-chat-close]');
     if (closeButton) {
-      closeButton.setAttribute('aria-label', 'Minimise the chat. Juniper keeps your conversation.');
+      closeButton.setAttribute('aria-label', 'Minimise the chat. Jarvis keeps your conversation.');
       closeButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" /></svg>';
       if (closeButton.parentNode) closeButton.parentNode.insertBefore(sizeButton, closeButton);
     }
@@ -239,7 +239,7 @@
       selfShaped = Boolean(shape);
       applySize(shape ? { w: shape.w, h: shape.h } : null, false);
       if (shape) widget.setAttribute('data-juniper-shape', name); else widget.removeAttribute('data-juniper-shape');
-      if (chat.isOpen && chat.isOpen()) trace(shape ? shape.note : 'Juniper is back to her usual size');
+      if (chat.isOpen && chat.isOpen()) trace(shape ? shape.note : 'Jarvis is back to the usual size');
     }
 
     chat.on('card', function () { hasCard = true; shapeHerself('deal'); });
@@ -265,7 +265,7 @@
     dot.className = 'juniper-shape__dot';
     dot.setAttribute('data-juniper-unread', '');
     dot.hidden = true;
-    dot.innerHTML = '<span class="juniper-shape__sr">New message from Juniper</span>';
+    dot.innerHTML = '<span class="juniper-shape__sr">New message from Jarvis</span>';
     widget.appendChild(peek);
     widget.appendChild(dot);
     var peekTimer = null;
@@ -341,7 +341,7 @@
       following = null;
       peekText.textContent = line;
       peek.setAttribute('data-juniper-peek', mine ? 'you' : 'juniper');
-      peek.setAttribute('aria-label', (mine ? 'You said: ' : 'Juniper says: ') + line + '. Open the chat.');
+      peek.setAttribute('aria-label', (mine ? 'You said: ' : 'Jarvis says: ') + line + '. Open the chat.');
       peek.hidden = false;
       if (!mine) dot.hidden = false;
       if (peekTimer) window.clearTimeout(peekTimer);

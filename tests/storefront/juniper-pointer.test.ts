@@ -56,7 +56,7 @@ function mountPage(onPage: typeof products, reply: () => ChatReply, extra: Param
   return { ...mounted, cards, say };
 }
 
-describe("juniper-pointer — Juniper points at the page", () => {
+describe("juniper-pointer — Jarvis points at the page", () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); });
 

@@ -38,7 +38,7 @@ describe("juniper-motion — the voice pill", () => {
     expect(launcher.hidden).toBe(false);
   });
 
-  it("keeps Juniper talking through a close only while hands-free is on", () => {
+  it("keeps Jarvis talking through a close only while hands-free is on", () => {
     const { chat, voice } = mount();
     expect(chat.flags.voiceStaysOnClose).toBe(false);
     voice(true, "listening");
@@ -70,7 +70,7 @@ describe("juniper-motion — the voice pill", () => {
     voice(true, "thinking");
     expect(text()).toBe("Thinking");
     voice(true, "speaking");
-    expect(text()).toBe("Juniper is speaking");
+    expect(text()).toBe("Jarvis is speaking");
     voice(true, "listening");
     expect(text()).toBe("Listening");
   });
@@ -104,7 +104,7 @@ describe("juniper-motion — the voice pill", () => {
     expect(pill().querySelector("svg")).not.toBeNull();
   });
 
-  it("follows Juniper's mood", () => {
+  it("follows Jarvis's mood", () => {
     const { chat, voice, pill, document } = mount();
     voice(true, "listening");
     const idle = pill().querySelector("[data-juniper-pill-head]")!.innerHTML;
@@ -200,7 +200,7 @@ describe("juniper-motion — the stylesheet", () => {
     expect(bar).not.toMatch(/width:\s*calc\(.*juniper-bar/);
   });
 
-  it("colours the wave coral for the shopper's voice and switches to sky while Juniper speaks, never teal-on-teal", () => {
+  it("colours the wave coral for the shopper's voice and switches to sky while Jarvis speaks, never teal-on-teal", () => {
     expect(css).toMatch(/\.juniper-motion__wave i\s*{[^}]*background:\s*var\(--coral\)/);
     const speaking = css.slice(css.indexOf("[data-state='speaking'] .juniper-motion__wave"));
     expect(speaking.slice(0, 200)).toMatch(/background:\s*var\(--sky\)/);
