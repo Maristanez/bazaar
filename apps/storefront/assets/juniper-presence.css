@@ -1,1 +1,99 @@
-/* V4 mic halo, live wave, mouth follows the reply audio (docs/PLAN.md). */
+/* V4 mic halo, live wave, mouth follows the reply audio (docs/PLAN.md).
+   juniper-presence.js publishes two 0..1 numbers on .ai-chat: --juniper-level (the shopper's mic) and
+   --juniper-mouth (Juniper's reply audio). Everything here is drawn from those two numbers. */
+
+/* ---- The halo: a die-cut coral ring round Juniper's head that breathes with the shopper's voice. ---- */
+
+.juniper-presence--listening .ai-chat__sticker--head {
+  position: relative;
+}
+
+.juniper-presence--listening .ai-chat__sticker--head::before,
+.juniper-presence--listening .ai-chat__sticker--head::after {
+  content: '';
+  position: absolute;
+  z-index: -1; /* behind the face; the sticker's drop-shadow filter makes the stacking context */
+  inset: -0.1rem;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* The ring itself: solid coral on a white cut line, like the sticker it sits behind. */
+.juniper-presence--listening .ai-chat__sticker--head::before {
+  border: 3px solid var(--coral);
+  box-shadow: 0 0 0 2.5px #fff;
+  scale: calc(0.94 + var(--juniper-level, 0) * 0.2);
+  animation: juniper-presence-land 0.28s var(--ease) backwards;
+}
+
+/* Its echo: a trail-map dashed line that follows the ring a beat late and thins out as it travels. */
+.juniper-presence--listening .ai-chat__sticker--head::after {
+  border: 2px dashed var(--coral);
+  scale: calc(1.02 + var(--juniper-level, 0) * 0.42);
+  opacity: calc(0.2 + var(--juniper-level, 0) * 0.8);
+  transition: scale 0.42s var(--ease), opacity 0.42s var(--ease);
+}
+
+@keyframes juniper-presence-land {
+  from {
+    opacity: 0;
+    transform: scale(0.72) rotate(14deg);
+  }
+}
+
+/* ---- The wave: bars stand on the real spectrum instead of looping. ---- */
+
+.juniper-presence--live {
+  contain: layout;
+}
+
+[data-ai-chat-wave].juniper-presence--live i,
+[data-juniper-wave].juniper-presence--live i {
+  height: calc(14% + var(--juniper-bar, 0) * 84%);
+  background: var(--coral);
+  animation: none;
+}
+
+/* ---- The mouth: the speaking sticker's ellipse opens with the volume of the reply. ---- */
+
+.ai-chat__sticker--head ellipse[cx='32'][cy='44'],
+[data-juniper-pill] ellipse[cx='32'][cy='44'] {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scaleY(calc(0.35 + var(--juniper-mouth, 0) * 1.1));
+}
+
+/* ---- Reduced motion: the state still shows, nothing moves. ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .juniper-presence--listening .ai-chat__sticker--head::before {
+    scale: 1;
+    animation: none;
+  }
+
+  .juniper-presence--listening .ai-chat__sticker--head::after {
+    scale: 1.2;
+    opacity: 0.45;
+    transition: none;
+  }
+
+  [data-ai-chat-wave].juniper-presence--live i,
+  [data-juniper-wave].juniper-presence--live i {
+    height: 38%;
+  }
+
+  [data-ai-chat-wave].juniper-presence--live i:nth-child(3n + 1),
+  [data-juniper-wave].juniper-presence--live i:nth-child(3n + 1) {
+    height: 64%;
+  }
+
+  [data-ai-chat-wave].juniper-presence--live i:nth-child(4n + 2),
+  [data-juniper-wave].juniper-presence--live i:nth-child(4n + 2) {
+    height: 22%;
+  }
+
+  .ai-chat__sticker--head ellipse[cx='32'][cy='44'],
+  [data-juniper-pill] ellipse[cx='32'][cy='44'] {
+    transform: none;
+  }
+}
