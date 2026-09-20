@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Deal, Policy } from "@bazaar/contracts";
+import type { Deal, Policy, PolicySettings } from "@bazaar/contracts";
 
 /** The id inserted by infra/schema.sql for the single demo merchant. */
 export const SEEDED_MERCHANT_ID = "00000000-0000-4000-8000-000000000001";
@@ -37,7 +37,24 @@ type PolicyRow = {
   ask_owner: boolean;
   paused: boolean;
   updated_at: string;
+  settings?: unknown;
 };
+
+const POLICY_COLUMNS = "floor_pct, ask_owner, paused, updated_at";
+/** Clients whose database has no policies.settings column yet (migration 20260920 not applied). Settings then live in server memory only. */
+const clientsWithoutSettingsColumn = new WeakSet<object>();
+
+function isMissingSettingsColumn(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const { code, message } = error as { code?: unknown; message?: unknown };
+  return (code === "PGRST204" || code === "42703") && /settings/i.test(String(message ?? ""));
+}
+
+function noteMissingSettingsColumn(client: object): void {
+  if (clientsWithoutSettingsColumn.has(client)) return;
+  clientsWithoutSettingsColumn.add(client);
+  console.warn("[db] policies.settings column is missing; owner settings are kept in memory until infra/migrations/20260920_policy_settings.sql is applied.");
+}
 
 type DealRow = {
   id: string;
@@ -121,6 +138,7 @@ export function policyFromRow(row: PolicyRow): Policy {
     askOwner: row.ask_owner,
     paused: row.paused,
     updatedAt: row.updated_at,
+    ...(row.settings && typeof row.settings === "object" && !Array.isArray(row.settings) ? { settings: row.settings as PolicySettings } : {}),
   };
 }
 
@@ -161,16 +179,21 @@ export async function loadLatestPolicy(
   client: SupabaseClientLike,
   merchantId = SEEDED_MERCHANT_ID,
 ): Promise<Policy> {
-  const { data, error } = await client
+  const read = (columns: string) => client
     .from("policies")
-    .select("floor_pct, ask_owner, paused, updated_at")
+    .select(columns)
     .eq("merchant_id", merchantId)
     .order("updated_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(1)
-    .maybeSingle() as unknown as QueryResult<PolicyRow>;
-  throwIfError(error);
-  return policyFromRow(requireRow(data, `Policy for merchant ${merchantId}`));
+    .maybeSingle() as unknown as Promise<QueryResult<PolicyRow>>;
+  let result = await read(clientsWithoutSettingsColumn.has(client) ? POLICY_COLUMNS : `${POLICY_COLUMNS}, settings`);
+  if (isMissingSettingsColumn(result.error)) {
+    noteMissingSettingsColumn(client);
+    result = await read(POLICY_COLUMNS);
+  }
+  throwIfError(result.error);
+  return policyFromRow(requireRow(result.data, `Policy for merchant ${merchantId}`));
 }
 
 function bearerToken(value: string | null | undefined): string | null {
@@ -217,20 +240,28 @@ export async function appendPolicy(
   policy: PolicyInput,
   merchantId = SEEDED_MERCHANT_ID,
 ): Promise<Policy> {
-  const payload = {
+  const payload: Record<string, unknown> = {
     merchant_id: merchantId,
     floor_pct: policy.floorPct,
     ask_owner: policy.askOwner,
     paused: policy.paused,
     ...(policy.updatedAt === undefined ? {} : { updated_at: policy.updatedAt }),
   };
-  const { data, error } = await client
+  const write = (withSettings: boolean) => client
     .from("policies")
-    .insert(payload)
-    .select("floor_pct, ask_owner, paused, updated_at")
-    .single() as unknown as QueryResult<PolicyRow>;
-  throwIfError(error);
-  return policyFromRow(requireRow(data, "Inserted policy"));
+    .insert(withSettings ? { ...payload, settings: policy.settings } : payload)
+    .select(withSettings ? `${POLICY_COLUMNS}, settings` : POLICY_COLUMNS)
+    .single() as unknown as Promise<QueryResult<PolicyRow>>;
+  const wantsSettings = policy.settings !== undefined;
+  let result = await write(wantsSettings && !clientsWithoutSettingsColumn.has(client));
+  if (isMissingSettingsColumn(result.error)) {
+    noteMissingSettingsColumn(client);
+    result = await write(false);
+  }
+  throwIfError(result.error);
+  const saved = policyFromRow(requireRow(result.data, "Inserted policy"));
+  // Without the column the row cannot echo the settings, so the caller's copy stands.
+  return wantsSettings && saved.settings === undefined ? { ...saved, settings: policy.settings } : saved;
 }
 
 /**

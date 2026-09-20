@@ -252,3 +252,51 @@ describe("settled deals for the owner's KPIs", () => {
     expect(builder.order).toHaveBeenCalledWith("created_at", { ascending: false });
   });
 });
+
+describe("owner settings on the policy row", () => {
+  /** Like clientFor, but each awaited query takes the next result in turn. */
+  function clientForSequence(results: Result[]) {
+    const queue = [...results];
+    const next = async () => queue.shift()!;
+    const builder = { eq: vi.fn(() => builder), insert: vi.fn((_payload: unknown) => builder), limit: vi.fn(() => builder), maybeSingle: vi.fn(next), order: vi.fn(() => builder), select: vi.fn((_columns: string) => builder), single: vi.fn(next) };
+    return { from: vi.fn(() => builder), auth: { getUser: vi.fn() }, builder } as unknown as SupabaseClient & { builder: typeof builder };
+  }
+  const settings = { discountCapPct: 15, maxRounds: 3, lowballCutoffPct: 50, tone: "brisk" as const, firmPriceProductIds: ["tr3"] };
+  const row = { floor_pct: 30, ask_owner: false, paused: false, updated_at: "2026-09-19T13:00:00Z" };
+  const missingColumn = { code: "PGRST204", message: "Could not find the 'settings' column of 'policies' in the schema cache" };
+
+  it("writes the settings column and reads it back", async () => {
+    const client = clientForSequence([{ data: { ...row, settings }, error: null }, { data: { ...row, settings }, error: null }]);
+    await expect(appendPolicy(client, { floorPct: 30, askOwner: false, paused: false, settings })).resolves.toMatchObject({ floorPct: 30, settings });
+    expect(client.builder.insert).toHaveBeenCalledWith({ merchant_id: SEEDED_MERCHANT_ID, floor_pct: 30, ask_owner: false, paused: false, settings });
+    await expect(loadLatestPolicy(client, SEEDED_MERCHANT_ID)).resolves.toMatchObject({ floorPct: 30, settings });
+    expect(client.builder.select).toHaveBeenLastCalledWith("floor_pct, ask_owner, paused, updated_at, settings");
+  });
+
+  it("retries without the column when the database does not have it yet, keeps the settings on the returned policy, and logs once", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const client = clientForSequence([{ data: null, error: missingColumn }, { data: row, error: null }, { data: row, error: null }]);
+      await expect(appendPolicy(client, { floorPct: 30, askOwner: false, paused: false, settings })).resolves.toMatchObject({ floorPct: 30, settings });
+      expect(client.builder.insert).toHaveBeenLastCalledWith({ merchant_id: SEEDED_MERCHANT_ID, floor_pct: 30, ask_owner: false, paused: false });
+      // The client is now known to lack the column: no failed attempt the second time.
+      await appendPolicy(client, { floorPct: 30, askOwner: false, paused: false, settings });
+      expect(client.builder.insert).toHaveBeenCalledTimes(3);
+      expect(warn).toHaveBeenCalledTimes(1);
+    } finally { warn.mockRestore(); }
+  });
+
+  it("loads the policy without settings when the select fails on the missing column", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const client = clientForSequence([{ data: null, error: { code: "42703", message: "column policies.settings does not exist" } }, { data: row, error: null }]);
+      await expect(loadLatestPolicy(client, SEEDED_MERCHANT_ID)).resolves.toEqual({ floorPct: 30, askOwner: false, paused: false, updatedAt: "2026-09-19T13:00:00Z" });
+      expect(client.builder.select).toHaveBeenLastCalledWith("floor_pct, ask_owner, paused, updated_at");
+    } finally { warn.mockRestore(); }
+  });
+
+  it("still throws any other database error", async () => {
+    const client = clientForSequence([{ data: null, error: { code: "42501", message: "permission denied" } }]);
+    await expect(appendPolicy(client, { floorPct: 30, askOwner: false, paused: false, settings })).rejects.toMatchObject({ code: "42501" });
+  });
+});
