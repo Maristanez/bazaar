@@ -98,6 +98,18 @@
 
   function showCaption(text) {
     if (caption) caption.textContent = text;
+    showInInput();
+  }
+
+  // No separate bar in the chat foot: the message box itself says what the microphone is doing, and the small mic
+  // glows coral. The shopper's words appear there as they are heard.
+  var input = chat.elements.input;
+  var restPlaceholder = input ? input.getAttribute('placeholder') || '' : '';
+  function showInInput() {
+    if (!input) return;
+    var words = caption ? caption.textContent : '';
+    var text = !on || state === 'off' ? restPlaceholder : state === 'hearing' && words ? words : (STATE_WORDS[state] || '') + '…';
+    if (input.getAttribute('placeholder') !== text) input.setAttribute('placeholder', text);
   }
 
   // chat-demo.js's syncVoiceUi() re-toggles is-recording, hidden and disabled on the mic on every sync (it runs on
@@ -126,6 +138,7 @@
       stateWord.textContent = STATE_WORDS[state] || '';
       stopButton.hidden = state !== 'speaking';
     }
+    showInInput();
     reassertMic();
     if (isListening()) keepListeningMood();
     else if (state === 'off' && chat.state().mood === 'listening') chat.setMood('idle');

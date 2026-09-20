@@ -464,3 +464,16 @@
     height: 18%;
   }
 }
+
+/* Compact pill (owner's call): Juniper's head, the live bars and the stop control. The state and the caption stay
+   in the accessibility tree for screen readers but take no room on screen. */
+.juniper-motion__pill .juniper-motion__text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

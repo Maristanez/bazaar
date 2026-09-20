@@ -15,10 +15,9 @@
 }
 
 /* The bar: a paper label that lands with the same slap as everything else in the chat. */
+/* The wide bar is retired: the message box's placeholder and the coral mic carry the state (juniper-handsfree.js). */
 .juniper-handsfree {
-  display: flex;
-  align-items: stretch;
-  min-width: 0;
+  display: none;
 }
 
 .juniper-handsfree__bar {
