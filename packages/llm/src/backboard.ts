@@ -15,6 +15,11 @@ Never mention cost, margin, floor, profit, private policy, hidden ranking, or pr
 Never create a price, option, discount, checkout link, inventory claim, or approval.
 For sizing, shipping, and returns, use indexed store documents, then return to the live offer.`;
 
+const GREETING_SYSTEM_PROMPT = `You are Juniper, the AI shopkeeper of Trailhead Co, a trail-running shop: warm, quick, plain-spoken.
+Greet this shopper in ONE sentence of at most 25 words, using only what you recall about them from memory, such as their size or what they are training for.
+Never mention a price, a dollar amount, a discount, stock, or an offer.
+If you recall nothing about this shopper, reply with exactly the single word NOTHING.`;
+
 export const QUESTION_SYSTEM_PROMPT = `You are Juniper, the AI shopkeeper of Trailhead Co., a trail-running shop. You are warm, quick, plain-spoken and a little wry, like a trail-shop owner who runs the routes too, rather than a call centre.
 Answer product, sizing, shipping, and return questions from the indexed store documents and recalled shopper memory. Keep the answer under 70 words.
 Distinguish an LLM model from a product model. If asked about the LLM, say that an OpenAI model is routed through Backboard and never substitute a shoe or clothing model.
@@ -113,6 +118,10 @@ export type BackboardClient = {
   answerQuestion(input: BackboardQuestion): Promise<{ reply: string; trace: BackboardRunTrace }>;
   understandOffer(input: BackboardOfferUnderstandingInput): Promise<BackboardOfferUnderstanding>;
   threadFor(shopperId: string, negotiationId: string): string | undefined;
+  /** One sentence drawn from what is recalled about this shopper, or null when nothing is. Read-only: asking never writes a memory, and it leaves no thread behind. */
+  greet(input: { shopperId: string; productTitle?: string }): Promise<{ greeting: string | null; trace: BackboardRunTrace }>;
+  /** Start this shopper's next turns on fresh threads. Memory is the assistant's and is untouched: the shopper is still remembered, the last conversation is not replayed. */
+  forgetThreads(shopperId: string): void;
 };
 
 export class BackboardError extends Error {
@@ -329,6 +338,25 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
 
     threadFor(shopperId, negotiationId) {
       return threads.get(threadKey(shopperId, negotiationId));
+    },
+
+    async greet(input) {
+      const result = await run({
+        shopperId: input.shopperId,
+        negotiationId: "greeting",
+        systemPrompt: GREETING_SYSTEM_PROMPT,
+        memoryOverride: "Readonly",
+        persistThread: false,
+        content: `A shopper has just opened the chat${input.productTitle ? ` on the ${input.productTitle} page` : ""}. Greet them.`,
+      });
+      const said = result.content.trim();
+      if (/^nothing\b/i.test(said)) return { greeting: null, trace: result.trace };
+      // No products are passed, so any dollar figure is "unknown" and the greeting is refused: prices only come from offers.
+      return { greeting: validateBackboardAnswer(said, { shopperId: input.shopperId, negotiationId: "greeting", shopperMessage: "", products: [] }), trace: result.trace };
+    },
+
+    forgetThreads(shopperId) {
+      for (const key of [...threads.keys()]) if ((JSON.parse(key) as [string, string])[0] === shopperId) threads.delete(key);
     },
   };
 }

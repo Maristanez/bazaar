@@ -39,7 +39,8 @@ function card(status: string, negotiationId = "neg-1", total = 15000) {
   };
 }
 
-function mount(fetchImpl: typeof fetch) {
+/** By default a returning shopper: the identity comes from storage, as it does for everyone but the demo shopper. */
+function mount(fetchImpl: typeof fetch, url = "https://shop.example.test/products/trail-runner-3", beforeScript: (window: JSDOM["window"]) => void = window => window.localStorage.setItem("bazaar:shopper-id", "test")) {
   const item = product();
   const dom = new JSDOM(`<!doctype html><body>
     <div data-ai-chat data-ai-chat-endpoint="https://chat.example.test">
@@ -54,8 +55,9 @@ function mount(fetchImpl: typeof fetch) {
     <input name="quantity" value="1">
     <script type="application/json" data-ai-chat-products>${JSON.stringify([item])}</script>
     <script type="application/json" data-ai-chat-current-product>${JSON.stringify(item)}</script>
-  </body>`, { url: "https://shop.example.test/products/trail-runner-3?shopper=test", runScripts: "outside-only" });
+  </body>`, { url, runScripts: "outside-only" });
   Object.defineProperty(dom.window, "fetch", { value: fetchImpl, configurable: true });
+  beforeScript(dom.window);
   dom.window.eval(script);
   return dom;
 }
@@ -68,6 +70,49 @@ async function submit(dom: JSDOM, text: string) {
 }
 
 describe("Shopify theme chat integration", () => {
+  it("opens a visit under an explicit ?shopper= identity by asking the server for a clean conversation", async () => {
+    const calls: { url: string; body?: Record<string, unknown> }[] = [];
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => { calls.push({ url, body: init?.body ? JSON.parse(String(init.body)) : undefined }); return new Response(JSON.stringify({ ok: true })); }) as unknown as typeof fetch;
+    mount(fetchImpl, "https://shop.example.test/products/trail-runner-3?shopper=demo");
+    expect(calls[0]).toEqual({ url: "https://chat.example.test/api/session/reset", body: { shopperId: "demo" } });
+    calls.length = 0;
+    mount(fetchImpl);
+    expect(calls.filter(call => call.url.endsWith("/api/session/reset"))).toEqual([]);
+  });
+
+  it("greets a remembered shopper with what the server recalled, and claims no memory when it recalled nothing", async () => {
+    const welcomeAfter = async (greeting: string | null) => {
+      const fetchImpl = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith("/api/greeting") ? { greeting, recalled: greeting !== null } : { ok: true }))) as unknown as typeof fetch;
+      const dom = mount(fetchImpl, "https://shop.example.test/products/trail-runner-3?shopper=demo");
+      for (let i = 0; i < 20; i += 1) await Promise.resolve();
+      return dom.window.document.querySelector("[data-ai-chat-welcome]")!.textContent || "";
+    };
+    expect(await welcomeAfter("Welcome back — still a size 10 for that muddy 50k?")).toBe("Welcome back — still a size 10 for that muddy 50k?");
+    // A greeting that lands after the shopper has already spoken must not rewrite the top of the conversation.
+    let release: (value: Response) => void = () => {};
+    const slow = vi.fn(async (url: string) => url.endsWith("/api/greeting") ? new Promise<Response>(resolve => { release = resolve; }) : new Response(JSON.stringify({ reply: "ok" }))) as unknown as typeof fetch;
+    const late = mount(slow, "https://shop.example.test/products/trail-runner-3?shopper=demo");
+    for (let i = 0; i < 20; i += 1) await Promise.resolve();
+    await submit(late, "hello");
+    release(new Response(JSON.stringify({ greeting: "Welcome back — still a size 10?", recalled: true })));
+    for (let i = 0; i < 20; i += 1) await Promise.resolve();
+    expect(late.window.document.querySelector("[data-ai-chat-welcome]")?.textContent || "").not.toContain("size 10");
+
+    const plain = await welcomeAfter(null);
+    expect(plain).toContain("Trail Runner 3");
+    expect(plain).not.toMatch(/welcome back|size 10/i);
+  });
+
+  it("never falls back to an identity every storage-blocked browser would share", async () => {
+    const ids: unknown[] = [];
+    const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => { ids.push(JSON.parse(String(init?.body)).shopperId); return new Response(JSON.stringify({ reply: "ok" })); }) as unknown as typeof fetch;
+    const blockStorage = (window: JSDOM["window"]) => Object.defineProperty(window, "localStorage", { get() { throw new Error("blocked"); }, configurable: true });
+    for (let visit = 0; visit < 2; visit += 1) await submit(mount(fetchImpl, "https://shop.example.test/products/trail-runner-3", blockStorage), "hello");
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).not.toBe("shopper-session");
+    expect(ids[0]).not.toBe(ids[1]);
+  });
+
   it("sends the selected variant and carries the server negotiation across follow-ups", async () => {
     const calls: { url: string; body?: Record<string, unknown> }[] = [];
     const item = product();
