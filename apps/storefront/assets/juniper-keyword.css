@@ -1,8 +1,34 @@
 /* V8 the "Jarvis" keyword (docs/PLAN.md). */
 
-/* The ear: a small die-cut sticker on the launcher, in the panel's header and on the hands-free pill, there whenever
-   the word is listened for. Its title carries the disclosure. */
-.juniper-keyword__ear {
+/* The wrap: mounting point for one ear + its popover. On the panel's header and the hands-free pill it sits in the
+   normal flow; on the launcher it is pinned to the corner instead, because the launcher is itself a button and a
+   focusable ear cannot live inside another button. */
+.juniper-keyword__ear-wrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.ai-chat__header-actions > .juniper-keyword__ear-wrap {
+  margin: 0 0.3rem 0 0;
+}
+
+.juniper-keyword__ear-wrap--corner {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.15rem;
+  z-index: 1;
+}
+
+/* The panel owns the disclosure once it is open; the launcher (and this badge) are hidden underneath it. */
+.ai-chat__panel:not([hidden]) ~ .juniper-keyword__ear-wrap--corner {
+  display: none;
+}
+
+/* The ear: a small die-cut sticker, and a real button — there is no other control any more, so this is the only
+   tap- or keyboard-reachable way to the disclosure. `.ai-chat button` resets border/background on every button in
+   the widget; `.ai-chat .juniper-keyword__ear` outweighs it by specificity (the same trick V3's pill buttons use). */
+.ai-chat .juniper-keyword__ear {
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -10,17 +36,17 @@
   width: 1.7rem;
   height: 1.7rem;
   margin-left: 0.35rem;
+  padding: 0;
   border: 2.5px solid #fff;
   border-radius: 50%;
   background: var(--cream);
   box-shadow: 0 2px 0 rgb(47 22 4 / 22%);
   rotate: -6deg;
-  cursor: help;
   animation: juniper-keyword-slap 0.55s var(--ease) both;
 }
 
-.ai-chat__header-actions > .juniper-keyword__ear {
-  margin: 0 0.3rem 0 0;
+.juniper-keyword__ear-wrap--corner .juniper-keyword__ear {
+  margin-left: 0;
 }
 
 .juniper-keyword__ear svg {
@@ -62,6 +88,69 @@
   0%, 36%, 100% { opacity: 0.45; transform: scale(0.92); }
   9%, 27% { opacity: 1; transform: scale(1.08); }
   18% { opacity: 0.6; transform: scale(0.96); }
+}
+
+/* The disclosure: a plain line in the paper language, reachable by tapping or focusing the ear. Never a toggle. */
+.juniper-keyword__popover {
+  position: absolute;
+  right: 0;
+  z-index: 2;
+  width: max-content;
+  max-width: 14.5rem;
+  margin: 0;
+  padding: 0.6rem 1.55rem 0.6rem 0.75rem;
+  border: 1.5px solid var(--paper-edge);
+  border-radius: 0.75rem;
+  background: var(--paper);
+  color: var(--bark);
+  box-shadow: 0 10px 22px -8px rgb(47 22 4 / 40%);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.juniper-keyword__popover[hidden] {
+  display: none;
+}
+
+.juniper-keyword__popover p {
+  margin: 0;
+}
+
+/* Header and pill ears sit near the top of their box: the note opens downward. The launcher and pill badges sit at
+   the bottom-right of the screen: it opens upward so it never runs off-screen. */
+.juniper-keyword__ear-wrap--up .juniper-keyword__popover {
+  bottom: calc(100% + 0.5rem);
+}
+
+.juniper-keyword__ear-wrap:not(.juniper-keyword__ear-wrap--up) .juniper-keyword__popover {
+  top: calc(100% + 0.5rem);
+}
+
+.juniper-keyword__popover-close {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  border-radius: 50%;
+  color: var(--bark-soft);
+}
+
+.juniper-keyword__popover-close:hover {
+  background: rgb(47 22 4 / 10%);
+}
+
+.juniper-keyword__popover-close svg {
+  width: 0.8rem;
+  height: 0.8rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
 }
 
 @media (prefers-reduced-motion: reduce) {

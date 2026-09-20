@@ -10,6 +10,7 @@
   var KEYWORDS = ['jarvis', 'hey jarvis', 'hi jarvis', 'jarvus', 'jervis', 'javis', 'jarves'];
 
   var EAR_LABEL = "Listening for 'Hey Jarvis' — Chrome's speech service hears the audio";
+  var POPOVER_TEXT = "Listening for 'Hey Jarvis'. Chrome's speech service hears the audio.";
   var REARM_MS = 500;        // after hands-free, push-to-talk or a turn lets go of the microphone
   var RESTART_MS = 250;      // Chrome ends recognition by itself after silence
   var QUICK_END_MS = 300;    // an end this soon after a start is a failure, not silence
@@ -54,46 +55,126 @@
   }
 
   // The ear: on the launcher, in the panel's header (the launcher hides while the panel is open), and on the
-  // hands-free pill when V3 has drawn one. Never a recogniser without one.
+  // hands-free pill when V3 has drawn one. Never a recogniser without one. Each ear is a real button — there is
+  // no toggle any more, so the only way to reach the disclosure without a mouse hover is to make the ear itself
+  // focusable and tappable. The launcher is already a button, and a button cannot contain another button (invalid
+  // markup, and screen readers do not reliably expose a focusable thing nested inside one), so the launcher's ear
+  // is not a DOM child of the launcher: it is mounted as a sibling on `elements.widget`, a die-cut badge pinned to
+  // the launcher's corner (the two share exactly the same box while the panel is closed), and only described-by
+  // the launcher through `aria-describedby`. It is hidden by CSS, not removed, once the panel opens — the header's
+  // own ear takes over there.
   var EAR_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
     '<path class="juniper-keyword__ear-lobe" d="M8 17.5c0 2 1.4 3 3 3 3.4 0 2.6-4 5-6.2A5.6 5.6 0 1 0 6.4 10"/>' +
     '<path class="juniper-keyword__ear-beat juniper-keyword__ear-beat--one" d="M18.6 6.2q2.6 3.6 0 7.4"/>' +
     '<path class="juniper-keyword__ear-beat juniper-keyword__ear-beat--two" d="M21.2 4q4 5.8 0 11.8"/></svg>';
+  var CLOSE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
+  var openPopover = null;    // the one disclosure showing, if any — a popover is a fact, never a control
+
+  function closePopover() {
+    if (!openPopover) return;
+    var entry = openPopover;
+    openPopover = null;
+    entry.popover.hidden = true;
+    entry.ear.setAttribute('aria-expanded', 'false');
+  }
+
+  function openPopoverFor(entry) {
+    if (openPopover === entry) return;
+    closePopover();
+    entry.popover.hidden = false;
+    entry.ear.setAttribute('aria-expanded', 'true');
+    openPopover = entry;
+  }
 
   function showEars() {
     hideEars();
     var elements = chat.elements || {};
+    var widget = elements.widget;
     var header = elements.panel && elements.panel.querySelector('.ai-chat__header-actions');
-    var hosts = [{ node: elements.launcher }, { node: header, first: true }];
-    Array.prototype.forEach.call(document.querySelectorAll('[data-juniper-pill]'), function (pill) { hosts.push({ node: pill }); });
+    var hosts = [
+      { describes: elements.launcher, mount: widget, corner: true, up: true },
+      { describes: header, mount: header, first: true }
+    ];
+    Array.prototype.forEach.call(document.querySelectorAll('[data-juniper-pill]'), function (pill) {
+      hosts.push({ describes: pill, mount: pill, up: true });
+    });
     hosts.forEach(function (host, index) {
-      var node = host.node;
-      if (!node) return;
-      var ear = document.createElement('span');
+      var mount = host.mount;
+      var describes = host.describes;
+      if (!mount || !describes || !widget) return;
+      var earId = 'juniper-keyword-ear-' + index;
+      var popId = earId + '-pop';
+
+      var wrap = document.createElement('span');
+      wrap.className = 'juniper-keyword__ear-wrap' +
+        (host.corner ? ' juniper-keyword__ear-wrap--corner' : '') +
+        (host.up ? ' juniper-keyword__ear-wrap--up' : '');
+
+      var ear = document.createElement('button');
+      ear.type = 'button';
       ear.className = 'juniper-keyword__ear';
-      ear.id = 'juniper-keyword-ear-' + index;
-      ear.setAttribute('role', 'img');
+      ear.id = earId;
       ear.setAttribute('aria-label', EAR_LABEL);
+      ear.setAttribute('aria-haspopup', 'true');
+      ear.setAttribute('aria-expanded', 'false');
+      ear.setAttribute('aria-controls', popId);
       ear.title = EAR_LABEL;
       ear.innerHTML = EAR_SVG;
-      if (host.first && node.firstChild) node.insertBefore(ear, node.firstChild); else node.appendChild(ear);
-      if (!host.first && !node.getAttribute('aria-describedby')) {
-        node.setAttribute('aria-describedby', ear.id);
-        ear.setAttribute('data-juniper-keyword-describes', '');
-      }
-      ears.push(ear);
+
+      var popover = document.createElement('div');
+      popover.className = 'juniper-keyword__popover';
+      popover.id = popId;
+      popover.setAttribute('role', 'status');
+      popover.hidden = true;
+      popover.innerHTML = '<p>' + POPOVER_TEXT + '</p>' +
+        '<button type="button" class="juniper-keyword__popover-close" aria-label="Close">' + CLOSE_SVG + '</button>';
+
+      wrap.appendChild(ear);
+      wrap.appendChild(popover);
+      if (host.first && mount.firstChild) mount.insertBefore(wrap, mount.firstChild); else mount.appendChild(wrap);
+
+      var describesAlready = Boolean(describes.getAttribute('aria-describedby'));
+      if (!describesAlready) describes.setAttribute('aria-describedby', earId);
+
+      var entry = { wrap: wrap, ear: ear, popover: popover, host: describes, wroteDescribedby: !describesAlready };
+      ear.addEventListener('click', function (event) {
+        event.stopPropagation();
+        if (openPopover === entry) closePopover(); else openPopoverFor(entry);
+      });
+      popover.querySelector('.juniper-keyword__popover-close').addEventListener('click', function (event) {
+        event.stopPropagation();
+        closePopover();
+        try { ear.focus(); } catch (error) { /* nothing to return focus to */ }
+      });
+
+      ears.push(entry);
     });
   }
 
   function hideEars() {
-    ears.forEach(function (ear) {
-      var host = ear.parentNode;
-      if (!host) return;
-      if (ear.hasAttribute('data-juniper-keyword-describes') && host.getAttribute('aria-describedby') === ear.id) host.removeAttribute('aria-describedby');
-      host.removeChild(ear);
+    ears.forEach(function (entry) {
+      if (openPopover === entry) closePopover();
+      var host = entry.host;
+      if (entry.wroteDescribedby && host && host.getAttribute('aria-describedby') === entry.ear.id) host.removeAttribute('aria-describedby');
+      var wrap = entry.wrap;
+      if (wrap && wrap.contains(document.activeElement) && host && host.focus) { try { host.focus(); } catch (error) { /* not focusable */ } }
+      if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
     });
     ears = [];
   }
+
+  // Dismiss on Escape or a click elsewhere. Hands-free is always off while any ear exists (see `wanted()`), so
+  // this never fights V1's own Escape handler for the microphone.
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && openPopover) { var entry = openPopover; closePopover(); try { entry.ear.focus(); } catch (error) { /* fine */ } }
+  });
+  document.addEventListener('click', function (event) {
+    if (!openPopover) return;
+    var target = event.target;
+    if (openPopover.wrap && openPopover.wrap.contains(target)) return;
+    closePopover();
+  });
 
   // An open panel alone does not stop the listening: only hands-free, push-to-talk, a turn in flight or a hidden tab.
   function wanted() {

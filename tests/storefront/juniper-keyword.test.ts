@@ -117,13 +117,19 @@ describe("V8 the Jarvis keyword", () => {
   });
 
   it("shows the ear exactly while a recogniser runs, carries the disclosure, and says so on the document", () => {
-    const { fake, ears, voice, document } = mount();
+    const { fake, ears, voice, document, chat } = mount();
     const armed: boolean[] = [];
     document.addEventListener("bazaar-keyword:state", (event: any) => armed.push(event.detail.armed));
     expect(ears()).toBe(0);
     vi.advanceTimersByTime(50);
     expect(fake.running()).toHaveLength(1);
-    const ear = document.querySelector("[data-ai-chat-toggle] .juniper-keyword__ear");
+    // The launcher is itself a button, so its ear cannot be a DOM child of it (nested buttons are invalid and
+    // unreliable for assistive tech) — it is a sibling badge, only linked by aria-describedby.
+    const describedById = chat.elements.launcher.getAttribute("aria-describedby");
+    expect(describedById).toBeTruthy();
+    const ear = document.getElementById(describedById!);
+    expect(chat.elements.launcher.contains(ear)).toBe(false);
+    expect(ear?.tagName).toBe("BUTTON");
     expect(ear?.getAttribute("aria-label")).toBe(EAR_LABEL);
     expect(ear?.getAttribute("title")).toBe(EAR_LABEL);
 
@@ -134,6 +140,50 @@ describe("V8 the Jarvis keyword", () => {
     expect(fake.running()).toHaveLength(1);
     expect(ears()).toBeGreaterThan(0);
     expect(armed).toEqual([true, false, true]);
+  });
+
+  it("the ear discloses on a tap alone — a fact, not a toggle: the recogniser and the chat are untouched", () => {
+    const { fake, chat, document } = mount();
+    vi.advanceTimersByTime(50);
+    const earId = chat.elements.launcher.getAttribute("aria-describedby")!;
+    const ear = document.getElementById(earId)! as HTMLButtonElement;
+    const popover = document.getElementById(ear.getAttribute("aria-controls")!)!;
+    expect(popover.hidden).toBe(true);
+    expect(ear.getAttribute("aria-expanded")).toBe("false");
+
+    ear.dispatchEvent(new document.defaultView!.MouseEvent("click", { bubbles: true, cancelable: true }));
+
+    expect(popover.hidden).toBe(false);
+    expect(ear.getAttribute("aria-expanded")).toBe("true");
+    expect(popover.textContent).toMatch(/Listening for 'Hey Jarvis'\. Chrome's speech service hears the audio\./);
+    // Nothing about the shopper's world changed: the badge only tells, it does not do.
+    expect(fake.running()).toHaveLength(1);
+    expect(chat.isOpen()).toBe(false);
+  });
+
+  it("the disclosure closes on its own close button, on Escape, and on a click elsewhere — and returns focus to the ear", () => {
+    const { chat, document } = mount();
+    vi.advanceTimersByTime(50);
+    const earId = chat.elements.launcher.getAttribute("aria-describedby")!;
+    const ear = document.getElementById(earId)! as HTMLButtonElement;
+    const popover = document.getElementById(ear.getAttribute("aria-controls")!)!;
+    const win = document.defaultView!;
+
+    ear.click();
+    expect(popover.hidden).toBe(false);
+    popover.querySelector<HTMLButtonElement>(".juniper-keyword__popover-close")!.click();
+    expect(popover.hidden).toBe(true);
+    expect(document.activeElement).toBe(ear);
+
+    ear.click();
+    expect(popover.hidden).toBe(false);
+    document.dispatchEvent(new win.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(popover.hidden).toBe(true);
+
+    ear.click();
+    expect(popover.hidden).toBe(false);
+    document.body.dispatchEvent(new win.MouseEvent("click", { bubbles: true }));
+    expect(popover.hidden).toBe(true);
   });
 
   it("keeps listening in an open panel, with an ear inside the panel where the launcher cannot be seen", () => {
