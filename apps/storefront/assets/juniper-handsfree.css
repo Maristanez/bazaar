@@ -1,1 +1,172 @@
-/* V1 hands-free conversation (docs/PLAN.md). */
+/* V1 hands-free conversation (docs/PLAN.md). The "Talk to Juniper" control and its listening bar, in the chat foot. */
+
+.juniper-handsfree {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+/* Off: one clear, labelled button across the foot. On: it shrinks to the way out, beside the bar. */
+.juniper-handsfree__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  flex: 1 1 auto;
+  min-height: 2.75rem;
+  padding: 0 1rem 0 0.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--hairline, rgb(47 22 4 / 16%));
+  color: var(--teal);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s var(--ease), translate 0.2s var(--ease);
+}
+
+.juniper-handsfree__toggle:hover {
+  background: var(--sky);
+  translate: 0 -1px;
+}
+
+.juniper-handsfree__toggle:focus-visible,
+.juniper-handsfree__stop:focus-visible {
+  outline: 2.5px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.juniper-handsfree__toggle svg {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  padding: 0.4rem;
+  border-radius: 50%;
+  background: var(--coral);
+  fill: none;
+  stroke: var(--bark);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.juniper-handsfree.is-on .juniper-handsfree__toggle {
+  flex: none;
+  padding: 0 0.9rem;
+  color: var(--bark);
+  font-size: 0.85rem;
+}
+
+.juniper-handsfree.is-on .juniper-handsfree__toggle svg {
+  display: none;
+}
+
+/* The bar: a paper label that lands with the same slap as everything else in the chat. */
+.juniper-handsfree__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0 0.4rem 0 0.85rem;
+  border-radius: 999px;
+  background: var(--paper, #fff);
+  box-shadow: inset 0 0 0 1.5px var(--coral);
+  color: var(--bark);
+  animation: juniper-handsfree-slap 0.55s var(--ease) both;
+}
+
+.juniper-handsfree__bar[hidden],
+.juniper-handsfree__stop[hidden] {
+  display: none;
+}
+
+.juniper-handsfree__dot {
+  flex: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--coral);
+}
+
+.juniper-handsfree[data-state="listening"] .juniper-handsfree__dot {
+  animation: juniper-handsfree-breathe 1.6s ease-in-out infinite;
+}
+
+/* V4 presence publishes the mic loudness on the widget; without it the dot simply sits still. */
+.juniper-handsfree[data-state="hearing"] .juniper-handsfree__dot {
+  scale: calc(1 + var(--juniper-level, 0) * 0.8);
+  background: var(--coral-deep);
+}
+
+.juniper-handsfree[data-state="thinking"] .juniper-handsfree__dot,
+.juniper-handsfree[data-state="speaking"] .juniper-handsfree__dot {
+  background: var(--teal);
+}
+
+.juniper-handsfree[data-state="thinking"] .juniper-handsfree__bar,
+.juniper-handsfree[data-state="speaking"] .juniper-handsfree__bar {
+  box-shadow: inset 0 0 0 1.5px var(--hairline, rgb(47 22 4 / 16%));
+}
+
+.juniper-handsfree__state {
+  flex: none;
+  color: var(--teal);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* One line, anchored to its end, so the newest words are the ones in view. */
+.juniper-handsfree__caption {
+  display: flex;
+  justify-content: flex-end;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--bark-soft);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.juniper-handsfree__caption:empty {
+  display: block;
+}
+
+.juniper-handsfree__stop {
+  flex: none;
+  min-height: 2rem;
+  padding: 0 0.8rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--coral);
+  color: var(--bark);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@keyframes juniper-handsfree-slap {
+  from { scale: 1.06; rotate: 1.2deg; opacity: 0; filter: blur(3px); }
+}
+
+@keyframes juniper-handsfree-breathe {
+  50% { scale: 0.7; opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .juniper-handsfree,
+  .juniper-handsfree * {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .juniper-handsfree[data-state="hearing"] .juniper-handsfree__dot {
+    scale: 1;
+  }
+}
