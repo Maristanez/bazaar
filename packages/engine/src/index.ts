@@ -6,7 +6,7 @@ export { formatMoney, toShopper } from "./money.ts";
 export { floorOf, isAddOn } from "./floor.ts";
 export { isLowball } from "./lowball.ts";
 export { LAST_ROUND_WORDS, analyzeBuyerReason, applyNegotiationContext, auditOffer, leadWithStatedReason, ownerApprovalTotal, priceOffer, reasonReply, suggestedOpeningOffer } from "./negotiate.ts";
-export type { BuyerReason, NegotiationAudit, NegotiationItem, NegotiationMirror, NegotiationOffer, NegotiationOptions } from "./negotiate.ts";
+export type { BuyerReason, ReasonLabel, NegotiationAudit, NegotiationItem, NegotiationMirror, NegotiationOffer, NegotiationOptions } from "./negotiate.ts";
 export { buildNegotiationMenu, rankNegotiationMenu } from "./negotiation-menu.ts";
 export type { NegotiationMenuCandidate, NegotiationMenuInput, NegotiationMenuResult, RequestedNegotiationItem } from "./negotiation-menu.ts";
 export { DEFAULT_SETTINGS, SETTING_RANGES, resolveSettings } from "./settings.ts";

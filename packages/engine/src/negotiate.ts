@@ -18,10 +18,12 @@ export type NegotiationItem = Item & {
   qty?: number;
 };
 export type NegotiationMirror = { items: readonly NegotiationItem[] };
+/** Every reason the engine can recognise. One union, so a renamed label breaks the build instead of silently losing its fact. */
+export type ReasonLabel = "budget" | "quantity intent" | "add-on intent" | "repeat shopper" | "market comparison" | "real use case" | "ready to buy";
 export type BuyerReason = {
-  score: number; label: string | null; labels: string[];
+  score: number; label: ReasonLabel | null; labels: ReasonLabel[];
   /** The labels the shopper unmistakably stated, a subset of `labels`. Loose wording may still move a price; only these may be said back. */
-  spoken?: string[];
+  spoken?: ReasonLabel[];
   hasBulkIntent: boolean; hasAddOnIntent: boolean; hasMarketComparison: boolean; isReadyToBuy: boolean;
 };
 export type NegotiationOffer = {
@@ -33,10 +35,10 @@ export type NegotiationOffer = {
 export type NegotiationOptions = { floorPct: number; now: Date; discountCapPct?: number; maxRounds?: number };
 const DEFAULT_DISCOUNT_CAP_PCT = 22;
 export type NegotiationAudit = { cost: number; floor: number; target: number; profit: number };
-type ReasonSignal = { pattern: RegExp; score: number; label: string; key?: string };
+type ReasonSignal = { pattern: RegExp; score: number; label: ReasonLabel; key?: string };
 
 /** Stricter than the pricing signals: "returning these shoes" and "can't buy right now" trip a label but state no reason. */
-const STATED: Readonly<Record<string, (text: string) => boolean>> = {
+const STATED: Readonly<Partial<Record<ReasonLabel, (text: string) => boolean>>> = {
   "budget": text => /\b(tight budget|on a budget|budget is|my budget|student|saving up|can(?:'|no)t afford)\b/.test(text),
   "quantity intent": () => true, // the menu only says it on an option that really holds more than one unit
   "repeat shopper": text => /\b(returning customer|repeat customer|loyal customer|customer already|bought (?:from you |here )?before|shopped here before)\b/.test(text),

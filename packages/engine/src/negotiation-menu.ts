@@ -1,6 +1,6 @@
 import { floorOf } from "./floor.ts";
 import { formatMoney } from "./money.ts";
-import { priceOffer, type BuyerReason, type NegotiationItem, type NegotiationOffer, type NegotiationMirror, type NegotiationOptions } from "./negotiate.ts";
+import { priceOffer, type BuyerReason, type ReasonLabel, type NegotiationItem, type NegotiationOffer, type NegotiationMirror, type NegotiationOptions } from "./negotiate.ts";
 
 export type NegotiationMenuInput = {
   main: NegotiationItem;
@@ -91,7 +91,7 @@ export function rankNegotiationMenu(choices: NegotiationMenuResult, input: Pick<
 }
 
 /** What the shopkeeper may say back for each reason the shopper gave. True for every phrase that triggers the label; "market comparison" has no entry because we never verified a competitor's price, and "add-on intent" is covered by the bundle fact. */
-const REASON_FACTS: Readonly<Record<string, string>> = {
+const REASON_FACTS: Readonly<Partial<Record<ReasonLabel, string>>> = {
   "budget": "to fit your budget",
   "quantity intent": "for buying more than one item",
   "repeat shopper": "for a returning customer",

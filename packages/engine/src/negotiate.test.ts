@@ -89,7 +89,7 @@ describe("live negotiation pricing", () => {
 });
 
 describe("owner discount cap", () => {
-  const strong = { score: 4, label: "market comparison", labels: ["market comparison"], hasBulkIntent: true, hasAddOnIntent: false, hasMarketComparison: true, isReadyToBuy: true };
+  const strong: BuyerReason = { score: 4, label: "market comparison", labels: ["market comparison"], hasBulkIntent: true, hasAddOnIntent: false, hasMarketComparison: true, isReadyToBuy: true };
 
   it("never prices below the capped share of list, however strong the reason", () => {
     // 5% off $149 is $141.55, which a shopper sees as $142.
@@ -134,7 +134,7 @@ describe("owner discount cap", () => {
 });
 
 describe("owner-set max rounds", () => {
-  const strong = { score: 4, label: "market comparison", labels: ["market comparison"], hasBulkIntent: true, hasAddOnIntent: false, hasMarketComparison: true, isReadyToBuy: true };
+  const strong: BuyerReason = { score: 4, label: "market comparison", labels: ["market comparison"], hasBulkIntent: true, hasAddOnIntent: false, hasMarketComparison: true, isReadyToBuy: true };
   const price = (round: number, maxRounds: number | undefined, reason: BuyerReason = strong) => priceOffer(shoe, 9000, round, { items: [shoe] }, reason, 1, { floorPct: 25, now, maxRounds });
 
   it("the last of two rounds reaches the price the fourth of four reaches today", () => {
