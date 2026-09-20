@@ -100,10 +100,10 @@ The theme's chat script draws the card from the server's `OfferCard` object (App
 | Top line | `Round n of N` (`round`, `maxRounds` from the card — N is the owner's setting); on the last round `Final offer · round N of N`; while `pending_owner`, `With the owner` · a labelled live mm:ss countdown (`Held for` / `Owner replies within`) |
 | Rounds | A dashed trail of N waypoints ending in a flag: rounds done, the round the shopper is on, rounds left (§12) |
 | Items | Title, size, quantity and the unit list price (`listPrice`) for every item — the list prices are what explain the struck-through list total (shoes $149 + socks $18 = $167). The theme formats them; it adds nothing up. |
-| Totals | List total struck through → agreed total, large |
+| Totals | List total struck through only when greater than the agreed total; agreed total large. Label it “Subtotal before shipping and tax.” |
 | The line | One sentence in the shopkeeper's voice |
 | Badges | Ready-made `badges` strings from the server, in the shopper's words (`for a tight budget` · `held 15:00` · `＋ 1 × Merino socks` · `needs a reason` · `final offer` · `waiting for owner` · `owner approved`), because the card never receives `facts` (rule 11). The reason badge names the reason given in **this** message; an earlier reason stands when this message gives none (`leadWithStatedReason`). Engine labels (`quantity intent`, `seller counter`…) never reach a shopper. |
-| Trail | The server's `trail`: `List price` → `You offered` → `My price`. Never shows the floor. The storefront may shorten the labels by each step's `by`. |
+| Trail | The server's `trail`: `List price` → `You offered` → `My price`. The buyer bid retains submitted cents so the UI does not misquote it; seller prices remain engine-rounded. Never shows the floor. The storefront may shorten the labels by each step's `by`. |
 | Mood | The card's `mood` sets the shopkeeper sticker's face: `deal` and `tempted` pleased, `offended` (sent on a lowball) firm, `thinking` thinking, otherwise idle. The last round is firm whatever the mood. |
 | Countdown | To `expiresAt`, or to `pendingUntil` while `pending_owner`; at 0 the button disables (`Expired` / `Approval expired`) |
 | **Deal** button | `POST /api/accept` on our server, then opens the checkout URL. **The model is not in the accept path.** |
@@ -374,7 +374,7 @@ BUNDLE (add-ons requested or add-on intent):
 
 **Lowball** (`isLowball(offered, list, cutoff%)`, one implementation for the server and the Gym): `cutoff > 0 and offered < cutoff% of list`. A lowball is countered by code with the quote already on the table, makes no LLM call and does not advance the round.
 
-**Money.** The engine works in **cents**. `toShopper` rounds every shopper-facing total **UP** to a whole dollar — so rounding can never take a price below the floor — and an accepted offer that is not a whole dollar rounds up, never down. `formatMoney` is the one formatter. `suggestedOpeningOffer` (85% of list) is a prompt to the shopper, never an offer from the shop.
+**Money.** The engine works in **cents**. `toShopper` rounds every binding seller total **UP** to a whole dollar — so rounding can never take a price below the floor — and an accepted offer that is not a whole dollar rounds up, never down. `formatMoney` is the one formatter. `suggestedOpeningOffer` (85% of list) is a prompt to the shopper, never an offer from the shop.
 
 **Missing data.** No cost in Shopify → **not open to offers**, flagged **red** in the Console. No `bazaar.stocked_at` → treated as **new stock (urgency 0)**, flagged **amber**. An unsafe option is **dropped, never clamped up**: a floor above list closes the item, and a floor of 0% still means strictly above cost (`cost + 1`).
 
@@ -400,7 +400,7 @@ The owner's yellow card shows the items, the shopper's offer, and the profit **i
 4. An item with no cost, out of stock, or with a floor above list never reaches the menu.
 5. The menu is deterministic and lettered from A; ranking only reorders it.
 6. A later round never asks more than an earlier one.
-7. The lowball rule is off at zero and otherwise a strict share of list; shopper-facing money is whole dollars.
+7. The lowball rule is off at zero and otherwise a strict share of list; binding seller prices are whole dollars; the displayed buyer bid preserves its submitted cents.
 8. The generated inputs are not vacuous: they reach open menus, bundles and alternatives.
 
 `negotiate.test.ts` adds two more fast-check properties on `priceOffer`. `tests/purity.test.ts` guards invariant 4 (the engine and the Gym stay pure). `pnpm test` runs everything; `pnpm typecheck` is clean.
@@ -432,7 +432,7 @@ Prize text: *"We judge ambition… The more of the stack you use, the crazier it
 |---|---|---|
 | **Assistants + threads (state)** | One isolated assistant per shopper, cloned from the base assistant (`BACKBOARD_ASSISTANT_ID`) with its documents, so one shopper's memory never reaches another | Feed shows thread id |
 | **Documents / RAG** | `store-notes.md`, `sizing-guide.md`, `policy.md` (in `infra/seed/`) | It answers "do these run small?" mid-haggle |
-| **Memory** | Size, what they're training for, what they liked; seeded for the `demo` shopper; mode from `BACKBOARD_MEMORY_MODE`; `memory_response_citation` on | *"Welcome back — still a size 10?"*; feed shows the recalled memory |
+| **Memory** | Size, what they're training for, what they liked; seeded for the `demo` shopper; mode from `BACKBOARD_MEMORY_MODE`; `memory_response_citation` on for owner telemetry; raw citation markers stripped from shopper prose | *"Welcome back — still a size 10?"*; feed shows the recalled memory |
 | **Model routing** | **Every LLM call goes through Backboard** — understand (`understandOffer`), choose + say, and questions. There is no direct model API call and no model key of our own. Default: provider `openai`, model `gpt-5.6-terra` (`BACKBOARD_MODEL_PROVIDER` / `BACKBOARD_MODEL_NAME`). | Model name on every feed row |
 | **Streaming** | Server-side only: we stream from Backboard to catch `run_ended` / `run_failed` early, **buffer the whole line, run the check, then** send it. The shopper never sees an unchecked token. | Chat |
 | **`cost_usd`** | Per call | Feed row; **Agent cost** KPI |
@@ -646,3 +646,10 @@ export type GymResult  = { seed: number; n: number; floorPct: number; bought: nu
 ## Appendix D — Sources
 
 Devpost: hackthenorth2026.devpost.com (criteria, prizes, rules) · Shopify: dev.shopify.com/dashboard, client-credentials grant, `discountCodeBasicCreate`, cart permalinks, dev-store password · planned ChatGPT surface: developers.openai.com/apps-sdk, github.com/openai/openai-apps-sdk-examples, modelcontextprotocol.io/seps/1865 · Backboard: docs.backboard.io · incidents: AI Incident Database #622 (Tahoe), *Moffatt v. Air Canada* 2024 BCCRT 149
+
+
+### Live QA interpretation and held-offer rules (20 September)
+
+Explicit shopper sizes, quantities and corrected cart totals take precedence over a model hint. Invalid quantities and unavailable requested lines produce a clarification with no partial card. A percentage request refers to the resolved cart's list subtotal; the calculated buyer bid is still only an input to the engine. A conditional shipping/tax guarantee must be clarified before creating an item-subtotal offer.
+
+A lowball for the same live cart keeps the existing offer ID, amount, round and expiry if its current inventory/cost/policy audit still passes. It never extends the hold. “I accept. Deal.” points to the Deal button and keeps the card; settlement still happens only through `/api/accept`. Single-pair language or the “2” in Trail Runner 2 does not constitute bulk intent.

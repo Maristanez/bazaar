@@ -299,3 +299,25 @@
 **Deployment:** Pushed the changed theme files to live theme `Bazaar coded storefront` (`#161251000517`). Set the missing Railway production variables from the local `.env` for Supabase and ElevenLabs, then redeployed the `bazaar-chat` service.
 
 **Verification:** The live storefront HTML contains the three new prompt labels and no longer contains `Weekend outfit` or `Sizing help`. Railway `/health` reports `ok: true`, `ownerPolicyConfigured: true`, `voiceConfigured: true`, `shopifyConfigured: true`, nine Shopify products and no warnings. `/api/voice/config` reports ElevenLabs enabled with `eleven_flash_v2_5` and `scribe_v2`.
+
+
+### #17 · `Sun 00:51` · `Bryan / Codex` · `Published chatbot stress test and demo cases`
+
+**Prompt:** Stress-test the live Shopify chatbot with varied bargaining strategies and extreme human/AI inputs, monitor the hosted Console, and document bugs, fixes, and good hackathon demo scenarios.
+
+**What Codex produced:** [`live-chat-stress-test-2026-09-20.md`](live-chat-stress-test-2026-09-20.md), with 62 input attempts, exact ordered replay prompts, prioritized findings, fix suggestions, and observed demo paths. The browser pass reproduced ignored typed sizes, malformed quantity conversions, percentage/negation and mixed-line-price parsing errors, a lowball replacing a better held price, and unexplained size-10/muddy-50k memory claims to fresh shopper identities.
+
+**Live evidence:** Ordinary negotiation produced TR2 at $130 and TR3 at $150. Two L/XL sock pairs reached real Shopify Checkout at a $32 subtotal. Five socks plus a cap and flask reached checkout at $125; removing the cap removed the discount, and reapplying the bundle code was rejected. No order was placed. Owner-spoof prompts did not bypass a pending approval, and its timeout restored the final offer.
+
+**Boundary:** The hosted Console stayed on Owner sign in; authenticated monitoring was requested but not available. Live cost/floor compliance, feed rendering, owner decisions, tax/shipping totals, and paid settlement are not certified. The live model-identity response reported openai/gpt-4.1-mini, which needs reconciliation with the local tracker. No application code, policy, or deployment was changed by this task.
+
+
+### #18 · `Sun 01:30` · `Bryan / Codex` · `Live stress-test fixes and replay`
+
+**Prompt:** Implement the stress-test report's suggestions in order and fix the bugs.
+
+**What changed:** Fixed explicit size corrections and persistence, malformed quantities, percentage/negated/explicit-total parsing, omitted cart lines, held-price regression on lowballs, text acceptance and policy-question routing. Kept existing per-shopper memory isolation and stripped raw citations from shopper prose while preserving owner telemetry. Polished price/card labels and avoided treating a model number or one pair as a bigger cart. Exact buyer cents now remain visible; binding seller prices still come from the engine.
+
+**Verification:** 359 tests / 40 files passed at the full-suite checkpoint, including 22 new API transcript regressions; workspace typecheck and production web build passed. Separate standards/spec review findings were addressed. A local browser preview using real Shopify and Backboard confirmed that a fresh shopper had no seeded size/race memory and that a typed size reached the correct variant. The visual replay found and led to fixes for fractional-bid display and size persistence on follow-ups.
+
+**Boundary:** Existing dirty work was preserved while another process advanced HEAD. The hosted Console remained behind sign-in; production publishing, Shopify copy/branding, and shipping/tax verification remain open in PLAN. No paid order or production policy change was made by this follow-up.

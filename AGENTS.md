@@ -8,7 +8,7 @@ Three applications under `apps/`, served by four packages:
 
 - `apps/server` — the application: routes, the negotiation turn, accept and mint, owner runtime. Prices only through `@bazaar/engine`.
 - `apps/web` — the owner Console. Reaches the server through the `data/port.ts` seam (HTTP adapter; fixture adapter in dev).
-- `apps/storefront` — the Shopify theme. Renders the server's public card.
+- `apps/storefront` — the Shopify theme. Renders the server's public card. Read `apps/storefront/README.md` before changing or deploying it.
 - `packages/engine` · `gym` · `llm` · `contracts` — import them by package name (`@bazaar/engine`); each package's `src/index.ts` is its interface. Relative imports inside packages carry the `.ts` extension, because the server runs the source under Node's strip-types runtime.
 
 ## Where things are decided

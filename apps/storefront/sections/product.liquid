@@ -33,14 +33,9 @@
       </div>
     {% else %}
       <p class="product-shell__description">
-        A clean, hard-working piece for the current Trailhead edit. Ask the AI shopkeeper about fit, bundles, or a fair offer.
+        A clean, hard-working piece for the current Trailhead edit. Ask the shopkeeper about fit, bundles, or a fair offer.
       </p>
     {% endif %}
-
-    <div class="product-shell__callout">
-      <span aria-hidden="true">✦</span>
-      <p>Name a price in the AI chat and include a reason. Trailhead moves more for bundles, repeat shoppers, real budgets, and race-day plans — never below the shop floor.</p>
-    </div>
 
     <div class="product-form product-shell__form">
       {% form 'product', product %}
@@ -64,7 +59,11 @@
         <label for="Quantity-{{ section.id }}">Quantity</label>
         <input id="Quantity-{{ section.id }}" type="number" name="quantity" min="1" value="1">
 
-        <input class="product-shell__submit" type="submit" value="Add to cart">
+        <div class="product-shell__actions">
+          <input class="product-shell__submit" type="submit" value="Add to cart">
+          <button class="product-shell__offer" type="button" data-ai-chat-open aria-controls="ai-chat-panel">Make an offer</button>
+        </div>
+        <p class="product-shell__hint">The price isn't the last word here. Tell the shopkeeper what you'd pay, and why: a bundle, a real budget, a race on the calendar.</p>
         <div class="product-shell__payment">
           {{ form | payment_button }}
         </div>
@@ -175,15 +174,14 @@
     line-height: 1.7;
   }
 
-  .product-shell__callout {
+  .product-shell__actions {
     display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.7rem;
-    align-items: start;
-    padding: 0.9rem;
-    border-radius: 1rem;
-    background: #fff7ed;
-    color: #7c2d12;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+  }
+
+  .product-shell__hint {
+    color: #4a3a2e;
     font-size: 0.92rem;
     line-height: 1.45;
   }
@@ -220,6 +218,44 @@
     cursor: pointer;
     font: inherit;
     font-weight: 900;
+  }
+
+  .product-shell__offer {
+    min-height: 3.15rem;
+    border: 0;
+    border-radius: 999px;
+    background: #f6d809;
+    color: #2f1604;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 900;
+    transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), background-color 180ms ease;
+  }
+
+  .product-shell__offer:hover {
+    background: #ffe53d;
+    transform: translateY(-1px);
+  }
+
+  .product-shell__offer:active {
+    transform: translateY(1px);
+  }
+
+  @media (max-width: 480px) {
+    .product-shell__actions {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .product-shell__offer {
+      transition: none;
+    }
+
+    .product-shell__offer:hover,
+    .product-shell__offer:active {
+      transform: none;
+    }
   }
 
   .product-shell__payment {

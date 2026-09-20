@@ -46,6 +46,7 @@ function mount(fetchImpl: typeof fetch) {
       <button data-ai-chat-toggle></button><button data-ai-chat-close></button>
       <section id="ai-chat-panel"><div data-ai-chat-messages><p data-ai-chat-welcome></p></div>
         <div data-ai-chat-mode></div>
+        <div data-ai-chat-prompts><button type="button" data-ai-chat-prompt="Could you give me a student discount?">Student discount</button></div>
         <form data-ai-chat-form><input data-ai-chat-input><button type="submit">Send</button></form>
       </section>
     </div>
@@ -150,6 +151,37 @@ describe("Shopify theme chat integration", () => {
     expect(cards.every(article => article.querySelector("[data-offer-actions] button")?.textContent?.startsWith("Deal at $"))).toBe(true);
   });
 
+  it("names the cart on a collapsed offer after a newer cart replaces it", async () => {
+    let turn = 0;
+    const oldCard = {
+      ...card("live", "neg-cart", 17400),
+      option: {
+        ...card("live").option,
+        kind: "bundle",
+        items: [
+          ...card("live").option.items,
+          { title: "Trail Gaiters", variantId: "gaiters", qty: 1, thrownIn: true },
+        ],
+        listTotal: 20400,
+        total: 17400,
+      },
+    };
+    const newCard = { ...card("live", "neg-cart", 14500), offerId: "offer-2", round: 2 };
+    const fetchImpl = vi.fn(async () => {
+      turn += 1;
+      return new Response(JSON.stringify({ reply: "Here is an offer.", card: turn === 1 ? oldCard : newCard, products: [product()] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }) as unknown as typeof fetch;
+    const dom = mount(fetchImpl);
+
+    await submit(dom, "Bundle the gaiters.");
+    await submit(dom, "Just the shoes.");
+
+    const old = dom.window.document.querySelector(".ai-chat__offer-card--superseded")?.textContent ?? "";
+    expect(old).toContain("Trail Runner 3 + Trail Gaiters");
+    expect(old).toContain("replaced");
+    expect(old).toContain("$174");
+  });
+
   it("polls pending owner cards and renders the final live totals", async () => {
     vi.useFakeTimers();
     try {
@@ -189,5 +221,106 @@ describe("Shopify theme chat integration", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("swaps the suggestion chips once an offer is on the table, and no chip carries a figure", async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ reply: "Here is an offer.", card: card("live"), products: [product()] }), { status: 200, headers: { "Content-Type": "application/json" } })) as unknown as typeof fetch;
+    const dom = mount(fetchImpl);
+    const chips = () => [...dom.window.document.querySelectorAll("[data-ai-chat-prompt]")].map(chip => `${chip.textContent} ${chip.getAttribute("data-ai-chat-prompt")}`);
+    const before = chips();
+
+    await submit(dom, "Could you do $150?");
+
+    expect(chips()).not.toEqual(before);
+    expect(chips().length).toBeGreaterThan(1);
+    for (const chip of chips()) expect(chip).not.toMatch(/[$\d]/);
+  });
+
+  it("shows a list-price total once and explains what the total excludes", async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ reply: "The tag price stands.", card: card("live", "neg-list", 16900), products: [product()] }), { status: 200, headers: { "Content-Type": "application/json" } })) as unknown as typeof fetch;
+    const dom = mount(fetchImpl);
+
+    await submit(dom, "I can pay the tag price.");
+
+    const price = dom.window.document.querySelector("[data-offer-price]");
+    expect(price?.querySelector("strong")?.textContent).toBe("$169");
+    expect(price?.querySelector("span")).toBeNull();
+    expect(dom.window.document.querySelector("[data-offer-total-note]")?.textContent).toBe("Subtotal before shipping and tax");
+  });
+
+  it("preserves cents in the shopper's bid while whole-dollar card amounts stay whole", async () => {
+    const told = {
+      ...card("live", "neg-cents", 14900),
+      trail: [
+        { label: "List", amount: 16900, by: "shop" },
+        { label: "You offered", amount: 11920, by: "shopper" },
+        { label: "My price", amount: 14900, by: "shop" },
+      ],
+    };
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ reply: "Here is an offer.", card: told, products: [product()] }), { status: 200, headers: { "Content-Type": "application/json" } })) as unknown as typeof fetch;
+    const dom = mount(fetchImpl);
+
+    await submit(dom, "Could you take twenty percent off?");
+
+    expect([...dom.window.document.querySelectorAll("[data-offer-trail] span")].map(step => step.textContent)).toEqual([
+      "List $169",
+      "You $119.20",
+      "Me $149",
+    ]);
+    expect(dom.window.document.querySelector("[data-offer-price] strong")?.textContent).toBe("$149");
+  });
+
+  it("offers to remove an add-on only when the live card contains one", async () => {
+    const singleFetch = vi.fn(async () => new Response(JSON.stringify({ reply: "Here is an offer.", card: card("live"), products: [product()] }), { status: 200, headers: { "Content-Type": "application/json" } })) as unknown as typeof fetch;
+    const singleDom = mount(singleFetch);
+    await submit(singleDom, "Could you do $150?");
+    expect(singleDom.window.document.querySelector("[data-ai-chat-prompts]")?.textContent).not.toContain("Skip the add-on");
+
+    const bundleCard = {
+      ...card("live", "neg-bundle"),
+      option: {
+        ...card("live").option,
+        kind: "bundle",
+        items: [
+          ...card("live").option.items,
+          { title: "Trail Gaiters", variantId: "gaiters", qty: 1, thrownIn: true },
+        ],
+        listTotal: 20400,
+        total: 17400,
+      },
+    };
+    const bundleFetch = vi.fn(async () => new Response(JSON.stringify({ reply: "I can bundle those.", card: bundleCard, products: [product()] }), { status: 200, headers: { "Content-Type": "application/json" } })) as unknown as typeof fetch;
+    const bundleDom = mount(bundleFetch);
+    await submit(bundleDom, "Add the gaiters.");
+    expect(bundleDom.window.document.querySelector("[data-ai-chat-prompts]")?.textContent).toContain("Skip the add-on");
+  });
+
+  it("removes raw memory citation markers from shopper replies", async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ reply: "Welcome back [memory1]. Same size as last time. Reference: [Memory 1].", products: [product()] }), { status: 200, headers: { "Content-Type": "application/json" } })) as unknown as typeof fetch;
+    const dom = mount(fetchImpl);
+
+    await submit(dom, "What size did I buy?");
+
+    const reply = [...dom.window.document.querySelectorAll(".ai-chat__message--bot")].at(-1)?.textContent ?? "";
+    expect(reply).toContain("Welcome back. Same size as last time.");
+    expect(reply).not.toMatch(/\[\s*memory|reference:|from memory/i);
+  });
+
+  it("shows no engine vocabulary on the card in any state", async () => {
+    for (const status of ["live", "pending_owner"]) {
+      const told = { ...card(status), round: 4, badges: ["reason: quantity intent", "reason needed", "seller counter", "firm counter", "good intent", "bundle value", "final offer"], trail: [{ label: "List", amount: 16900, by: "shop" }, { label: "Round 4", amount: 12000, by: "shopper" }, { label: "Shop", amount: 15000, by: "shop" }] };
+      const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ reply: "Here is an offer.", card: told, products: [product()] }), { status: 200, headers: { "Content-Type": "application/json" } })) as unknown as typeof fetch;
+      const dom = mount(fetchImpl);
+
+      await submit(dom, "Could you do $120?");
+
+      const text = dom.window.document.querySelector(".ai-chat__offer-card")?.textContent ?? "";
+      expect(text).toContain("for a bigger cart");
+      expect(text).toContain("needs a reason");
+      expect(text).toContain("final offer");
+      expect(text).toContain("You $120");
+      expect(text).not.toMatch(/reason:|intent|counter|good intent|bundle value|Shop \$|Round 4 \$/);
+    }
+    expect(script).not.toMatch(/Deal needs API|Minting/);
   });
 });

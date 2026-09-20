@@ -422,6 +422,7 @@ describe("Backboard document and memory answers", () => {
     expect(answer.trace.memory).toBe("wears size 10");
     expect(body?.system_prompt).toContain("indexed store documents");
     expect(body?.memory).toBe("Readonly");
+    expect(body?.memory_response_citation).toBe(true);
   });
 
   it("allows only public product prices in shopper answers", () => {
@@ -482,6 +483,13 @@ describe("Backboard document and memory answers", () => {
 describe("parseBackboardPick", () => {
   it("accepts the required two line format", () => {
     expect(parseBackboardPick("OPTION: A\n\nI can hold this at $150.")).toEqual({ optionId: "A", line: "I can hold this at $150." });
+  });
+
+  it("removes raw memory citations from the shopper-facing offer line", () => {
+    expect(parseBackboardPick("OPTION: A\n\nI can hold this at $150. [Memory 1]")).toEqual({
+      optionId: "A",
+      line: "I can hold this at $150.",
+    });
   });
 
   it.each(["OPTION: A", "I pick A\nA line", "OPTION:\nA line", ""])("rejects malformed output", (content) => {

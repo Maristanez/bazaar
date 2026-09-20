@@ -16,9 +16,30 @@ describe("catalog selection", () => {
     expect(selectCatalogItem({ product: page, productContextSource: "current", message: "Trail Runner 2 size 10" }, items)).toBe(items[1]);
   });
 
+  it("accepts hyphenated explicit sizes and still refuses an unavailable size", () => {
+    expect(selectCatalogItem({ product: page, productContextSource: "current", message: "Trail Runner 2 size-10" }, items)).toBe(items[1]);
+    expect(selectCatalogItem({ product: page, productContextSource: "current", message: "Trail Runner 2 size-99" }, items)).toBeNull();
+  });
+
+  it("uses an affirmative corrected size and ignores the negated size", () => {
+    expect(selectCatalogItem({ product: page, productContextSource: "current", message: "not size 9; I meant size 10" }, items)).toBe(items[1]);
+    expect(selectCatalogItem({ product: page, productContextSource: "current", message: "size10 not size9" }, items)).toBe(items[1]);
+    expect(selectCatalogItem({ product: page, productContextSource: "current", message: "not size 9; I meant size 99" }, items)).toBeNull();
+    expect(selectCatalogItem({ product: page, productContextSource: "current", message: "I don't want size 9" }, items)).toBeNull();
+    expect(selectCatalogItem({ product: page, productContextSource: "current", message: "I don’t want size 9" }, items)).toBeNull();
+    expect(selectCatalogItem({ product: page, productContextSource: "current", message: "I don’t want the size 9" }, items)).toBeNull();
+    expect(selectCatalogItem({ product: page, productContextSource: "current", message: "I do not want size9" }, items)).toBeNull();
+  });
+
   it("keeps the active product and prior variant for generic follow-ups", () => {
     expect(selectCatalogItem({ product: page, productContextSource: "current", message: "same shoes" }, items, items[1])).toBe(items[1]);
     expect(selectCatalogItem({ product: page, productContextSource: "current", message: "what about those?" }, items, items[1])).toBe(items[1]);
+  });
+
+  it("keeps a typed size across ordinary offer follow-ups until the selector changes", () => {
+    const payload = { product: page, productContextSource: "current", negotiationId: "active-size-ten", variantSelectionChanged: false, message: "I can stretch to $130. Trail Runner 2" };
+    expect(selectCatalogItem(payload, items, items[1])).toBe(items[1]);
+    expect(selectCatalogItem({ ...payload, variantSelectionChanged: true }, items, items[1])).toBe(items[0]);
   });
 
   it("prefers the current selected variant over a prior context variant", () => {

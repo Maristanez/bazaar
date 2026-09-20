@@ -385,8 +385,7 @@ function boundedNumber(value: unknown, minimum: number, maximum: number): number
 }
 
 export function validateBackboardAnswer(content: string, input: BackboardQuestion): string {
-  const reply = content
-    .replace(/\s*\(\s*memor(?:y|ies)\s*:?\s*\[\d+\](?:\s*(?:,|and)\s*\[\d+\])*\s*\)/gi, " ")
+  const reply = stripBackboardCitations(content)
     .replace(/\s+/g, " ")
     .trim();
   if (!reply) throw new BackboardError("Backboard returned an empty answer");
@@ -413,12 +412,19 @@ export function validateBackboardAnswer(content: string, input: BackboardQuestio
   return reply;
 }
 
+function stripBackboardCitations(content: string): string {
+  return content
+    .replace(/\s*\(\s*memor(?:y|ies)\s*:?\s*\[\d+\](?:\s*(?:,|and)\s*\[\d+\])*\s*\)/gi, " ")
+    .replace(/\s*(?:reference|source)\s*:\s*[^\r\n]*(?:from\s+memor(?:y|ies)|\[\s*memor(?:y|ies)\s*\d+\s*\])\.?\s*$/i, " ")
+    .replace(/\s*\[\s*memor(?:y|ies)\s*\d+\s*\]\s*/gi, " ");
+}
+
 export function parseBackboardPick(content: string): { optionId: string; line: string } {
   const normalized = content.replace(/\r\n/g, "\n").trim();
   const match = /^OPTION:\s*([A-Za-z0-9_-]+)\s*\n+([\s\S]+)$/.exec(normalized);
   if (!match) throw new BackboardError("Backboard choose output was malformed");
   const optionId = match[1];
-  const line = match[2]?.replace(/\s+/g, " ").trim();
+  const line = match[2] && stripBackboardCitations(match[2]).replace(/\s+/g, " ").trim();
   if (!optionId || !line) throw new BackboardError("Backboard choose output was incomplete");
   if (line.split(/\s+/).length > 35) throw new BackboardError("Backboard choose line exceeded 35 words");
   return { optionId, line };

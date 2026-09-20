@@ -223,3 +223,15 @@ describe("what the shopper reads", () => {
     expect(leadWithStatedReason(soFar, "$100 and that's it").label).toBe("quantity intent");
   });
 });
+
+describe("buyer quantity intent", () => {
+  it("does not treat a product number or one pair as bulk", () => {
+    expect(analyzeBuyerReason("Could you take 20% off one Trail Runner 2, size 10?").hasBulkIntent).toBe(false);
+    expect(analyzeBuyerReason("Could you do $120 for one pair of Trail Runner 2?").hasBulkIntent).toBe(false);
+  });
+
+  it("recognizes explicit multiple pairs and real bundles as bulk", () => {
+    expect(analyzeBuyerReason("Could you do $220 for two pairs of Trail Runner 2?").hasBulkIntent).toBe(true);
+    expect(analyzeBuyerReason("Throw in the socks and gaiters for the full kit.").hasBulkIntent).toBe(true);
+  });
+});

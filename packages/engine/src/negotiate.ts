@@ -49,7 +49,7 @@ export function analyzeBuyerReason(message: string): BuyerReason {
   const text = String(message || "").toLowerCase();
   const signals: ReasonSignal[] = [
     { pattern: /\b(student|college|school|tight budget|budget is|payday|saving up)\b/, score: 1, label: "budget" },
-    { pattern: /\b(buy|buying|grab|take|get|adding|add|order).*\b(two|2|both|multiple|pair|couple|tees|shirts|items|bundle|socks|cap|gaiters|vest|flask|kit)\b|\b(bundle|multiple items|full kit|whole kit|couple|pair)\b/, score: 2, label: "quantity intent", key: "bulk" },
+    { pattern: /\b(?:two|both|multiple|couple)\s+(?:pairs?|tees?|shirts?|items?)\b|\b(?:buy|buying|grab|take|get|adding|add|order)\b[^.?!]*\b(?:socks?|gaiters?|caps?|flasks?)\s+too\b|\b(?:bundle|multiple items|full kit|whole kit|couple of (?:pairs?|items?|shoes?|socks?|tees?|shirts?|caps?|flasks?)|throw in)\b/, score: 2, label: "quantity intent", key: "bulk" },
     { pattern: /\b(socks?|cap|gaiters?|vest|flask|kit)\b/, score: 1, label: "add-on intent", key: "addon" },
     { pattern: /\b(returning|repeat|loyal|bought before|customer already|local)\b/, score: 1, label: "repeat shopper" },
     { pattern: /\b(last season|older model|clearance|sale|price match|competitor|elsewhere|same shoe)\b/, score: 2, label: "market comparison", key: "market" },

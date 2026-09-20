@@ -17,3 +17,7 @@ CODEX-READ-THIS-BEFORE-*.md
 graphify-out/.graphify_*
 graphify-out/cache/
 graphify-out/cost.json
+
+# design walkthrough output and its throwaway Playwright install
+scripts/chat-walkthrough/shots/
+scripts/chat-walkthrough/package*.json

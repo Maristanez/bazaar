@@ -37,13 +37,77 @@
   var activeAudio = null;
   var activeAudioUrl = null;
   var defaultPlaceholder = input.getAttribute('placeholder') || 'Ask about outfits...';
+  var promptsBox = widget.querySelector('[data-ai-chat-prompts]');
+  var listenBar = widget.querySelector('[data-ai-chat-listen]');
+  var listenStop = widget.querySelector('[data-ai-chat-listen-stop]');
+  var waveBox = widget.querySelector('[data-ai-chat-wave]');
+  var lastBotMessage = null;
+  var speakTag = null;
+  var currentMood = 'idle';
+  // Suggestions once an offer is on the table. No figures here: every dollar amount comes from the card.
+  var CHIPS_AFTER = [['Is that your best?'], ['Meet me in the middle'], ['What would move it?']];
+  var CHIP_REMOVE_ADD_ON = ['Skip the add-on', 'Could you do it without the add-on? Just the main item.'];
+  var CHIPS_FINAL = [['Is that your best?'], ['What would move it?']];
+  var ICONS = {
+    speaker: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 10v4h3l5 4V6L7 10z"/><path d="M16 9q2.5 3 0 6M18.5 6.5q5 5.5 0 11"/></svg>',
+    speakerOff: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 10v4h3l5 4V6L7 10z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>',
+    flag: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 21V4M6 5h11l-3 4 3 4H6"/></svg>'
+  };
+
+  // The shopkeeper is a die-cut sticker: flat shapes on a thick white cut line. The mood changes the face.
+  function stickerSvg(mood) {
+    var eyes = mood === 'pleased'
+      ? '<path d="M22 35q3-4 6 0M36 35q3-4 6 0" fill="none" stroke="#2f1604" stroke-width="2.4" stroke-linecap="round"/>'
+      : mood === 'thinking'
+        ? '<circle cx="26" cy="33" r="2.4" fill="#2f1604"/><circle cx="40" cy="33" r="2.4" fill="#2f1604"/>'
+        : '<circle cx="25" cy="35" r="2.4" fill="#2f1604"/><circle cx="39" cy="35" r="2.4" fill="#2f1604"/>';
+    var mouth = mood === 'pleased' ? '<path d="M25 42q7 7 14 0"/>'
+      : mood === 'firm' ? '<path d="M26 44h12"/>'
+      : mood === 'speaking' ? '<ellipse cx="32" cy="44" rx="4.2" ry="3.4" fill="#2f1604"/>'
+      : mood === 'thinking' ? '<path d="M28 44q3-2 7 0"/>'
+      : '<path d="M26 42q6 5 12 0"/>';
+    var brows = mood === 'firm' ? '<path d="M21 30l7 2M43 30l-7 2" fill="none" stroke="#2f1604" stroke-width="2.2" stroke-linecap="round"/>' : '';
+    var ear = mood === 'listening' ? '<path d="M54 32q4 5 0 10M58 28q7 9 0 18" fill="none" stroke="#f3675a" stroke-width="2.4" stroke-linecap="round"/>' : '';
+    var body = '<path d="M14 50q18 12 36 0l-3 9q-15 7 -30 0z"/><circle cx="32" cy="37" r="17"/><ellipse cx="32" cy="23" rx="25" ry="7"/><path d="M16 23q0-17 16-17t16 17z"/>';
+    return '<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">' +
+      '<g fill="#fff" stroke="#fff" stroke-width="9" stroke-linejoin="round">' + body + '</g>' +
+      '<path d="M14 50q18 12 36 0l-3 9q-15 7 -30 0z" fill="#f3675a"/><circle cx="32" cy="37" r="17" fill="#fdf3e3"/>' +
+      '<circle cx="20" cy="41" r="3.2" fill="#ff598b" opacity=".55"/><circle cx="44" cy="41" r="3.2" fill="#ff598b" opacity=".55"/>' +
+      '<ellipse cx="32" cy="23" rx="25" ry="7" fill="#004c4c"/><path d="M16 23q0-17 16-17t16 17z" fill="#0a6464"/>' +
+      '<path d="M16.4 19h31.2v4.5h-31.2z" fill="#f6d809"/>' + eyes + brows + ear +
+      '<g fill="none" stroke="#2f1604" stroke-width="2.4" stroke-linecap="round">' + mouth + '</g></svg>';
+  }
+
+  function setMood(mood) {
+    currentMood = mood;
+    var head = widget.querySelector('[data-ai-chat-sticker="head"]');
+    if (head) head.innerHTML = stickerSvg(mood);
+  }
+
+  function cardMood(card) {
+    var told = { offended: 'firm', tempted: 'pleased', deal: 'pleased', thinking: 'thinking' }[card.mood];
+    if (card.status === 'pending_owner') return 'thinking';
+    return told || (card.round >= (card.maxRounds || 4) ? 'firm' : 'pleased');
+  }
+
+  function renderChips(labels) {
+    if (!promptsBox) return;
+    promptsBox.innerHTML = labels.map(function (chip) {
+      return '<button type="button" data-ai-chat-prompt="' + escapeHtml(chip[1] || chip[0]) + '">' + escapeHtml(chip[0]) + '</button>';
+    }).join('');
+  }
+
+  Array.prototype.forEach.call(widget.querySelectorAll('[data-ai-chat-sticker]'), function (node) { node.innerHTML = stickerSvg('idle'); });
+  if (waveBox) {
+    for (var bar = 0; bar < 34; bar += 1) waveBox.insertAdjacentHTML('beforeend', '<i style="animation-delay:-' + ((bar * 37) % 90) / 100 + 's"></i>');
+  }
 
   if (currentProduct) setNegotiationForProduct(selectedProduct());
 
   var scriptedResponses = buildScriptedResponses();
 
   if (welcome) welcome.textContent = getWelcomeMessage();
-  if (mode && endpoint) mode.textContent = 'Live AI + offers';
+  if (mode && !endpoint) mode.textContent = 'Demo mode. Offers need the live shop.';
   if (voiceToggle || micButton) loadVoiceConfig();
 
   function normalizeEndpoint(value) {
@@ -225,21 +289,26 @@
 
   function syncVoiceUi() {
     if (voiceToggle) {
+      voiceToggle.hidden = !voiceAvailable;
       voiceToggle.setAttribute('aria-pressed', voiceEnabled ? 'true' : 'false');
-      voiceToggle.setAttribute('aria-disabled', voiceAvailable ? 'false' : 'true');
-      voiceToggle.setAttribute('aria-label', voiceEnabled ? 'Turn voice mode off' : 'Turn voice mode on');
-      voiceToggle.textContent = voiceEnabled ? 'Voice on' : voiceAvailable ? 'Voice off' : 'Voice needs setup';
+      voiceToggle.setAttribute('aria-label', voiceEnabled ? 'Turn spoken replies off' : 'Turn spoken replies on');
+      voiceToggle.innerHTML = voiceEnabled ? ICONS.speaker : ICONS.speakerOff;
     }
     if (micButton) {
-      micButton.disabled = !voiceAvailable || !voiceEnabled || sending;
+      micButton.hidden = !voiceAvailable;
+      micButton.disabled = !voiceAvailable || sending;
       micButton.classList.toggle('is-recording', recording);
-      micButton.textContent = recording ? 'Stop' : 'Mic';
-      micButton.setAttribute('aria-label', recording ? 'Stop voice input' : 'Start voice input');
-      micButton.setAttribute('title', recording ? 'Stop voice input' : 'Start voice input');
     }
+    if (listenBar) listenBar.hidden = !recording;
+    if (listenBar) form.hidden = recording;
+    if (promptsBox) promptsBox.hidden = recording;
+    if (recording) setMood('listening');
+    else if (currentMood === 'listening') setMood('idle');
   }
 
   function stopSpeaking() {
+    if (speakTag) { speakTag.remove(); speakTag = null; }
+    if (currentMood === 'speaking') setMood('idle');
     if (activeAudio) {
       activeAudio.pause();
       activeAudio = null;
@@ -265,6 +334,13 @@
       activeAudioUrl = window.URL.createObjectURL(blob);
       activeAudio = new window.Audio(activeAudioUrl);
       activeAudio.addEventListener('ended', stopSpeaking, { once: true });
+      if (lastBotMessage) {
+        speakTag = document.createElement('span');
+        speakTag.className = 'ai-chat__speak';
+        speakTag.innerHTML = '<span class="ai-chat__wave" aria-hidden="true"><i></i><i style="animation-delay:-.3s"></i><i style="animation-delay:-.6s"></i><i style="animation-delay:-.15s"></i><i style="animation-delay:-.45s"></i></span>Reading this aloud<button type="button" data-ai-chat-stop-speaking>Stop</button>';
+        lastBotMessage.appendChild(speakTag);
+        setMood('speaking');
+      }
       return activeAudio.play();
     }).catch(function () {
       stopSpeaking();
@@ -278,7 +354,8 @@
   }
 
   function startRecording() {
-    if (!voiceEnabled || !voiceAvailable || recording) return;
+    if (!voiceAvailable || recording) return;
+    voiceEnabled = true;
     stopSpeaking();
     navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
       var mimeType = preferredRecordingType();
@@ -340,7 +417,7 @@
   function acceptOffer(card, button) {
     button.__bazaarAccepting = true;
     button.disabled = true;
-    button.textContent = 'Minting...';
+    button.textContent = 'Sealing the deal…';
     return window.fetch(acceptUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -385,14 +462,47 @@
     var message = document.createElement('p');
     message.className = 'ai-chat__message ai-chat__message--' + type;
     message.textContent = text;
-    messages.appendChild(message);
+    if (type === 'bot') {
+      var row = document.createElement('div');
+      row.className = 'ai-chat__row';
+      row.innerHTML = '<span class="ai-chat__sticker ai-chat__sticker--row" aria-hidden="true">' + stickerSvg(currentMood) + '</span>';
+      row.appendChild(message);
+      messages.appendChild(row);
+      lastBotMessage = message;
+    } else {
+      messages.appendChild(message);
+    }
     messages.scrollTop = messages.scrollHeight;
     return message;
+  }
+
+  function addThinking() {
+    var message = addMessage('Doing the maths', 'bot');
+    message.insertAdjacentHTML('beforeend', '<span class="ai-chat__steps" aria-hidden="true"><i></i><i></i><i></i><i></i></span>');
+    setRowMood(message, 'thinking');
+    setMood('thinking');
+    return message;
+  }
+
+  function setRowMood(message, mood) {
+    var face = message.parentNode && message.parentNode.querySelector('.ai-chat__sticker--row');
+    if (face) face.innerHTML = stickerSvg(mood);
   }
 
   function replaceMessage(message, text) {
     message.textContent = text;
     messages.scrollTop = messages.scrollHeight;
+  }
+
+  function shopperReplyText(text) {
+    var cleaned = String(text || '')
+      .replace(/(?:^|\s)reference:\s*[^.!?]*(?:\[\s*memory\s*#?\s*\d+\s*\]|from memory)[.!?]?/gi, ' ')
+      .replace(/\[\s*memory\s*#?\s*\d+\s*\]/gi, '')
+      .replace(/\bmemories?\s*\[\s*\d+\s*\]/gi, '')
+      .replace(/\s+([,.;!?])/g, '$1')
+      .replace(/[ \t]{2,}/g, ' ')
+      .trim();
+    return cleaned || 'Here is what I found.';
   }
 
   function addOfferCard(card, sourceProducts) {
@@ -416,17 +526,20 @@
 
     article.className = 'ai-chat__offer-card';
     article.__bazaarCard = card;
+    article.__bubbleText = lastBotMessage ? lastBotMessage.textContent : '';
     article.innerHTML = [
       '<div class="ai-chat__offer-topline">',
       '<span data-offer-status-label>' + escapeHtml(statusLabel(card)) + '</span>',
-      '<span data-offer-countdown="' + escapeHtml(card.expiresAt) + '">15:00</span>',
+      '<span data-offer-countdown="' + escapeHtml(card.expiresAt) + '" aria-live="off">15:00</span>',
       '</div>',
+      '<div class="ai-chat__rounds" data-offer-rounds></div>',
       '<h3>' + escapeHtml(firstItem.title || 'Trailhead offer') + '</h3>',
       '<ul class="ai-chat__offer-items" data-offer-items>' + itemSummary + '</ul>',
-      '<p class="ai-chat__offer-price" data-offer-price><span>' + money(card.option.listTotal) + '</span><strong>' + money(card.option.total) + '</strong></p>',
+      '<p class="ai-chat__offer-price" data-offer-price>' + offerPriceMarkup(card) + '</p>',
+      '<p class="ai-chat__offer-total-note" data-offer-total-note>Subtotal before shipping and tax</p>',
       '<p data-offer-line>' + escapeHtml(card.line || 'I can hold this for 15 minutes.') + '</p>',
-      '<div class="ai-chat__badges" data-offer-badges>' + (card.badges || []).map(function (badge) { return '<span>' + escapeHtml(badge) + '</span>'; }).join('') + '</div>',
-      '<div class="ai-chat__trail" data-offer-trail>' + (card.trail || []).map(function (step) { return '<span>' + escapeHtml(step.label) + ' ' + money(step.amount) + '</span>'; }).join('') + '</div>',
+      '<div class="ai-chat__badges" data-offer-badges>' + badgesMarkup(card) + '</div>',
+      '<div class="ai-chat__trail" data-offer-trail>' + trailMarkup(card) + '</div>',
       '<div class="ai-chat__offer-actions" data-offer-actions></div>',
       '<p class="ai-chat__offer-footer">' + escapeHtml((card.disclosure && card.disclosure[1]) || 'Only this card is binding.') + '</p>'
     ].join('');
@@ -468,7 +581,7 @@
     if (countdown && countdownTimers.get(countdown)) window.clearTimeout(countdownTimers.get(countdown));
     article.setAttribute('data-offer-status', 'superseded');
     article.classList.add('ai-chat__offer-card--superseded');
-    article.innerHTML = '<span>Round ' + escapeHtml(String(card.round || 1)) + '</span><span aria-hidden="true">·</span><span>' + money(card.option && card.option.total) + '</span><span class="visually-hidden">, replaced by a newer offer</span>';
+    article.innerHTML = '<span>Round ' + escapeHtml(String(card.round || 1)) + ' · ' + supersededItemsLabel(card.option && card.option.items) + '</span><span aria-hidden="true">·</span><span>' + money(card.option && card.option.total) + '</span><span class="visually-hidden">, replaced by a newer offer</span>';
     var poller = offerPollers.get(article);
     if (poller) { window.clearInterval(poller); offerPollers.delete(article); }
     var key = article.__bazaarCard.negotiationId || article.__bazaarCard.offerId;
@@ -487,28 +600,108 @@
     var trail = article.querySelector('[data-offer-trail]');
     var line = article.querySelector('[data-offer-line]');
     var firstItem = card.option && card.option.items && card.option.items[0] ? card.option.items[0] : {};
+    var rounds = article.querySelector('[data-offer-rounds]');
+    var isFinal = (card.round || 1) >= (card.maxRounds || 4);
+    if (rounds) { rounds.innerHTML = roundsMarkup(card); rounds.setAttribute('role', 'img'); rounds.setAttribute('aria-label', statusLabel(card)); }
+    article.classList.toggle('is-final', isFinal && card.status === 'live');
+    if (article === currentOfferArticle) renderChips(card.status === 'pending_owner' ? [] : offerChips(card, isFinal));
     if (status) status.textContent = statusLabel(card);
     if (title) title.textContent = firstItem.title || 'Trailhead offer';
     if (items) items.innerHTML = offerItemsMarkup(card.option && card.option.items);
-    if (price) price.innerHTML = '<span>' + money(card.option && card.option.listTotal) + '</span><strong>' + money(card.option && card.option.total) + '</strong>';
+    if (price) price.innerHTML = offerPriceMarkup(card);
     if (line) line.textContent = card.line || 'I can hold this for 15 minutes.';
-    if (badges) badges.innerHTML = (card.badges || []).map(function (badge) { return '<span>' + escapeHtml(badge) + '</span>'; }).join('');
-    if (trail) trail.innerHTML = (card.trail || []).map(function (step) { return '<span>' + escapeHtml(step.label) + ' ' + money(step.amount) + '</span>'; }).join('');
+    // The bubble above already says it; the card repeats the line only when a poll has changed it.
+    if (line) line.hidden = Boolean(article.__bubbleText) && line.textContent === article.__bubbleText;
+    if (badges) badges.innerHTML = badgesMarkup(card);
+    if (trail) trail.innerHTML = trailMarkup(card);
     var countdown = article.querySelector('[data-offer-countdown]');
     var pending = card.status === 'pending_owner';
     var expiry = pending && card.pendingUntil ? new Date(card.pendingUntil) : new Date(card.expiresAt);
     countdown.setAttribute('data-offer-countdown', expiry.toISOString());
     button.disabled = button.__bazaarAccepting || !endpoint || card.status !== 'live';
-    button.textContent = button.__bazaarAccepting ? 'Minting...' : !endpoint ? 'Deal needs API' : pending ? 'Waiting for owner' : card.status === 'live' ? dealLabel(card) : 'Offer unavailable';
+    button.textContent = button.__bazaarAccepting ? 'Sealing the deal…' : !endpoint ? 'Offers are offline' : pending ? 'Waiting for owner' : card.status === 'live' ? dealLabel(card) : 'Offer unavailable';
     startCountdown(countdown, expiry, button, pending);
+  }
+
+  // Keep the card readable while an older hosted server may still send engine-era labels.
+  function badgesMarkup(card) {
+    var seen = {};
+    return (card.badges || []).map(shopperBadge).filter(function (badge) {
+      if (!badge || seen[badge]) return false;
+      seen[badge] = true;
+      return true;
+    }).map(function (badge) { return '<span>' + escapeHtml(badge) + '</span>'; }).join('');
+  }
+
+  function shopperBadge(badge) {
+    var label = String(badge || '').trim();
+    var legacy = {
+      'reason needed': 'needs a reason',
+      'firm counter': 'price held firm',
+      'bundle value': 'bundle offer',
+      'seller counter': '',
+      'good intent': ''
+    };
+    if (Object.prototype.hasOwnProperty.call(legacy, label.toLowerCase())) return legacy[label.toLowerCase()];
+    var reason = label.match(/^reason:\s*(.+)$/i);
+    if (!reason) return label;
+    return {
+      'budget': 'for a tight budget',
+      'quantity intent': 'for a bigger cart',
+      'add-on intent': 'for adding gear',
+      'repeat shopper': 'for coming back',
+      'market comparison': 'for a fair comparison',
+      'real use case': 'for real plans',
+      'ready to buy': 'for buying today'
+    }[reason[1].toLowerCase()] || '';
+  }
+
+  function trailMarkup(card) {
+    return (card.trail || []).map(function (step, index) {
+      var who = step.by === 'shopper' ? 'You' : index === 0 ? 'List' : 'Me';
+      return '<span>' + who + ' ' + money(step.amount) + '</span>';
+    }).join('');
+  }
+
+  function offerPriceMarkup(card) {
+    var option = card.option || {};
+    var discounted = Number(option.listTotal) > Number(option.total);
+    return (discounted ? '<span>' + money(option.listTotal) + '</span>' : '') + '<strong>' + money(option.total) + '</strong>';
+  }
+
+  function offerChips(card, isFinal) {
+    if (isFinal) return CHIPS_FINAL;
+    var items = card.option && card.option.items || [];
+    var hasAddOn = Boolean(card.option && (card.option.kind === 'bundle' || items.some(function (item) {
+      return item.thrownIn;
+    })));
+    return hasAddOn ? CHIPS_AFTER.concat([CHIP_REMOVE_ADD_ON]) : CHIPS_AFTER;
+  }
+
+  function roundsMarkup(card) {
+    var total = card.maxRounds || 4;
+    var here = card.round || 1;
+    var out = '';
+    for (var round = 1; round <= total; round += 1) {
+      out += '<i class="' + (round < here ? 'is-done' : round === here ? 'is-here' : '') + '"></i><b class="' + (round < here ? 'is-done' : '') + '"></b>';
+    }
+    return out + ICONS.flag;
   }
 
   function offerItemsMarkup(items) {
     return (items || []).map(function (item) {
       var size = item.size ? ' · size ' + escapeHtml(item.size) : '';
       var quantity = item.qty === undefined || item.qty === null ? 1 : item.qty;
-      return '<li>' + escapeHtml(item.title || 'Item') + size + ' · qty ' + escapeHtml(String(quantity)) + '</li>';
+      var list = Number(item.listPrice) > 0 ? ' · list ' + money(item.listPrice) : '';
+      return '<li>' + escapeHtml(item.title || 'Item') + size + ' · qty ' + escapeHtml(String(quantity)) + list + '</li>';
     }).join('');
+  }
+
+  function supersededItemsLabel(items) {
+    return (items || []).map(function (item) {
+      var quantity = Number(item.qty) || 1;
+      return escapeHtml((quantity > 1 ? quantity + ' × ' : '') + (item.title || 'Item'));
+    }).join(' + ') || 'Offer';
   }
 
   function startOfferPolling(card, article, button) {
@@ -573,7 +766,9 @@
   }
 
   function statusLabel(card) {
-    return 'Round ' + (card.round || 1) + ' of ' + (card.maxRounds || 4);
+    var label = 'Round ' + (card.round || 1) + ' of ' + (card.maxRounds || 4);
+    if (card.status === 'pending_owner') return 'With the owner';
+    return (card.round || 1) >= (card.maxRounds || 4) ? 'Final offer · ' + label.toLowerCase() : label;
   }
 
   function setLoading(isLoading) {
@@ -657,7 +852,10 @@
   }
 
   function money(cents) {
-    return '$' + Math.round(Number(cents || 0) / 100);
+    var amount = Math.round(Number(cents || 0));
+    var whole = Math.floor(amount / 100);
+    var remainder = amount % 100;
+    return '$' + whole + (remainder ? '.' + String(remainder).padStart(2, '0') : '');
   }
 
   function normalizeCents(value) {
@@ -692,10 +890,7 @@
 
   if (voiceToggle) {
     voiceToggle.addEventListener('click', function () {
-      if (!voiceAvailable) {
-        addMessage('Voice mode needs ELEVENLABS_API_KEY on the server and microphone permission in this browser.', 'bot');
-        return;
-      }
+      if (!voiceAvailable) return;
       voiceEnabled = !voiceEnabled;
       if (!voiceEnabled) {
         if (recording) stopRecording();
@@ -723,12 +918,23 @@
     if (event.key === 'Escape' && !panel.hidden) closeChat();
   });
 
-  promptButtons.forEach(function (button) {
-    button.addEventListener('click', function () {
-      input.value = button.getAttribute('data-ai-chat-prompt');
+  widget.addEventListener('click', function (event) {
+    var chip = event.target && event.target.closest && event.target.closest('[data-ai-chat-prompt]');
+    if (chip) {
+      input.value = chip.getAttribute('data-ai-chat-prompt');
       form.requestSubmit();
-    });
+    }
+    if (event.target && event.target.closest && event.target.closest('[data-ai-chat-stop-speaking]')) stopSpeaking();
   });
+
+  document.addEventListener('click', function (event) {
+    if (event.target && event.target.closest && event.target.closest('[data-ai-chat-open]')) {
+      event.preventDefault();
+      openChat();
+    }
+  });
+
+  if (listenStop) listenStop.addEventListener('click', stopRecording);
 
   form.addEventListener('submit', function (event) {
     event.preventDefault();
@@ -741,18 +947,22 @@
 
     if (endpoint) {
       setLoading(true);
-      var thinking = addMessage('Thinking...', 'bot');
+      var thinking = addThinking();
       askEndpoint(text).then(function (data) {
         var context = getContextProduct();
-        var reply = data.reply || data.text || data.message || 'Here is what I found.';
+        var reply = shopperReplyText(data.reply || data.text || data.message || 'Here is what I found.');
         replaceMessage(thinking, reply);
         speakReply(reply);
         var turnProduct = getTurnProduct(text, data.products, data.card);
-        addProductCard(turnProduct);
+        var onThisPage = currentProduct && turnProduct && String(turnProduct.handle || '') === String(currentProduct.handle || '');
+        if (data.card || onThisPage) setActiveProduct(turnProduct);
+        else addProductCard(turnProduct);
         if (data && data.negotiationId) {
           negotiationId = data.negotiationId;
           negotiationProductKey = productKey(activeProduct === currentProduct ? selectedProduct() : turnProduct || context.product);
         }
+        setMood(data.card ? cardMood(data.card) : 'idle');
+        setRowMood(thinking, currentMood);
         if (data.card) {
           negotiationId = data.card.negotiationId || negotiationId;
           negotiationProductKey = productKey(activeProduct === currentProduct ? selectedProduct() : turnProduct || context.product);
@@ -760,6 +970,8 @@
         }
       }).catch(function () {
         replaceMessage(thinking, 'The shopkeeper is temporarily unavailable. Please try again.');
+        setMood('idle');
+        setRowMood(thinking, 'idle');
       }).finally(function () {
         setLoading(false);
         input.focus();

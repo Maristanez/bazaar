@@ -300,13 +300,16 @@ const server = createServer(async (request, response) => {
       const payload = await readJson(request);
       if (!owner) { sendJson(response, request, 503, { error: "policy_unavailable", reply: "The shopkeeper is unavailable. Please try again shortly." }); return; }
       if (owner.getPolicy().paused) { sendJson(response, request, 200, pausedReply(payload)); return; }
+      Object.assign(payload, selectionContext(payload));
       const message = String(payload.message || "").trim();
       if (!message) {
         sendJson(response, request, 400, { error: "message is required" });
         return;
       }
       // Asking how low the price goes is not a new offer: the card on the table is restated and the round stands.
-      const standing = isPriceMoveQuestion(message) ? await withShopperLock(requireShopperId(payload), () => standingOfferReply(payload)) : null;
+      const accepting = isTextAcceptance(message);
+      const standing = isPriceMoveQuestion(message) || accepting ? await withShopperLock(requireShopperId(payload), () => standingOfferReply(payload)) : null;
+      if (standing && accepting && standing.card.status === "live") standing.reply = "Tap Deal on this card to continue to Shopify Checkout. Your held price and timer stay the same.";
       if (standing) { sendJson(response, request, 200, standing); return; }
       if (isOfferIntent(message)) {
         sendJson(response, request, 200, await makeOfferFromPayload(payload, message));
@@ -319,6 +322,7 @@ const server = createServer(async (request, response) => {
       const questionQuantity = matched ? parseQuantity(message, null) : null;
       const quantity = questionQuantity || (matched && prior && matched.item.productId === prior.item.productId ? prior.quantity : 1);
       const negotiation = matched ? negotiationFor(payload, matched.item, quantity) : null;
+      if (negotiation) negotiation.pageVariantId = pageVariantId(payload);
       const negotiationId = negotiation?.id || `catalog:${shopperId}`;
       if (matched) rememberShopperContext(shopperId, matched.item, quantity, negotiationId);
       const context = {
@@ -753,8 +757,26 @@ function negotiationFor(payload, item, quantity) {
   return negotiation;
 }
 
+function pageVariantId(payload) {
+  return String(payload.product?.selectedVariantId || payload.product?.variantId || "");
+}
+
+function selectionContext(payload) {
+  const active = state.negotiations.get(payload.negotiationId || state.shopperContexts.get(payload.shopperId)?.negotiationId);
+  if (!active?.pageVariantId || payload.variantSelectionChanged !== undefined) return payload;
+  return { ...payload, variantSelectionChanged: active.pageVariantId !== pageVariantId(payload) };
+}
+
 async function makeOfferTurn(payload, message) {
+  payload = selectionContext(payload);
   if (owner.getPolicy().paused) return pausedReply(payload);
+  if (/\b(?:shipping|delivery|tax|taxes)\b/i.test(message) && /\b(?:free|no|without|include|including|included|all[ -]in|guarantee)\b/i.test(message)) {
+    return { reply: "I can negotiate the item subtotal only. Shopify Checkout determines shipping and taxes, so I cannot guarantee an all-in total, free shipping, or no tax. Please send the amount you want to offer for the items alone." };
+  }
+  const explicitQuantity = parseQuantity(message, null);
+  if (explicitQuantity !== null && (!Number.isSafeInteger(explicitQuantity) || explicitQuantity < 1 || explicitQuantity > MAX_OFFER_QUANTITY)) {
+    return { reply: `Please choose a quantity from 1 to ${MAX_OFFER_QUANTITY}.` };
+  }
   const active = state.negotiations.get(payload.negotiationId || state.shopperContexts.get(payload.shopperId)?.negotiationId);
   const needsFreshApprovalCost = active?.round >= ownerSettings().maxRounds && owner.getPolicy().askOwner && !active.approvalUsed;
   const mirror = await syncMirror({ force: needsFreshApprovalCost });
@@ -765,13 +787,20 @@ async function makeOfferTurn(payload, message) {
   }
   const matchText = [message, understanding.productHint, ...(understanding.items || []).map(item => item.productHint)].filter(Boolean).join(" ");
   const understoodMatch = understanding.productHint
-    ? findProductFromPayload({ ...payload, message: understanding.productHint, text: understanding.productHint }, mirror, { contextItem: shopperContext?.item, allowFallback: false })
+    ? findProductFromPayload({ ...payload, message: matchText, text: matchText }, mirror, { contextItem: shopperContext?.item, allowFallback: false })
     : null;
   const match = understoodMatch || findProductFromPayload({ ...payload, text: matchText }, mirror, { contextItem: shopperContext?.item, allowFallback: false });
-  if (!match) return { reply: "Pick a published product first, then send me a number like “Could you do $120?”", products: publicProducts(mirror) };
+  if (!match) return { reply: "I could not match that product and size to an available variant. Pick an available product and size, then send your offer.", products: publicProducts(mirror) };
   const sameContextItem = shopperContext?.item && shopperContext.item.productId === match.item.productId;
-  const cartRequest = requestedCartFromUnderstanding(understanding.items, mirror, match.item)
-    || requestedCartFromMessage(message, mirror, match.item);
+  const textCart = requestedCartFromMessage(message, mirror, match.item);
+  const cartRequest = requestedCartFromUnderstanding(understanding.items, mirror, match.item) || textCart;
+  if (cartRequest !== textCart) {
+    cartRequest.unavailable.push(...textCart.unavailable);
+    const combined = new Map(cartRequest.requestedItems.map(item => [item.variantId, item]));
+    for (const item of textCart.requestedItems) combined.set(item.variantId, item);
+    cartRequest.requestedItems = [...combined.values()];
+  }
+  cartRequest.unavailable.push(...unknownRequestedItems(message, mirror));
   if (cartRequest.unavailable.length) {
     return {
       reply: unavailableCartReply(cartRequest.unavailable, mirror, match.item),
@@ -782,9 +811,20 @@ async function makeOfferTurn(payload, message) {
   const selectedQuantity = pageItem?.productId === match.item.productId && (!payload.negotiationId || payload.quantitySelectionChanged)
     ? payload.quantity : undefined;
   const terms = parseOfferTerms(message, payload, understanding, { fallbackQuantity: selectedQuantity ?? (sameContextItem ? shopperContext.quantity : 1) });
-  if (cartRequest.mainQuantity) terms.quantity = cartRequest.mainQuantity;
-  if (cartRequest.quotedTotalDollars !== null) {
-    terms.dollars = cartRequest.quotedTotalDollars;
+  terms.quantity = textCart.mainQuantity ?? explicitQuantity ?? cartRequest.mainQuantity ?? terms.quantity;
+  const explicitTotal = parseExplicitTotal(message);
+  const percent = parsePercentDiscount(message);
+  if (explicitTotal !== null) {
+    terms.dollars = explicitTotal;
+    terms.perUnit = false;
+  } else if (percent !== null) {
+    if (!(percent > 0 && percent < 100)) return { reply: "Please choose a percentage discount greater than 0 and less than 100." };
+    const extras = cartRequest.requestedItems.length ? cartRequest.requestedItems : sameContextItem ? shopperContext.requestedItems || [] : [];
+    const listTotal = match.item.list * terms.quantity + extras.reduce((sum, entry) => sum + (mirror.items.find(item => item.variantId === entry.variantId)?.list || 0) * entry.quantity, 0);
+    terms.dollars = Math.round(listTotal * (1 - percent / 100)) / 100;
+    terms.perUnit = false;
+  } else if (textCart.quotedTotalDollars !== null) {
+    terms.dollars = textCart.quotedTotalDollars;
     terms.perUnit = false;
   }
   if (!Number.isSafeInteger(terms.quantity) || terms.quantity < 1 || terms.quantity > MAX_OFFER_QUANTITY) {
@@ -833,6 +873,7 @@ async function makeOfferTurn(payload, message) {
     return { reply: "Please send a positive CAD offer for this product." };
   }
   const negotiation = negotiationFor(payload, match.item, quantity);
+  negotiation.pageVariantId = pageVariantId(payload);
   const negotiationId = negotiation.id;
   const previousRound = negotiation.round;
   const pending = [...state.offers.values()].find(offer => offer.negotiationId === negotiationId && offer.status === "pending_owner");
@@ -852,6 +893,21 @@ async function makeOfferTurn(payload, message) {
   let candidates = priceMenu(policy.floorPct);
   const shopperId = requireShopperId(payload);
   if (!candidates.length) return { reply: requestedItems.length ? "I could not price every requested item safely, so I did not create a partial offer." : "This item or quantity is not open to offers right now.", negotiationId };
+  const held = latestNegotiationOffer(negotiationId);
+  if (lowball && held && currentCard(held).status === "live" && candidates.some(candidate => sameOfferItems(candidate.offer.items, held.items))) {
+    const freshItems = held.items.map(item => {
+      const fresh = mirror.items.find(candidate => candidate.variantId === item.variantId);
+      return fresh && Number(fresh.inventory ?? 0) >= (item.qty || 1) ? { ...fresh, qty: item.qty || 1 } : null;
+    });
+    const audit = freshItems.every(Boolean) ? auditOffer(freshItems, held.total, policy.floorPct, new Date(), held.ownerApproved === true) : null;
+    if (audit) {
+      const included = held.items.slice(1).map(item => item.title).join(" and ");
+      const reply = `That offer does not move the price. I am holding ${formatMoney(held.total)}${included ? `; that includes ${included}` : ""} while the timer runs.`;
+      held.card = { ...held.card, mood: "offended" };
+      owner.publish({ at: new Date().toISOString(), surface: "storefront", shopperId, negotiationId, kind: "decision", reasoning: "Lowball; preserved the valid held offer and its original expiry. No pricing LLM call.", offer: offered, round: held.card.round, ...audit });
+      return { reply, card: currentCard(held), negotiationId };
+    }
+  }
   const fallback = choices => choices[0];
   let menu = negotiationOptions(candidates, round, match.item, maxRounds);
   let phrased = lowball
@@ -903,7 +959,7 @@ async function makeOfferTurn(payload, message) {
     badges: offer.badges,
     trail: [
       { label: "List price", amount: offer.listTotal, by: "shop" },
-      { label: "You offered", amount: toShopper(offered), by: "shopper" },
+      { label: "You offered", amount: offered, by: "shopper" },
       { label: "My price", amount: offer.total, by: "shop" },
     ],
     expiresAt: expiresAt.toISOString(),
@@ -1335,7 +1391,7 @@ function requestedCartFromMessage(message, mirror, main) {
     const quotedLineAmount = quotedLinePrice(text, mention);
     if (quotedLineAmount !== null) quotedLineAmounts.push(quotedLineAmount);
     if (sample.productId === main.productId) {
-      mainQuantity = explicitQuantity;
+      mainQuantity = explicitQuantity ?? (groups.size > 1 && [...groups.values()].filter(group => productMention(text, group[0])).length > 1 ? 1 : null);
       const selected = variants.find(item => item.variantId === main.variantId) || main;
       if (!selected.inStock || selected.cost === null || Number(selected.inventory ?? quantity) < quantity) unavailable.push({ ...sample, quantity });
       continue;
@@ -1367,7 +1423,7 @@ function requestedCartFromUnderstanding(items, mirror, main) {
   for (const requested of items) {
     const hint = normalizeSearchText(requested?.productHint);
     const variants = [...groups.values()].find(group => productMention(hint, group[0]));
-    if (!variants) return null;
+    if (!variants) { unavailable.push({ title: String(requested.productHint || "The requested item"), quantity: Number(requested.quantity) || 1 }); continue; }
     const sample = variants[0];
     if (seen.has(sample.productId)) continue;
     seen.add(sample.productId);
@@ -1384,6 +1440,15 @@ function requestedCartFromUnderstanding(items, mirror, main) {
     else requestedItems.push({ variantId: available.variantId, quantity });
   }
   return { mainQuantity, requestedItems, unavailable, quotedTotalDollars: null };
+}
+
+function unknownRequestedItems(message, mirror) {
+  const requests = [...String(message).matchAll(/\b(?:free|throw in|include|add|plus|and(?=\s+(?:a|an|one|two|\d+)\s)|with(?=\s+(?:a|an|one|two|\d+)\s))\s+(?:(?:a|an|one|the|two|\d+)\s+)?([^.,;!?]+?)(?=\s+(?:and|for|with|at|to|please)\b|[.,;!?]|$)/gi)];
+  return requests.filter(match => {
+    const hint = normalizeSearchText(match[1]);
+    if (/^(?:size|variant|shipping|delivery|returns?|tax|it|them|that|this|one|another|more|an? add on|add ons?|reason|budget|race|run|trip|friend|student|cash|card|payment|price|discount|offer|purchase|promise|commitment)\b/.test(hint)) return false;
+    return !mirror.items.some(item => productMention(hint, item));
+  }).map(match => ({ title: match[1].trim(), quantity: 1 }));
 }
 
 function productMention(text, item) {
@@ -1569,8 +1634,8 @@ function deterministicReply(context) {
     return { reply: catalogReply(listedProducts), memoryProducts: listedProducts };
   }
   if (isSizingQuestion(message)) return { reply: sizingReply(context.product, products) };
-  if (/\b(shipping|ship|delivery|returns|return)\b/.test(message)) {
-    return { reply: "Shipping and returns are handled in Shopify Checkout. For this demo, use the checkout page as the source of truth for shipping, taxes, and the final total." };
+  if (/\b(shipping|ship|delivery|returns|return|tax|taxes)\b/.test(message)) {
+    return { local: true, reply: "Shopify Checkout shows shipping, taxes, and the final total. The held offer covers the items on the card; I cannot guarantee free shipping or no tax. Contact the store for its returns policy." };
   }
   return null;
 }
@@ -1659,13 +1724,15 @@ function hasPriceMoveWording(message) {
 function isOfferIntent(text) {
   const message = String(text || "");
   const hasMoney = parseMoney(message) !== null;
+  if (parsePercentDiscount(message) !== null && /\b(?:off|discount|reduce|less|lower)\b/i.test(message)) return true;
+  if (!hasMoney && /\b(?:shipping|ship|delivery|returns?|tax(?:es)?)\b/i.test(message)) return false;
   if (isPriceMoveQuestion(message)) return true;
   const hasOfferLanguage = /\b(offer|deal|discount|haggle|checkout|could you do|can you do|would you take|best price|can i get|could i get|give it to me|give them to me|buy|take|grab|order|lower|cheaper|knock|meet me|split the difference|work with me|out the door|otd)\b/i.test(message);
   return hasMoney || hasOfferLanguage;
 }
 
 function parseOfferTerms(message, payload = {}, understanding = {}, options = {}) {
-  const quantity = understanding.quantity ?? parseQuantity(message, options.fallbackQuantity ?? 1) ?? 1;
+  const quantity = parseQuantity(message, null) ?? understanding.quantity ?? options.fallbackQuantity ?? 1;
   const textDollars = understanding.dollars ?? parseMoney(message);
   const payloadDollars = parseMoney(payload.amount);
   return {
@@ -1675,9 +1742,32 @@ function parseOfferTerms(message, payload = {}, understanding = {}, options = {}
   };
 }
 
+function isTextAcceptance(message) {
+  return /^(?:(?:ok(?:ay)?|yes|great|thanks)[\s,.!]*)*(?:i\s+accept|accepted|deal|let['’]s\s+do\s+it)(?:[\s,.!]*(?:deal|thanks|thank you))?[\s,.!]*$/i.test(String(message).trim());
+}
+
+function parseExplicitTotal(message) {
+  const matches = [...String(message).matchAll(/(?:\$\s*)?(\d+(?:\.\d{1,2})?)\s*(?:CAD\s*)?(?:total|altogether|all[ -]in)\b/gi)]
+    .filter(match => !/\b(?:not|isn['’]t|wasn['’]t)\s*\$?\s*$/i.test(String(message).slice(0, match.index)));
+  return matches.length ? Number(matches.at(-1)[1]) : null;
+}
+
+function parsePercentDiscount(message) {
+  const text = String(message);
+  const numeric = [...text.matchAll(/([+\-−]?\d+(?:\.\d+)?)\s*(?:%|percent|per cent)/gi)].map(match => ({ index: match.index, amount: Number(match[1].replace("−", "-")) }));
+  const words = [...text.matchAll(new RegExp(`\\b(${NUMBER_WORD_PATTERN}(?:\\s+${NUMBER_WORD_PATTERN})*)\\s+(?:percent|per cent)\\b`, "gi"))].map(match => ({ index: match.index, amount: parseNumberWords(match[1]) }));
+  const matches = [...numeric, ...words].sort((a, b) => a.index - b.index);
+  const affirmative = matches.filter(match => !/\b(?:not|no|isn['’]t|don['’]?t want|do not want)\s*$/i.test(text.slice(0, match.index)));
+  return affirmative.at(-1)?.amount ?? (matches.length ? NaN : null);
+}
+
 function parseMoney(value) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
-  const text = String(value || "");
+  const text = String(value || "").replace(/\b(?:Not|isn['’]t|wasn['’]t)\s*\$\s*\d+(?:\.\d+)?(?:\s*total)?[.,]?/gi, "");
+  const total = parseExplicitTotal(text);
+  if (total !== null) return total;
+  const translated = text.match(/(\d+(?:\.\d{1,2})?)\s*(?:dólares?\s+canadienses|dollars?\s+canadiens)/i);
+  if (translated) return Number(translated[1]);
   const match = text.match(/(?:c\$|\$)\s*(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s*(?:\$|cad|dollars?|bucks?|each|ea|apiece|a piece|a pop|per\b|\/\s*ea|all in|all-in|total|altogether|otd|out the door)/i);
   if (match) return Number(match[1] || match[2]);
   const prefixedNumber = text.match(/\b(for|at|around|about|under|to|do|take|offer|pay|price|give|make|call it|down to|knock(?: them| it)? down to|meet me at|what about)\s+(\d+(?:\.\d{1,2})?)\b/i);
@@ -1697,11 +1787,16 @@ function parseMoney(value) {
 }
 
 function parseQuantity(value, fallback = 1) {
+  // Preserve signs and decimal points before search normalization can turn -2 into 2 or 1.5 into 5.
+  const raw = String(value || "");
+  const numeric = raw.match(/(?:^|[\s,;:])([+\-−]?\d+(?:\.\d+)?)\s*(?:x|pcs?|pieces?|items?|tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?)\b/i);
+  if (numeric) return Number(numeric[1].replace("−", "-"));
+  if (/\bzero\s+(?:pairs?|items?|socks?|shoes?|caps?|tees?)\b/i.test(raw)) return 0;
   const text = normalizeSearchText(value);
-  const match = text.match(/\b(?:buy|get|take|grab|want|order|add|need)\s+(\d+)\b|\b(\d+)\s*(?:x|pcs?|pieces?|items?|tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?)\b/i);
+  const match = text.match(/\b(\d+)\s*(?:x|pcs?|pieces?|items?|tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?)\b/i);
   const wordMatch = text.match(/\b(?:buy|get|take|grab|want|order|add|need)\s+([a-z -]+?)\s+(?:tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?|items?)\b/i);
   const directWordMatch = text.match(new RegExp(`\\b(${NUMBER_WORD_PATTERN}(?:\\s+${NUMBER_WORD_PATTERN})*)\\s+(?:tees?|shirts?|socks?|pairs?|tops?|shoes?|runners?|vests?|caps?|items?)\\b`, "i"));
-  const pairMatch = /\b(couple|both)\b/i.test(text);
+  const pairMatch = /\bboth\b|\bcouple(?: of)?\s+(?:pairs?|items?|shoes?|socks?|tees?|shirts?|caps?|flasks?)\b/i.test(text);
   const halfDozen = /\bhalf dozen\b/i.test(text);
   const wordQuantity = wordMatch ? parseNumberWords(wordMatch[1]) : directWordMatch ? parseNumberWords(directWordMatch[1]) : null;
   const quantity = match ? Number(match[1] || match[2]) : halfDozen ? 6 : wordQuantity ?? (pairMatch ? 2 : /\b(?:a|one) pair\b/.test(text) ? 1 : fallback);

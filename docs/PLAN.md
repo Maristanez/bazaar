@@ -23,6 +23,14 @@
 | 🔌 C. Platform | Ricardo | R2 token wrapper, R4 product mirror, `/api/products`, `/api/stream`, offer cards, `discountCodeBasicCreate` and cart permalinks are **live on Railway deploy `6f1032c6`** | Manual checkout-total / free-shipping / tax verification; then R16 remove-bundle-item test; then R12 pin + R13 domain before 13:00 | Store checkout settings / manual checkout verification |
 | 🤖 D. Agents + guardrails | **Ricardo / Codex** (guardrails B14 · B8 · B7 · B9 · B13 are built) | Shopper Q&A and checked offer wording route through Backboard to OpenAI `gpt-5.6-terra`. Each identified shopper gets an isolated cloned Assistant with indexed documents and writable memory. The complete server-priced menu reaches Backboard, and explicit bundles cannot be silently reduced to one item. | Finish the proactive demo-shopper greeting for R10, then hosted R11 verification with latency re-measured on `gpt-5.6-terra` | Ricardo / Codex for R10/R11 |
 
+### Live QA handoff — Sun 20 Sep 01:30 EDT · Bryan / Codex
+
+- **Now:** Implemented the report's cart/size/amount, held-price, routing, and shopper-copy fixes. Preserved the existing memory isolation work and verified a fresh identity against real Backboard. Added 22 transcript API regressions plus catalog, theme and engine cases. Full-suite checkpoint: 359 tests / 40 files pass; typecheck and build pass. See [`live-chat-stress-test-2026-09-20.md`](live-chat-stress-test-2026-09-20.md) for the implementation matrix and original live evidence.
+- **Next:** Publish the tested server/theme, apply the corrected Shopify product descriptions and Checkout branding, then replay the hosted regression and Console checklist. Original demo cases remain in the report; prices must be rechecked against the active policy before pitching.
+- **Blocked:** Hosted Console still needs owner sign-in. Production deployment, store descriptions/branding, shipping/tax totals, authenticated feed and owner controls are not certified by local tests. Other work is concurrently advancing this checkout; preserve its changes when staging/publishing.
+- [x] Local fixes and transcript/engine/theme regression coverage for BUG-01 through BUG-09.
+- [ ] Hosted rollout, BUG-10 admin/config reconciliation, and VERIFY-11 final checkout verification.
+
 ### Progress — Sat 19 Sep 22:45 EDT (checked against the code on `cleanup/one-engine-apps-central`, not taken from ticks)
 
 **Overall: 30 of 51 open-or-done tasks ticked** (stretch and cut tasks not counted). 1 h 15 to gate 2 · 9 h to final submit. Almost everything still open needs a human at a dashboard or a browser, not code.
