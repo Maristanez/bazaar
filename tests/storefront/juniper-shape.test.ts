@@ -143,6 +143,32 @@ describe("V12 — the chat keeps its shape out of the conversation's way", () =>
     expect(chat.isOpen()).toBe(false);
   });
 
+  it("the bubble keeps three lines and moves with the talk: newest words for the shopper, her voice's pace for her", async () => {
+    const { chat, find, window } = mount();
+    const peek = find("[data-juniper-peek]");
+    const text = must(peek.querySelector(".juniper-shape__peek-text")) as HTMLElement;
+    // jsdom lays nothing out: give the text a height taller than the three lines it may show.
+    Object.defineProperty(text, "scrollHeight", { configurable: true, get: () => 300 });
+    Object.defineProperty(text, "clientHeight", { configurable: true, get: () => 60 });
+
+    window.document.dispatchEvent(new window.CustomEvent("bazaar-voice:caption", { detail: { text: "a long stretch of talk ".repeat(12), final: false } }));
+    expect(text.scrollTop).toBe(240);
+    expect(text.classList.contains("juniper-shape__peek-text--above")).toBe(true);
+
+    chat.shape.peek("Her answer, long enough to need carrying down the bubble. ".repeat(6));
+    expect(text.scrollTop).toBe(0);
+    const listeners: Record<string, () => void> = {};
+    const audio = { duration: 10, currentTime: 0, addEventListener: (name: string, run: () => void) => { listeners[name] = run; } };
+    chat.shape.followVoice(audio);
+    audio.currentTime = 5;
+    must(listeners.timeupdate)();
+    expect(text.scrollTop).toBe(120);
+    audio.currentTime = 10;
+    must(listeners.timeupdate)();
+    expect(text.scrollTop).toBe(240);
+    expect(peek.hidden).toBe(false);
+  });
+
   it("a reply while the chat is open does not peek", async () => {
     const { chat, find, settle } = mount();
     chat.open();

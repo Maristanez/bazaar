@@ -256,6 +256,11 @@
     peek.className = 'juniper-shape__peek';
     peek.setAttribute('data-juniper-peek', '');
     peek.hidden = true;
+    // Three lines tall, never more: the words move through it. The shopper's newest words sit at the bottom as they
+    // are heard; her answer starts at its top and is carried down in time with her voice.
+    var peekText = document.createElement('span');
+    peekText.className = 'juniper-shape__peek-text';
+    peek.appendChild(peekText);
     var dot = document.createElement('span');
     dot.className = 'juniper-shape__dot';
     dot.setAttribute('data-juniper-unread', '');
@@ -265,9 +270,67 @@
     widget.appendChild(dot);
     var peekTimer = null;
 
+    var READ_WORDS_PER_SECOND = 3.2;
+    var following = null;        // the clip of her voice the bubble is keeping pace with
+    var readTimer = null;
+
     function hidePeek() {
       if (peekTimer) { window.clearTimeout(peekTimer); peekTimer = null; }
+      stopReading();
+      following = null;
       peek.hidden = true;
+    }
+
+    function stopReading() {
+      if (readTimer) { window.clearInterval(readTimer); readTimer = null; }
+    }
+
+    // The text is what scrolls, inside the bubble: the bubble's own edge stays crisp while the words fade at it.
+    function room() { return Math.max(0, peekText.scrollHeight - peekText.clientHeight); }
+
+    function scrollPeek(top) {
+      peekText.scrollTop = Math.max(0, Math.min(room(), top));
+      peekText.classList.toggle('juniper-shape__peek-text--above', peekText.scrollTop > 2);
+      peekText.classList.toggle('juniper-shape__peek-text--below', room() - peekText.scrollTop > 2);
+    }
+
+    // Nobody is reading it aloud: it moves at reading pace instead, and stays up until it has been read.
+    function readAlong(words) {
+      stopReading();
+      var seconds = Math.max(2, words / READ_WORDS_PER_SECOND);
+      var started = Date.now();
+      readTimer = window.setInterval(function () {
+        if (following || peek.hidden) { stopReading(); return; }
+        var done = Math.min(1, (Date.now() - started) / (seconds * 1000));
+        scrollPeek(room() * done);
+        if (done >= 1) stopReading();
+      }, 120);
+      return seconds * 1000;
+    }
+
+    // Her voice: the bubble is carried down as the clip plays, so the words in view are the words being said.
+    function followVoice(audio) {
+      if (!audio || (chat.isOpen && chat.isOpen()) || peek.hidden) return;
+      stopReading();
+      following = audio;
+      if (peekTimer) { window.clearTimeout(peekTimer); peekTimer = null; }
+      var pace = function () {
+        if (following !== audio) return;
+        var length = audio.duration;
+        if (!(length > 0) || !isFinite(length)) return;
+        scrollPeek(room() * Math.min(1, (audio.currentTime || 0) / length));
+      };
+      if (audio.addEventListener) audio.addEventListener('timeupdate', pace);
+      pace();
+    }
+
+    function voiceDone() {
+      if (!following) return;
+      following = null;
+      if (peek.hidden) return;
+      scrollPeek(room());
+      if (peekTimer) window.clearTimeout(peekTimer);
+      peekTimer = window.setTimeout(hidePeek, PEEK_MS);
     }
 
     // who: 'juniper' (her line; leaves the unread dot) or 'you' (the shopper's own words as they are heard).
@@ -275,13 +338,17 @@
       var line = String(text || '').replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
       if (!line) return;
       var mine = who === 'you';
-      peek.textContent = line;
+      following = null;
+      peekText.textContent = line;
       peek.setAttribute('data-juniper-peek', mine ? 'you' : 'juniper');
       peek.setAttribute('aria-label', (mine ? 'You said: ' : 'Juniper says: ') + line + '. Open the chat.');
       peek.hidden = false;
       if (!mine) dot.hidden = false;
       if (peekTimer) window.clearTimeout(peekTimer);
-      peekTimer = window.setTimeout(hidePeek, PEEK_MS);
+      var stay = PEEK_MS;
+      if (mine) { stopReading(); scrollPeek(room()); }   // the newest words are the ones just said
+      else { scrollPeek(0); stay = Math.max(PEEK_MS, readAlong(line.split(' ').length) + 3000); }
+      peekTimer = window.setTimeout(hidePeek, stay);
     }
 
     peek.addEventListener('click', function () { if (chat.open) chat.open(); });
@@ -289,6 +356,8 @@
       if (chat.isOpen && chat.isOpen()) return;
       showPeek(detail && detail.text);
     });
+    chat.on('speak:start', function (detail) { followVoice(detail && detail.audio); });
+    chat.on('speak:end', voiceDone);
     chat.on('open', function () {
       hidePeek();
       dot.hidden = true;
@@ -357,6 +426,7 @@
     chat.shape = {
       // Other features say a line above the launcher or pill while the chat is minimised (V13's chores do).
       peek: function (text) { if (!(chat.isOpen && chat.isOpen())) showPeek(text); },
+      followVoice: followVoice,
       size: function () { return size; },
       shapedBy: function () { return size ? (selfShaped ? 'juniper' : 'shopper') : 'default'; },
       place: function () { return { x: place.x, y: place.y }; },
