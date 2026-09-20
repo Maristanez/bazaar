@@ -378,7 +378,7 @@
     root.innerHTML =
       '<div class="juniper-handsfree__bar" hidden>' +
         '<span class="juniper-handsfree__dot" aria-hidden="true"></span>' +
-        '<span class="juniper-handsfree__state" role="status"></span>' +
+        '<span class="juniper-handsfree__state"></span>' +
         '<span class="juniper-handsfree__caption"></span>' +
         '<button class="juniper-handsfree__stop" type="button" hidden>Stop</button>' +
       '</div>' +
