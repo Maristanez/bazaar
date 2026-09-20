@@ -10,7 +10,8 @@ main.login .login-story ul { list-style: none; margin: 0; padding: 0; display: g
 main.login .login-story li { padding-left: 22px; position: relative; }
 main.login .login-story li::before { content: ""; position: absolute; left: 0; top: .62em; width: 10px; border-top: 2px dashed var(--color-sky); }
 main.login .login-form { width: auto; max-width: none; border-radius: 0; background: var(--color-cream); display: grid; align-content: center; gap: 18px; padding: 64px clamp(28px, 6vw, 88px); box-shadow: -18px 0 40px #002d2d40; }
-main.login .login-form h2 { font-size: 2rem; margin-bottom: 8px; }
+main.login .login-form h2 { font-family: var(--font-heading); font-weight: 600; font-size: 2.1rem; line-height: 1.1; letter-spacing: -.01em; color: var(--color-teal); margin: 0; }
+main.login .login-form .login-sub { margin: -8px 0 10px; font-size: .98rem; color: #5c503e; }
 main.login .login-form label { display: grid; gap: 8px; font-weight: 700; font-size: .92rem; max-width: 420px; }
 main.login .login-form input { width: 100%; border: 1.5px solid #796b59; border-radius: 8px; background: #fffaf2; padding: 13px 14px; min-height: 48px; transition: border-color 150ms ease-out, box-shadow 150ms ease-out; }
 main.login .login-form input:hover { border-color: var(--color-teal); }
@@ -25,3 +26,7 @@ main.login .login-note { margin: 0; font-size: .82rem; color: #5c503e; max-width
 }
 /* The half-second session check before either the sign-in page or the Console appears. */
 p.loading { min-height: 100vh; margin: 0; display: grid; place-items: center; font-family: var(--font-heading); font-weight: 550; font-size: 1.2rem; color: var(--color-sky); }
+
+/* One centred column: the heading shares its left edge with the fields. */
+main.login .login-form { justify-items: center; }
+main.login .login-form > * { width: min(100%, 400px); max-width: 400px; }

@@ -39,6 +39,7 @@ export function ConsoleApp({ port, auth }: { port: ConsolePort; auth: ConsoleAut
     </section>
     <form className="login-form" onSubmit={event => void signIn(event)}>
       <h2>Owner sign in</h2>
+      <p className="login-sub">Sign in to run your shopkeeper.</p>
       <label>Email<input type="email" name="email" autoComplete="username" required /></label>
       <label>Password<input type="password" name="password" autoComplete="current-password" required /></label>
       {error && <p role="alert">{error}</p>}<button disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
