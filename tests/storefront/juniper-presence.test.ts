@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mountWidget } from "./widget.ts";
 
 // A fake Web Audio + mic + frame clock. `rig.mic` and `rig.reply` are the loudness (0..1) the analysers report.
-function fakeAudio(options: { throwOnElementSource?: boolean } = {}) {
+function fakeAudio(options: { throwOnElementSource?: boolean; suspendedContext?: boolean } = {}) {
   const rig = {
     mic: 0,
     reply: 0,
@@ -12,6 +12,9 @@ function fakeAudio(options: { throwOnElementSource?: boolean } = {}) {
     elementSources: 0,
     audios: [] as any[],
     frames: [] as ((now: number) => void)[],
+    pendingResumes: [] as (() => void)[],
+    /** Resolves the oldest still-pending `AudioContext.resume()` call (only meaningful with `suspendedContext`). */
+    resolveNextResume() { const resolve = rig.pendingResumes.shift(); if (resolve) resolve(); },
     /** Runs `count` animation frames. */
     frame(count = 1) {
       for (let index = 0; index < count; index += 1) {
@@ -37,7 +40,7 @@ function fakeAudio(options: { throwOnElementSource?: boolean } = {}) {
         getByteFrequencyData(data: Uint8Array) { data.fill(Math.round(this.level() * 255)); }
       }
       class FakeContext {
-        state = "running";
+        state = options.suspendedContext ? "suspended" : "running";
         destination = {};
         analysers: FakeAnalyser[] = [];
         constructor() { rig.contexts.push(this); }
@@ -48,7 +51,11 @@ function fakeAudio(options: { throwOnElementSource?: boolean } = {}) {
           rig.elementSources += 1;
           return { connect: (node: FakeAnalyser) => { node.source = "reply"; return node; }, disconnect() {} };
         }
-        resume() { this.state = "running"; return Promise.resolve(); }
+        resume() {
+          if (!options.suspendedContext) { this.state = "running"; return Promise.resolve(); }
+          const self = this;
+          return new Promise<void>((resolve) => { rig.pendingResumes.push(() => { self.state = "running"; resolve(); }); });
+        }
         suspend() { this.state = "suspended"; return Promise.resolve(); }
         close() { this.state = "closed"; return Promise.resolve(); }
       }
@@ -241,6 +248,37 @@ describe("juniper-presence — the halo, the wave and the mouth follow real audi
     rig.reply = 0.9;
     rig.frame(3);
     expect(mouth()).toBe(0);
+  });
+
+  it("does not let a stale reply's late context-resume steal the mouth from the reply actually playing", async () => {
+    // A fresh AudioContext starts suspended in real browsers, so wiring a reply always waits on resume().
+    // If a second reply interrupts the first before that resume() settles, the first's arriving late must
+    // not overwrite the (correct, newer) wiring once it finally does.
+    const rig = fakeAudio({ suspendedContext: true });
+    const { click, settle, chat, mouth } = mount(rig);
+    await settle();
+    chat.setSpokenReplies(true);
+    click();
+
+    chat.send("First offer");
+    for (let index = 0; index < 8 && rig.audios.length < 1; index += 1) await settle();
+    expect(rig.pendingResumes.length).toBe(1); // audio 1's resume is pending
+
+    chat.send("Second offer, right away");
+    for (let index = 0; index < 8 && rig.audios.length < 2; index += 1) await settle();
+    expect(rig.pendingResumes.length).toBe(2); // audio 2's resume is pending too, audio 1's still unresolved
+
+    // Audio 2's resume arrives first (the realistic order); audio 1's arrives late, after being superseded.
+    rig.pendingResumes[1]();
+    await settle();
+    rig.pendingResumes[0]();
+    await settle();
+
+    expect(rig.elementSources).toBe(1); // only the reply actually playing was ever wired
+
+    rig.reply = 0.8;
+    rig.frame(4);
+    expect(mouth()).toBeGreaterThan(0.3); // the mouth follows audio 2, not the discarded audio 1
   });
 
   it("does nothing, and breaks nothing, without Web Audio", async () => {

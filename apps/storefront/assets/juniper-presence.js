@@ -26,6 +26,7 @@
     var level = 0;
     var replyContext = null;      // kept for the page: closing it would cut a playing reply
     var reply = null;             // { audio, source, analyser, time }
+    var replyRequest = 0;         // a newer reply or its end outdates a pending context resume
     var mouth = 0;
     var ticking = false;
 
@@ -176,6 +177,7 @@
     }
 
     function endReply() {
+      replyRequest += 1;
       reply = null;
       restMouth();
     }
@@ -202,12 +204,15 @@
       endReply();
       // An element routed through a suspended context plays silence, so the mouth is skipped unless the context runs.
       if (!audio || !gestured) return;
+      var request = replyRequest;
       try {
         if (!replyContext) replyContext = new AudioContextClass();
         if (replyContext.state === 'running') { wireReply(audio); return; }
         if (!replyContext.resume) return;
         replyContext.resume().then(function () {
-          if (replyContext.state !== 'running' || audio.ended) return;
+          // A newer reply (or this one already ending) may have arrived while resume() was pending;
+          // wiring this stale audio now would silently freeze the mouth on whatever plays next.
+          if (request !== replyRequest || replyContext.state !== 'running' || audio.ended) return;
           try { wireReply(audio); } catch (error) { endReply(); }
         }, function () {});
       } catch (error) {
