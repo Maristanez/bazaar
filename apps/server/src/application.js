@@ -295,6 +295,20 @@ const server = createServer(async (request, response) => {
     sendJson(response, request, 200, { card: currentCard(offer) }); return;
   }
 
+  // A page load under an explicit, shareable identity (?shopper=demo) is a new visit: the product context, the round it
+  // implies and the Backboard thread all start clean. Offers already on the table and the shopper's memory are untouched.
+  if (request.method === "POST" && url.pathname === "/api/session/reset") {
+    let shopperId = null;
+    try { shopperId = requireShopperId(await readJson(request)); } catch { /* answered below */ }
+    if (!shopperId) { sendJson(response, request, 400, { error: "shopperId is required" }); return; }
+    await withShopperLock(shopperId, async () => {
+      state.shopperContexts.delete(shopperId);
+      backboard?.forgetThreads(shopperId);
+    });
+    sendJson(response, request, 200, { ok: true });
+    return;
+  }
+
   if (request.method === "POST" && url.pathname === "/api/chat") {
     try {
       const payload = await readJson(request);

@@ -774,6 +774,7 @@ Environment variables (`.env.example` is the list): `BACKBOARD_API_KEY`, `BACKBO
 |---|---|---|---|---|---|
 | GET | `/api/products` | none | `?sync=1` forces a fresh mirror | `{ items, loadedAt, source, warnings }` — public product cards | Storefront |
 | POST | `/api/chat` | none | `{ shopperId, negotiationId?, product, quantity?, message }` | JSON `{ reply, card?, negotiationId?, products? }`, or `{ paused: true, reply }` | Storefront |
+| POST | `/api/session/reset` | none | `{ shopperId }` | `{ ok: true }` — the theme calls it once per page load when the URL carries `?shopper=`. Drops that shopper's carried product, the round it implies and the Backboard thread; leaves offers on the table and the shopper's memory alone | |
 | POST | `/api/offers` | none | the same shape, always treated as an offer | the same JSON | Storefront |
 | GET | `/api/offers/:id` | none | `?shopperId=&negotiationId=` — must match the offer | `{ card }` — the current card, polled while `pending_owner` | Storefront card |
 | POST | `/api/accept` | none | `{ shopperId, negotiationId, offerId }` | `{ settlement, reply }`, or a 400 with a reply on refusal | Storefront card |

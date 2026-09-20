@@ -44,6 +44,7 @@
 
   if (welcome) welcome.textContent = getWelcomeMessage();
   if (mode && endpoint) mode.textContent = 'Live AI + offers';
+  startCleanVisit();
   if (voiceToggle || micButton) loadVoiceConfig();
 
   function normalizeEndpoint(value) {
@@ -81,8 +82,21 @@
       window.localStorage.setItem('bazaar:shopper-id', created);
       return created;
     } catch (error) {
-      return 'shopper-session';
+      // Storage is blocked (private browsing). A constant here would merge every such shopper into one identity,
+      // one thread and one memory; a fresh id per page keeps them apart at the cost of continuity.
+      return 'shopper-' + Math.random().toString(36).slice(2, 10);
     }
+  }
+
+  // ?shopper= names a shareable identity (the demo shopper). Each page load under it is a new visit: the server
+  // drops the carried product, round and thread. What the shopkeeper remembers about the shopper is untouched.
+  function startCleanVisit() {
+    if (!endpoint || !new URLSearchParams(window.location.search).get('shopper')) return;
+    var url = endpoint.replace(/\/api\/(?:chat|accept|offers)$/i, '') + '/api/session/reset';
+    try {
+      var pending = window.fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shopperId: shopperId }) });
+      if (pending && pending.catch) pending.catch(function () {});
+    } catch (error) { /* a failed reset must never stop the chat from loading */ }
   }
 
   function getWelcomeMessage() {

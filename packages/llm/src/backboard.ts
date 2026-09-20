@@ -113,6 +113,8 @@ export type BackboardClient = {
   answerQuestion(input: BackboardQuestion): Promise<{ reply: string; trace: BackboardRunTrace }>;
   understandOffer(input: BackboardOfferUnderstandingInput): Promise<BackboardOfferUnderstanding>;
   threadFor(shopperId: string, negotiationId: string): string | undefined;
+  /** Start this shopper's next turns on fresh threads. Memory is the assistant's and is untouched: the shopper is still remembered, the last conversation is not replayed. */
+  forgetThreads(shopperId: string): void;
 };
 
 export class BackboardError extends Error {
@@ -329,6 +331,10 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
 
     threadFor(shopperId, negotiationId) {
       return threads.get(threadKey(shopperId, negotiationId));
+    },
+
+    forgetThreads(shopperId) {
+      for (const key of [...threads.keys()]) if ((JSON.parse(key) as [string, string])[0] === shopperId) threads.delete(key);
     },
   };
 }
