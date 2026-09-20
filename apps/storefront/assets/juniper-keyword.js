@@ -29,6 +29,13 @@
   var pattern = new RegExp('(^|[^a-z])(' + KEYWORDS.map(function (word) {
     return word.toLowerCase().replace(/[^a-z ]/g, '').replace(/ +/g, '[^a-z]+');
   }).join('|') + ')($|[^a-z])');
+  // Tuning aid for the demo laptop: localStorage 'bazaar:debug' = '1' prints what the recogniser does and hears to
+  // this browser's console only. Off by default; nothing is ever stored or sent.
+  function debug() {
+    try { if (window.localStorage.getItem('bazaar:debug') !== '1' || !window.console) return; } catch (error) { return; }
+    window.console.log.apply(window.console, ['[hey-jarvis]'].concat(Array.prototype.slice.call(arguments)));
+  }
+
   function matches(text) { return pattern.test(String(text || '').toLowerCase()); }
 
   chat.keyword = { KEYWORDS: KEYWORDS, matches: matches, isArmed: function () { return Boolean(recogniser); } };
@@ -212,7 +219,9 @@
       recogniser = mine;
       startedAt = Date.now();
       mine.start();
+      debug('armed');
     } catch (error) {
+      debug('start threw', error && error.message);
       if (recogniser === mine) { recogniser = null; onStopped(); }
       refused();
       return;
@@ -238,13 +247,15 @@
     for (var i = event.resultIndex || 0; i < results.length; i += 1) {
       var result = results[i];
       for (var j = 0; result && j < result.length; j += 1) {
-        if (result[j] && matches(result[j].transcript)) { wake(); return; }
+        debug('heard', result[j] && result[j].transcript);
+        if (result[j] && matches(result[j].transcript)) { debug('matched'); wake(); return; }
       }
     }
   }
 
   function onError(event) {
     var code = event && event.error;
+    debug('error', code);
     if (code === 'not-allowed' || code === 'service-not-allowed') refused();
   }
 
@@ -271,6 +282,7 @@
   }
 
   function onEnd() {
+    debug('ended after', Date.now() - startedAt, 'ms');
     recogniser = null;
     onStopped();
     if (waking) { finishWake(); return; }
