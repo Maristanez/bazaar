@@ -44,143 +44,150 @@ function fakeRecognition(window: any, options: FakeOptions = {}) {
   return { made, running: () => made.filter((recognition) => recognition.running) };
 }
 
-type Setup = { optedIn?: boolean; flag?: boolean; autoListen?: string; sessionOff?: boolean; handsfree?: boolean; recognition?: Parameters<typeof fakeRecognition>[1]; unsupported?: boolean };
+type Setup = { flag?: boolean; autoListen?: string; handsfree?: boolean; recognition?: FakeOptions; unsupported?: boolean };
+
+const EAR_LABEL = "Listening for 'Hey Jarvis' — Chrome's speech service hears the audio";
 
 function mount(setup: Setup = {}) {
   let fake = { made: [] as any[], running: () => [] as any[] };
-  const start = vi.fn();
+  const order: string[] = [];
+  const start = vi.fn(() => { order.push("handsfree.start"); });
   const mounted = mountWidget({
     features: ["keyword"],
     before: (window) => {
       if (!setup.unsupported) fake = fakeRecognition(window, setup.recognition);
-      if (setup.optedIn) window.localStorage.setItem("bazaar:keyword", "1");
       if (setup.flag !== undefined || setup.autoListen !== undefined) {
         window.BazaarChatFlags = {};
         if (setup.flag !== undefined) window.BazaarChatFlags.keyword = setup.flag;
         if (setup.autoListen !== undefined) window.BazaarChatFlags.autoListen = setup.autoListen;
       }
-      if (setup.sessionOff) window.sessionStorage.setItem("bazaar:keyword:off", "1");
-      if (setup.handsfree !== false) {
-        window.document.addEventListener("bazaar-chat:ready", () => {
-          window.BazaarChat.handsfree = { start, stop: vi.fn(), isOn: () => false };
-        });
-      }
+      window.document.addEventListener("bazaar-chat:ready", () => {
+        window.BazaarChat.on("open", () => order.push("open"));
+        if (setup.handsfree !== false) window.BazaarChat.handsfree = { start, stop: vi.fn(), isOn: () => false };
+      });
     },
   });
   const ears = () => mounted.document.querySelectorAll(".juniper-keyword__ear").length;
   const voice = (on: boolean) =>
     mounted.document.dispatchEvent(new mounted.window.CustomEvent("bazaar-voice:state", { detail: { on, state: on ? "listening" : "off" } }));
-  const button = () => mounted.document.querySelector("[data-juniper-keyword-toggle]") as HTMLButtonElement | null;
-  return { ...mounted, fake, start, ears, voice, button };
+  return { ...mounted, fake, start, order, ears, voice };
 }
 
 describe("V8 the Jarvis keyword", () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); });
 
-  it("opens hands-free when the shopper says Jarvis with the chat closed, and stops its own recogniser first", () => {
-    const { fake, start, ears } = mount({ optedIn: true });
+  it("is armed on every page load, with no flag, no click and no control in the chat", () => {
+    const { fake, ears, document, window } = mount();
     vi.advanceTimersByTime(50);
     expect(fake.running()).toHaveLength(1);
-    expect(ears()).toBe(1);
+    expect(ears()).toBeGreaterThan(0);
+    expect(fake.made[0]).toMatchObject({ continuous: true, interimResults: true, lang: "en-US" });
+    expect(document.querySelector(".juniper-keyword__control, [data-juniper-keyword-toggle], .juniper-keyword__note")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Turn on Hey Jarvis|Turn off/);
+    expect(window.localStorage.getItem("bazaar:keyword")).toBeNull();
+    expect(window.sessionStorage.getItem("bazaar:keyword:off")).toBeNull();
+  });
 
+  it("opens the agent when the shopper says Jarvis: the panel first, then hands-free, its own recogniser stopped before either", () => {
+    const { fake, start, order, ears, chat } = mount();
+    vi.advanceTimersByTime(50);
+    expect(chat.isOpen()).toBe(false);
+
+    let runningAtOpen = -1;
+    chat.on("open", () => { runningAtOpen = fake.running().length; });
     fake.made[0].hear("hey jarvis could you do one twenty");
     vi.advanceTimersByTime(400);
 
-    expect(start).toHaveBeenCalledTimes(1);
+    expect(order).toEqual(["open", "handsfree.start"]);
+    expect(chat.isOpen()).toBe(true);
+    expect(runningAtOpen).toBe(0);
     expect(start.mock.calls[0]).toEqual([]);
     expect(fake.running()).toHaveLength(0);
     expect(ears()).toBe(0);
   });
 
-  it("falls back to opening the chat when hands-free is not there", () => {
-    const { fake, chat } = mount({ optedIn: true, handsfree: false });
+  it("just opens the chat when hands-free is not there", () => {
+    const { fake, chat, order } = mount({ handsfree: false });
     vi.advanceTimersByTime(50);
     fake.made[0].hear("Jarvis");
     vi.advanceTimersByTime(400);
     expect(chat.isOpen()).toBe(true);
-    vi.advanceTimersByTime(2000);
-    expect(fake.running()).toHaveLength(0);
+    expect(order).toEqual(["open"]);
   });
 
-  it("shows the ear exactly while a recogniser runs, and says so on the document", () => {
-    const { fake, ears, chat, document } = mount({ optedIn: true });
+  it("shows the ear exactly while a recogniser runs, carries the disclosure, and says so on the document", () => {
+    const { fake, ears, voice, document } = mount();
     const armed: boolean[] = [];
     document.addEventListener("bazaar-keyword:state", (event: any) => armed.push(event.detail.armed));
-    expect(ears()).toBe(fake.running().length);
+    expect(ears()).toBe(0);
     vi.advanceTimersByTime(50);
-    expect([fake.running().length, ears()]).toEqual([1, 1]);
-    expect(document.querySelector(".juniper-keyword__ear")?.getAttribute("aria-label")).toBe("Listening for 'Jarvis'");
-    expect(document.querySelector("[data-ai-chat-toggle] .juniper-keyword__ear")).not.toBeNull();
+    expect(fake.running()).toHaveLength(1);
+    const ear = document.querySelector("[data-ai-chat-toggle] .juniper-keyword__ear");
+    expect(ear?.getAttribute("aria-label")).toBe(EAR_LABEL);
+    expect(ear?.getAttribute("title")).toBe(EAR_LABEL);
 
-    chat.open();
+    voice(true);
     expect([fake.running().length, ears()]).toEqual([0, 0]);
-    chat.close();
+    voice(false);
     vi.advanceTimersByTime(600);
-    expect([fake.running().length, ears()]).toEqual([1, 1]);
+    expect(fake.running()).toHaveLength(1);
+    expect(ears()).toBeGreaterThan(0);
     expect(armed).toEqual([true, false, true]);
   });
 
+  it("keeps listening in an open panel, with an ear inside the panel where the launcher cannot be seen", () => {
+    const { fake, chat } = mount();
+    vi.advanceTimersByTime(50);
+    chat.open();
+    vi.advanceTimersByTime(600);
+    expect(fake.running()).toHaveLength(1);
+    expect(chat.elements.panel.querySelector(".juniper-keyword__ear")?.getAttribute("aria-label")).toBe(EAR_LABEL);
+    chat.close();
+    vi.advanceTimersByTime(600);
+    expect(fake.running()).toHaveLength(1);
+  });
+
+  it("steps aside while a turn is in flight, and comes back after the reply", async () => {
+    const { fake, chat, ears, settle } = mount();
+    vi.advanceTimersByTime(50);
+    chat.open();
+    expect(chat.send("Could you do better?")).toBe(true);
+    expect([fake.running().length, ears()]).toEqual([0, 0]);
+    vi.useRealTimers();
+    await settle();
+    await settle();
+    await new Promise((resolve) => setTimeout(resolve, 650));
+    expect(fake.running()).toHaveLength(1);
+  });
+
   it("puts an ear on the hands-free pill as well when there is one", () => {
-    const { document, ears, chat } = mount({ optedIn: true });
+    const { document, chat } = mount();
     const pill = document.createElement("div");
     pill.setAttribute("data-juniper-pill", "");
     chat.elements.widget.appendChild(pill);
     vi.advanceTimersByTime(50);
-    expect(ears()).toBe(2);
     expect(pill.querySelector(".juniper-keyword__ear")).not.toBeNull();
   });
 
-  it("never constructs a recogniser when the theme flag is off, even with the opt-in remembered", () => {
-    const { fake, document, chat } = mount({ optedIn: true, flag: false });
-    vi.advanceTimersByTime(10000);
-    chat.open();
-    chat.close();
-    vi.advanceTimersByTime(10000);
-    expect(fake.made).toHaveLength(0);
-    expect(document.querySelector(".juniper-keyword__control")).toBeNull();
-    expect(document.querySelector(".juniper-keyword__ear")).toBeNull();
-  });
+  for (const setup of [{ flag: false }, { autoListen: "always" }, { flag: false, autoListen: "keyword" }] as Setup[]) {
+    it(`never constructs a recogniser with ${JSON.stringify(setup)}`, () => {
+      const { fake, document, chat } = mount(setup);
+      vi.advanceTimersByTime(10000);
+      chat.open();
+      chat.close();
+      document.body.click();
+      vi.advanceTimersByTime(10000);
+      expect(fake.made).toHaveLength(0);
+      expect(document.querySelector("[class^='juniper-keyword__']")).toBeNull();
+    });
+  }
 
   it("injects nothing where the browser has no speech recognition", () => {
-    const { document } = mount({ optedIn: true, unsupported: true });
+    const { document } = mount({ unsupported: true });
     vi.advanceTimersByTime(1000);
+    document.body.click();
     expect(document.querySelector("[class^='juniper-keyword__']")).toBeNull();
-  });
-
-  it("listens to nothing before the shopper clicks Turn on Hey Jarvis, then remembers the choice", () => {
-    const first = mount();
-    vi.advanceTimersByTime(5000);
-    first.chat.open();
-    first.chat.close();
-    vi.advanceTimersByTime(5000);
-    expect(first.fake.made).toHaveLength(0);
-    expect(first.button()?.textContent).toBe("Turn on Hey Jarvis");
-    expect(first.document.querySelector(".juniper-keyword__note")?.textContent).toMatch(/Chrome's speech service/);
-
-    first.chat.open();
-    first.button()!.click();
-    expect(first.window.localStorage.getItem("bazaar:keyword")).toBe("1");
-    expect(first.document.querySelector(".juniper-keyword__status")?.textContent).toBe("Hey Jarvis is on");
-    expect(first.fake.running()).toHaveLength(0);
-    first.chat.close();
-    vi.advanceTimersByTime(600);
-    expect(first.fake.running()).toHaveLength(1);
-
-    first.chat.open();
-    first.button()!.click();
-    expect(first.window.localStorage.getItem("bazaar:keyword")).toBeNull();
-    first.chat.close();
-    vi.advanceTimersByTime(5000);
-    expect(first.fake.running()).toHaveLength(0);
-  });
-
-  it("re-arms on a later mount from the remembered opt-in", () => {
-    const { fake, button } = mount({ optedIn: true });
-    vi.advanceTimersByTime(50);
-    expect(fake.running()).toHaveLength(1);
-    expect(button()?.textContent).toBe("Turn off");
-    expect(fake.made[0]).toMatchObject({ continuous: true, interimResults: true, lang: "en-US" });
   });
 
   it("matches the keywords as whole words and lets ordinary words pass", () => {
@@ -197,7 +204,7 @@ describe("V8 the Jarvis keyword", () => {
   });
 
   it("gives the microphone to hands-free and takes it back half a second after", () => {
-    const { fake, voice, ears } = mount({ optedIn: true });
+    const { fake, voice, ears } = mount();
     vi.advanceTimersByTime(50);
     voice(true);
     expect([fake.running().length, ears()]).toEqual([0, 0]);
@@ -207,11 +214,11 @@ describe("V8 the Jarvis keyword", () => {
     vi.advanceTimersByTime(400);
     expect(fake.running()).toHaveLength(0);
     vi.advanceTimersByTime(200);
-    expect([fake.running().length, ears()]).toEqual([1, 1]);
+    expect(fake.running()).toHaveLength(1);
   });
 
   it("steps aside while push-to-talk records", () => {
-    const { fake, chat } = mount({ optedIn: true });
+    const { fake, chat } = mount();
     vi.advanceTimersByTime(50);
     chat.setMood("listening");
     expect(fake.running()).toHaveLength(0);
@@ -221,7 +228,7 @@ describe("V8 the Jarvis keyword", () => {
   });
 
   it("pauses while the tab is hidden", () => {
-    const { fake, window, document } = mount({ optedIn: true });
+    const { fake, window, document } = mount();
     vi.advanceTimersByTime(50);
     let hidden = true;
     Object.defineProperty(document, "hidden", { configurable: true, get: () => hidden });
@@ -234,8 +241,7 @@ describe("V8 the Jarvis keyword", () => {
   });
 
   it("starts again when Chrome ends recognition after silence", () => {
-    const { fake } = mount({ optedIn: true });
-    vi.advanceTimersByTime(50);
+    const { fake } = mount();
     vi.advanceTimersByTime(20000);
     fake.made[0].end();
     expect(fake.running()).toHaveLength(0);
@@ -245,7 +251,7 @@ describe("V8 the Jarvis keyword", () => {
   });
 
   it("backs off when recognition keeps ending at once, and gives up for the page after five waits", () => {
-    const { fake, window, button } = mount({ optedIn: true, recognition: { endAtOnce: true } });
+    const { fake, document } = mount({ recognition: { endAtOnce: true } });
     vi.advanceTimersByTime(1000);
     expect(fake.made).toHaveLength(3);
     vi.advanceTimersByTime(3500);
@@ -253,22 +259,41 @@ describe("V8 the Jarvis keyword", () => {
     vi.advanceTimersByTime(1000);
     expect(fake.made.length).toBeGreaterThan(3);
     vi.advanceTimersByTime(120000);
+    document.body.click();
+    vi.advanceTimersByTime(120000);
     expect(fake.made).toHaveLength(15);
-    expect(button()?.textContent).toBe("Turn on Hey Jarvis");
-    expect(window.localStorage.getItem("bazaar:keyword")).toBe("1");
   });
 
-  it("disarms quietly when the browser refuses the microphone, and leaves the control to try again", () => {
-    const { fake, window, button, ears } = mount({ optedIn: true, recognition: { failWith: "not-allowed" } });
+  for (const refusal of [{ failWith: "not-allowed" }, { throwOnStart: true }] as FakeOptions[]) {
+    it(`retries once, silently, on the first gesture when the browser refuses at load (${Object.keys(refusal)[0]})`, () => {
+      const { fake, ears, document } = mount({ recognition: { ...refusal, refuseFirst: 1 } });
+      vi.advanceTimersByTime(60000);
+      expect(fake.made).toHaveLength(1);
+      expect(ears()).toBe(0);
+      expect(document.querySelector("[class^='juniper-keyword__']")).toBeNull();
+
+      document.body.click();
+      vi.advanceTimersByTime(50);
+      expect(fake.running()).toHaveLength(1);
+      expect(ears()).toBeGreaterThan(0);
+    });
+  }
+
+  it("retries only once: a second refusal leaves it off however many gestures follow", () => {
+    const { fake, document, ears } = mount({ recognition: { failWith: "not-allowed" } });
+    vi.advanceTimersByTime(1000);
+    document.body.click();
+    vi.advanceTimersByTime(1000);
+    document.body.click();
+    document.body.click();
     vi.advanceTimersByTime(60000);
-    expect(fake.made).toHaveLength(1);
+    expect(fake.made).toHaveLength(2);
+    expect(fake.running()).toHaveLength(0);
     expect(ears()).toBe(0);
-    expect(window.localStorage.getItem("bazaar:keyword")).toBeNull();
-    expect(button()?.textContent).toBe("Turn on Hey Jarvis");
   });
 
   it("keeps nothing of what it hears that is not the keyword", () => {
-    const { fake, window, document, start, requests, chat } = mount({ optedIn: true });
+    const { fake, window, document, start, requests, chat } = mount();
     const logged = vi.spyOn(window.console, "log");
     vi.advanceTimersByTime(50);
     const before = requests.length;
@@ -277,6 +302,7 @@ describe("V8 the Jarvis keyword", () => {
     vi.advanceTimersByTime(1000);
 
     expect(start).not.toHaveBeenCalled();
+    expect(chat.isOpen()).toBe(false);
     expect(fake.running()).toHaveLength(1);
     expect(document.documentElement.outerHTML).not.toMatch(/four two/);
     const stored = [window.localStorage, window.sessionStorage].map((storage) =>
@@ -287,111 +313,4 @@ describe("V8 the Jarvis keyword", () => {
     expect(JSON.stringify(chat.state())).not.toMatch(/four two/);
     expect((chat.elements.input as HTMLInputElement).value).toBe("");
   });
-});
-
-describe("V8 auto-arm: BazaarChatFlags.autoListen === 'keyword'", () => {
-  beforeEach(() => { vi.useFakeTimers(); });
-  afterEach(() => { vi.useRealTimers(); });
-
-  it("arms on load with no click, wears the ear, reads as on and still explains itself", () => {
-    const { fake, ears, start, document, window } = mount({ autoListen: "keyword" });
-    vi.advanceTimersByTime(50);
-    expect([fake.running().length, ears()]).toEqual([1, 1]);
-    expect(document.querySelector(".juniper-keyword__status")?.textContent).toBe("Hey Jarvis is on");
-    expect(document.querySelector("[data-juniper-keyword-toggle]")?.textContent).toBe("Turn off");
-    expect(document.querySelector(".juniper-keyword__note")?.textContent).toMatch(/Chrome's speech service/);
-    expect(window.localStorage.getItem("bazaar:keyword")).toBeNull();
-
-    fake.made[0].hear("hey jarvis");
-    vi.advanceTimersByTime(400);
-    expect(start).toHaveBeenCalledTimes(1);
-    expect([fake.running().length, ears()]).toEqual([0, 0]);
-  });
-
-  it("still steps aside for hands-free and an open panel, and keeps nothing it hears", () => {
-    const { fake, voice, chat, ears, document } = mount({ autoListen: "keyword" });
-    vi.advanceTimersByTime(50);
-    fake.made[0].hear("my card number is four two four two", true);
-    expect(document.documentElement.outerHTML).not.toMatch(/four two/);
-    voice(true);
-    expect([fake.running().length, ears()]).toEqual([0, 0]);
-    voice(false);
-    vi.advanceTimersByTime(600);
-    expect(fake.running()).toHaveLength(1);
-    chat.open();
-    expect([fake.running().length, ears()]).toEqual([0, 0]);
-  });
-
-  it("the kill switch wins over auto-arm", () => {
-    const { fake, document } = mount({ autoListen: "keyword", flag: false });
-    vi.advanceTimersByTime(10000);
-    document.body.click();
-    vi.advanceTimersByTime(10000);
-    expect(fake.made).toHaveLength(0);
-    expect(document.querySelector("[class^='juniper-keyword__']")).toBeNull();
-  });
-
-  for (const refusal of [{ failWith: "not-allowed" }, { throwOnStart: true }] as FakeOptions[]) {
-    it(`falls back to the opt-in control when the browser refuses (${Object.keys(refusal)[0]}), and retries once on the first gesture`, () => {
-      const { fake, button, ears, document } = mount({ autoListen: "keyword", recognition: { ...refusal, refuseFirst: 1 } });
-      vi.advanceTimersByTime(60000);
-      expect(fake.made).toHaveLength(1);
-      expect(ears()).toBe(0);
-      expect(button()?.textContent).toBe("Turn on Hey Jarvis");
-
-      document.body.click();
-      vi.advanceTimersByTime(50);
-      expect([fake.running().length, ears()]).toEqual([1, 1]);
-      expect(button()?.textContent).toBe("Turn off");
-    });
-  }
-
-  it("retries only once: a second refusal leaves it off however many gestures follow", () => {
-    const { fake, button, document } = mount({ autoListen: "keyword", recognition: { failWith: "not-allowed" } });
-    vi.advanceTimersByTime(1000);
-    document.body.click();
-    vi.advanceTimersByTime(1000);
-    document.body.click();
-    document.body.click();
-    vi.advanceTimersByTime(60000);
-    expect(fake.made).toHaveLength(2);
-    expect(fake.running()).toHaveLength(0);
-    expect(button()?.textContent).toBe("Turn on Hey Jarvis");
-  });
-
-  it("remembers Turn off for the session and does not auto-arm again", () => {
-    const first = mount({ autoListen: "keyword" });
-    vi.advanceTimersByTime(50);
-    first.chat.open();
-    first.button()!.click();
-    expect(first.window.sessionStorage.getItem("bazaar:keyword:off")).toBe("1");
-    first.chat.close();
-    first.document.body.click();
-    vi.advanceTimersByTime(10000);
-    expect(first.fake.running()).toHaveLength(0);
-
-    const later = mount({ autoListen: "keyword", sessionOff: true });
-    later.document.body.click();
-    vi.advanceTimersByTime(10000);
-    expect(later.fake.made).toHaveLength(0);
-    expect(later.button()?.textContent).toBe("Turn on Hey Jarvis");
-
-    later.chat.open();
-    later.button()!.click();
-    later.chat.close();
-    vi.advanceTimersByTime(600);
-    expect(later.fake.running()).toHaveLength(1);
-    expect(later.window.sessionStorage.getItem("bazaar:keyword:off")).toBeNull();
-  });
-
-  for (const autoListen of ["always", undefined]) {
-    it(`changes nothing when the flag is ${autoListen ?? "unset"}`, () => {
-      const { fake, button, document } = mount({ autoListen, flag: true });
-      vi.advanceTimersByTime(5000);
-      document.body.click();
-      vi.advanceTimersByTime(5000);
-      expect(fake.made).toHaveLength(0);
-      expect(button()?.textContent).toBe("Turn on Hey Jarvis");
-    });
-  }
 });
