@@ -6,7 +6,7 @@ export function Approvals({ approvals, port, onResolved }: { approvals: Approval
   const [notice, setNotice] = useState("");
   return <div className="approvals">
     {notice && <p className="paper" role="status">{notice}</p>}
-    {approvals.length === 0 && <section className="paper"><h2>Owner decisions</h2><p>No approvals pending.</p></section>}
+    {approvals.length === 0 && <p className="approvals-none" role="status">No approvals pending.</p>}
     {approvals.map(approval => <ApprovalCard key={approval.id} approval={approval} port={port} onResolved={label => { setNotice(label); onResolved(approval.id); }} />)}
   </div>;
 }

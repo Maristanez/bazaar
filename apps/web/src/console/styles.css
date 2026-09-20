@@ -218,3 +218,5 @@ button.quiet { background: transparent; color: var(--color-teal); box-shadow: in
 .other-figures li { display: flex; align-items: baseline; gap: 6px; font-size: .82rem; }
 .other-figures span { color: #5c503e; }
 .other-figures b { font-weight: 700; }
+.approvals-none { margin: 0; font-size: .82rem; color: var(--color-sky); text-align: center; }
+.console-columns aside .approvals { order: 1; display: grid; gap: 18px; } .console-columns aside .approvals:has(.approval-card) { order: -1; }

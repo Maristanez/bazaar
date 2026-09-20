@@ -107,6 +107,7 @@ export function Console({ port, onSignOut }: { port: ConsolePort; onSignOut?: ()
       <KeptBand kpis={state.kpis} />
       <div className="console-columns">
         <Race products={state.products} policy={state.policy} draft={gymDraft} saving={adopting} onDraft={setGymDraft} onAdopt={() => void adoptDraft()} />
+        {/* One Approvals instance, so its notice survives; CSS puts a pending card first and otherwise lets the live feed lead. */}
         <aside><Approvals approvals={state.pendingApprovals} port={port} onResolved={id => setState(value => value && { ...value, pendingApprovals: value.pendingApprovals.filter(approval => approval.id !== id) })} /><Feed events={events} /></aside>
       </div>
       <details className="more-settings"><summary>More settings</summary>
