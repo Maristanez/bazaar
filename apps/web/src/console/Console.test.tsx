@@ -20,6 +20,7 @@ test("S5: fixture events reach the feed in under a second, newest first, with re
   await act(async () => { await vi.advanceTimersByTimeAsync(100); });
   expect(screen.getAllByRole("article")[0]!.textContent).toContain(events[1]!.reasoning);
   await act(async () => { await vi.advanceTimersByTimeAsync(900); });
+  await act(async () => screen.getByRole("button", { name: `Show all ${events.length}` }).click());
   expect(screen.getAllByRole("article")).toHaveLength(events.length);
   for (const layer of ["validate", "engine", "check", "auditor"]) {
     expect(screen.getByRole("article", { name: `blocked · ${layer}` })).toBeTruthy();

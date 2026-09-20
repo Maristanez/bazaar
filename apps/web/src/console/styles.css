@@ -211,3 +211,4 @@ button.quiet { background: transparent; color: var(--color-teal); box-shadow: in
 .pill.selected { background: var(--color-teal); color: var(--color-cream); }
 .pill-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--color-teal); margin-left: 6px; vertical-align: 2px; }
 .pill.selected .pill-dot { background: var(--color-cream); }
+.feed-toggle { margin-top: 14px; width: 100%; }

@@ -1,15 +1,21 @@
-import React from "react";
+import React, { useState } from "react";
 import type { ConsoleEvent } from "@bazaar/contracts";
 export const money = (cents: number) => new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(cents / 100);
 
+const SHOWN = 3;
+
 export function Feed({ events }: { events: ConsoleEvent[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? events : events.slice(0, SHOWN);
+  const more = events.length - SHOWN;
   return <section className="paper feed" aria-labelledby="feed-title">
     <div className="section-heading"><h2 id="feed-title">Live feed</h2><span>{events.length} events</span></div>
     <p className="muted">Every offer. Every decision. Both surfaces.</p>
     <div className="feed-rows" aria-live="polite" aria-relevant="additions">
       {events.length === 0 && <p className="empty">Waiting for the first offer.</p>}
-      {events.map((event, index) => <FeedRow key={`${event.at}-${event.negotiationId}-${event.kind}-${index}`} event={event} />)}
+      {visible.map((event, index) => <FeedRow key={`${event.at}-${event.negotiationId}-${event.kind}-${index}`} event={event} />)}
     </div>
+    {more > 0 && <button className="quiet feed-toggle" onClick={() => setExpanded(value => !value)}>{expanded ? "Show fewer" : `Show all ${events.length}`}</button>}
   </section>;
 }
 function FeedRow({ event }: { event: ConsoleEvent }) {
