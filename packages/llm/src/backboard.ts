@@ -15,6 +15,11 @@ Never mention cost, margin, floor, profit, private policy, hidden ranking, or pr
 Never create a price, option, discount, checkout link, inventory claim, or approval.
 For sizing, shipping, and returns, use indexed store documents, then return to the live offer.`;
 
+const GREETING_SYSTEM_PROMPT = `You are Juniper, the AI shopkeeper of Trailhead Co, a trail-running shop: warm, quick, plain-spoken.
+Greet this shopper in ONE sentence of at most 25 words, using only what you recall about them from memory, such as their size or what they are training for.
+Never mention a price, a dollar amount, a discount, stock, or an offer.
+If you recall nothing about this shopper, reply with exactly the single word NOTHING.`;
+
 export const QUESTION_SYSTEM_PROMPT = `You are Juniper, the AI shopkeeper of Trailhead Co., a trail-running shop. You are warm, quick, plain-spoken and a little wry, like a trail-shop owner who runs the routes too, rather than a call centre.
 Answer product, sizing, shipping, and return questions from the indexed store documents and recalled shopper memory. Keep the answer under 70 words.
 Distinguish an LLM model from a product model. If asked about the LLM, say that an OpenAI model is routed through Backboard and never substitute a shoe or clothing model.
@@ -113,6 +118,10 @@ export type BackboardClient = {
   answerQuestion(input: BackboardQuestion): Promise<{ reply: string; trace: BackboardRunTrace }>;
   understandOffer(input: BackboardOfferUnderstandingInput): Promise<BackboardOfferUnderstanding>;
   threadFor(shopperId: string, negotiationId: string): string | undefined;
+  /** One sentence drawn from what is recalled about this shopper, or null when nothing is. Read-only: asking never writes a memory, and it leaves no thread behind. */
+  greet(input: { shopperId: string; productTitle?: string }): Promise<{ greeting: string | null; trace: BackboardRunTrace }>;
+  /** Start this shopper's next turns on fresh threads. Memory is the assistant's and is untouched: the shopper is still remembered, the last conversation is not replayed. */
+  forgetThreads(shopperId: string): void;
 };
 
 export class BackboardError extends Error {
@@ -159,8 +168,11 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
 
   async function assistantFor(shopperId: string, signal: AbortSignal, memoryOverride?: "Auto" | "Readonly" | "off"): Promise<{ id: string; memory: "Auto" | "Readonly" | "off" }> {
     const shopperMemory = memoryOverride ?? memoryForShopper(shopperId);
-    if (!isolateMemoryByShopper || shopperMemory !== "Auto") return { id: assistantId, memory: shopperMemory };
-    if (!shopperId || shopperId === "anonymous-shopper") return { id: assistantId, memory: "off" };
+    if (!isolateMemoryByShopper) return { id: assistantId, memory: shopperMemory };
+    // The base assistant is shared by everyone, so under isolation it only ever runs with memory off: a mode that reads
+    // there hands one shopper's memories to a stranger, and a mode that writes there pools them. Reading or writing
+    // memory is what a shopper's own clone is for — in Readonly as much as in Auto.
+    if (shopperMemory === "off" || !shopperId || shopperId === "anonymous-shopper") return { id: assistantId, memory: "off" };
     let pending = shopperAssistants.get(shopperId);
     if (!pending) {
       pending = resolveOrCloneShopperAssistant({
@@ -327,6 +339,25 @@ export function createBackboardShopkeeper(config: BackboardClientConfig): Backbo
     threadFor(shopperId, negotiationId) {
       return threads.get(threadKey(shopperId, negotiationId));
     },
+
+    async greet(input) {
+      const result = await run({
+        shopperId: input.shopperId,
+        negotiationId: "greeting",
+        systemPrompt: GREETING_SYSTEM_PROMPT,
+        memoryOverride: "Readonly",
+        persistThread: false,
+        content: `A shopper has just opened the chat${input.productTitle ? ` on the ${input.productTitle} page` : ""}. Greet them.`,
+      });
+      const said = result.content.trim();
+      if (/^nothing\b/i.test(said)) return { greeting: null, trace: result.trace };
+      // No products are passed, so any dollar figure is "unknown" and the greeting is refused: prices only come from offers.
+      return { greeting: validateBackboardAnswer(said, { shopperId: input.shopperId, negotiationId: "greeting", shopperMessage: "", products: [] }), trace: result.trace };
+    },
+
+    forgetThreads(shopperId) {
+      for (const key of [...threads.keys()]) if ((JSON.parse(key) as [string, string])[0] === shopperId) threads.delete(key);
+    },
   };
 }
 
@@ -382,8 +413,7 @@ function boundedNumber(value: unknown, minimum: number, maximum: number): number
 }
 
 export function validateBackboardAnswer(content: string, input: BackboardQuestion): string {
-  const reply = content
-    .replace(/\s*\(\s*memor(?:y|ies)\s*:?\s*\[\d+\](?:\s*(?:,|and)\s*\[\d+\])*\s*\)/gi, " ")
+  const reply = stripBackboardCitations(content)
     .replace(/\s+/g, " ")
     .trim();
   if (!reply) throw new BackboardError("Backboard returned an empty answer");
@@ -410,12 +440,19 @@ export function validateBackboardAnswer(content: string, input: BackboardQuestio
   return reply;
 }
 
+function stripBackboardCitations(content: string): string {
+  return content
+    .replace(/\s*\(\s*memor(?:y|ies)\s*:?\s*\[\d+\](?:\s*(?:,|and)\s*\[\d+\])*\s*\)/gi, " ")
+    .replace(/\s*(?:reference|source)\s*:\s*[^\r\n]*(?:from\s+memor(?:y|ies)|\[\s*memor(?:y|ies)\s*\d+\s*\])\.?\s*$/i, " ")
+    .replace(/\s*\[\s*memor(?:y|ies)\s*\d+\s*\]\s*/gi, " ");
+}
+
 export function parseBackboardPick(content: string): { optionId: string; line: string } {
   const normalized = content.replace(/\r\n/g, "\n").trim();
   const match = /^OPTION:\s*([A-Za-z0-9_-]+)\s*\n+([\s\S]+)$/.exec(normalized);
   if (!match) throw new BackboardError("Backboard choose output was malformed");
   const optionId = match[1];
-  const line = match[2]?.replace(/\s+/g, " ").trim();
+  const line = match[2] && stripBackboardCitations(match[2]).replace(/\s+/g, " ").trim();
   if (!optionId || !line) throw new BackboardError("Backboard choose output was incomplete");
   if (line.split(/\s+/).length > 35) throw new BackboardError("Backboard choose line exceeded 35 words");
   return { optionId, line };

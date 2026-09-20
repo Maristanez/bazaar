@@ -1,16 +1,18 @@
-<header>
+<header class="site-header full-width">
   <h2 class="header__title">
     <a class="header__brand" href="{{ routes.root_url }}" aria-label="Trailhead home">
-      <img src="{{ 'trailhead-logo.webp' | asset_url }}" alt="Trailhead" width="1680" height="400">
+      <img src="{{ 'trailhead-lockup-bone.svg' | asset_url }}" alt="Trailhead" width="168" height="40">
     </a>
   </h2>
 
-  <div class="header__menu">
-    <a href="{{ routes.all_products_collection_url }}">Shop</a>
+  <nav class="header__menu" aria-label="Shop">
+    <a href="{{ routes.all_products_collection_url }}/trail-shoes">Shoes</a>
+    <a href="{{ routes.all_products_collection_url }}/accessories">Trail kit</a>
+    <a href="{{ routes.all_products_collection_url }}">Shop all</a>
     {% for link in section.settings.menu.links %}
       {{ link.title | link_to: link.url }}
     {% endfor %}
-  </div>
+  </nav>
 
   <div class="header__icons">
     {% if shop.customer_accounts_enabled %}
@@ -30,61 +32,95 @@
 </header>
 
 {% stylesheet %}
-  header {
-    height: 5rem;
+  .shopify-section-group-header-group {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+  .site-header {
+    --icon-stroke-width: 1.5;
+    min-height: 4.5rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1.5rem;
+    padding: 0.5rem var(--th-gutter);
+    background: var(--th-teal);
+    color: var(--th-cream);
+    box-shadow: 0 6px 24px -14px rgb(0 30 30 / 70%);
   }
-  header .header__title {
+  .site-header .header__title {
     margin: 0;
   }
-  header a {
+  .site-header a {
     position: relative;
     text-decoration: none;
-    color: var(--color-foreground);
+    color: inherit;
     display: flex;
     align-items: center;
     justify-content: center;
   }
-  header a sup {
+  .site-header .header__menu a {
+    min-height: 2.75rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  .site-header .header__menu a:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--th-sun);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.3rem;
+  }
+  .site-header a sup {
     position: absolute;
     right: 0;
-    top: 0;
-    overflow: hidden;
-    max-width: var(--page-margin);
+    top: 0.1rem;
+    min-width: 1.15rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: var(--th-sun);
+    color: var(--th-bark);
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1.15rem;
+    text-align: center;
   }
-  header svg {
-    width: 2rem;
-    height: 2rem;
+  .site-header svg {
+    width: 1.75rem;
+    height: 1.75rem;
     flex-shrink: 0;
   }
-  header .header__icons {
+  .site-header .header__icons {
     flex-shrink: 0;
   }
-  header .header__icons > a,
-  header shopify-account {
+  .site-header .header__icons > a,
+  .site-header shopify-account {
     min-width: 2.75rem;
     min-height: 2.75rem;
   }
-  header .header__brand {
+  .site-header .header__brand {
     justify-content: flex-start;
   }
-  header .header__brand img {
+  .site-header .header__brand img {
     display: block;
-    width: min(12rem, 42vw);
+    width: min(8.5rem, 36vw);
     height: auto;
   }
-  header .header__menu,
-  header .header__icons {
+  .site-header .header__menu,
+  .site-header .header__icons {
     display: flex;
-    gap: 1rem;
+    align-items: center;
+    gap: clamp(0.9rem, 2.4vw, 2rem);
   }
+  .site-header .header__icons { gap: 0.5rem; }
   @media (max-width: 600px) {
-    header { gap: 0.75rem; }
-    header .header__brand img { width: min(10rem, 36vw); }
-    header .header__icons { gap: 0.25rem; }
+    .site-header { gap: 0.75rem; }
+    .site-header .header__menu { gap: 0.9rem; }
+    .site-header .header__menu a { font-size: 0.85rem; }
+    .site-header .header__icons { gap: 0; }
+  }
+  @media (max-width: 420px) {
+    .site-header .header__menu a:nth-child(2) { display: none; }
   }
 {% endstylesheet %}
 

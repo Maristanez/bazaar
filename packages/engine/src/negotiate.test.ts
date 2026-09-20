@@ -89,7 +89,7 @@ describe("live negotiation pricing", () => {
 });
 
 describe("owner discount cap", () => {
-  const strong = { score: 4, label: "market comparison", labels: ["market comparison"], hasBulkIntent: true, hasAddOnIntent: false, hasMarketComparison: true, isReadyToBuy: true };
+  const strong: BuyerReason = { score: 4, label: "market comparison", labels: ["market comparison"], hasBulkIntent: true, hasAddOnIntent: false, hasMarketComparison: true, isReadyToBuy: true };
 
   it("never prices below the capped share of list, however strong the reason", () => {
     // 5% off $149 is $141.55, which a shopper sees as $142.
@@ -134,7 +134,7 @@ describe("owner discount cap", () => {
 });
 
 describe("owner-set max rounds", () => {
-  const strong = { score: 4, label: "market comparison", labels: ["market comparison"], hasBulkIntent: true, hasAddOnIntent: false, hasMarketComparison: true, isReadyToBuy: true };
+  const strong: BuyerReason = { score: 4, label: "market comparison", labels: ["market comparison"], hasBulkIntent: true, hasAddOnIntent: false, hasMarketComparison: true, isReadyToBuy: true };
   const price = (round: number, maxRounds: number | undefined, reason: BuyerReason = strong) => priceOffer(shoe, 9000, round, { items: [shoe] }, reason, 1, { floorPct: 25, now, maxRounds });
 
   it("the last of two rounds reaches the price the fourth of four reaches today", () => {
@@ -221,5 +221,17 @@ describe("what the shopper reads", () => {
     expect({ ...thisTurn, label: soFar.label }).toEqual(soFar);
     expect(priceOffer(shoe, 11000, 2, mirror, thisTurn, 1, { floorPct: 25, now }).total).toBe(priceOffer(shoe, 11000, 2, mirror, soFar, 1, { floorPct: 25, now }).total);
     expect(leadWithStatedReason(soFar, "$100 and that's it").label).toBe("quantity intent");
+  });
+});
+
+describe("buyer quantity intent", () => {
+  it("does not treat a product number or one pair as bulk", () => {
+    expect(analyzeBuyerReason("Could you take 20% off one Trail Runner 2, size 10?").hasBulkIntent).toBe(false);
+    expect(analyzeBuyerReason("Could you do $120 for one pair of Trail Runner 2?").hasBulkIntent).toBe(false);
+  });
+
+  it("recognizes explicit multiple pairs and real bundles as bulk", () => {
+    expect(analyzeBuyerReason("Could you do $220 for two pairs of Trail Runner 2?").hasBulkIntent).toBe(true);
+    expect(analyzeBuyerReason("Throw in the socks and gaiters for the full kit.").hasBulkIntent).toBe(true);
   });
 });

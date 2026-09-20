@@ -18,8 +18,12 @@ export type NegotiationItem = Item & {
   qty?: number;
 };
 export type NegotiationMirror = { items: readonly NegotiationItem[] };
+/** Every reason the engine can recognise. One union, so a renamed label breaks the build instead of silently losing its fact. */
+export type ReasonLabel = "budget" | "quantity intent" | "add-on intent" | "repeat shopper" | "market comparison" | "real use case" | "ready to buy";
 export type BuyerReason = {
-  score: number; label: string | null; labels: string[];
+  score: number; label: ReasonLabel | null; labels: ReasonLabel[];
+  /** The labels the shopper unmistakably stated, a subset of `labels`. Loose wording may still move a price; only these may be said back. */
+  spoken?: ReasonLabel[];
   hasBulkIntent: boolean; hasAddOnIntent: boolean; hasMarketComparison: boolean; isReadyToBuy: boolean;
 };
 export type NegotiationOffer = {
@@ -31,13 +35,23 @@ export type NegotiationOffer = {
 export type NegotiationOptions = { floorPct: number; now: Date; discountCapPct?: number; maxRounds?: number };
 const DEFAULT_DISCOUNT_CAP_PCT = 22;
 export type NegotiationAudit = { cost: number; floor: number; target: number; profit: number };
-type ReasonSignal = { pattern: RegExp; score: number; label: string; key?: string };
+type ReasonSignal = { pattern: RegExp; score: number; label: ReasonLabel; key?: string };
+
+/** Stricter than the pricing signals: "returning these shoes" and "can't buy right now" trip a label but state no reason. */
+const STATED: Readonly<Partial<Record<ReasonLabel, (text: string) => boolean>>> = {
+  "budget": text => /\b(tight budget|on a budget|budget is|my budget|student|saving up|can(?:'|no)t afford)\b/.test(text),
+  "quantity intent": () => true, // the menu only says it on an option that really holds more than one unit
+  "repeat shopper": text => /\b(returning customer|repeat customer|loyal customer|customer already|bought (?:from you |here )?before|shopped here before)\b/.test(text),
+  "real use case": () => true,
+  "ready to buy": text => /\b(?:buy|buying|order|ordering|purchase|purchasing|check ?out|checking out)\b[^.?!]{0,20}\b(?:today|now)\b|\bready to (?:buy|order|check ?out)\b/.test(text)
+    && !/\b(?:can(?:'|no)t|cannot|won't|don't|not)\b[^.?!]{0,25}\b(?:buy|order|purchase|check ?out)/.test(text),
+};
 
 export function analyzeBuyerReason(message: string): BuyerReason {
   const text = String(message || "").toLowerCase();
   const signals: ReasonSignal[] = [
     { pattern: /\b(student|college|school|tight budget|budget is|payday|saving up)\b/, score: 1, label: "budget" },
-    { pattern: /\b(buy|buying|grab|take|get|adding|add|order).*\b(two|2|both|multiple|pair|couple|tees|shirts|items|bundle|socks|cap|gaiters|vest|flask|kit)\b|\b(bundle|multiple items|full kit|whole kit|couple|pair)\b/, score: 2, label: "quantity intent", key: "bulk" },
+    { pattern: /\b(?:two|both|multiple|couple)\s+(?:pairs?|tees?|shirts?|items?)\b|\b(?:buy|buying|grab|take|get|adding|add|order)\b[^.?!]*\b(?:socks?|gaiters?|caps?|flasks?)\s+too\b|\b(?:bundle|multiple items|full kit|whole kit|couple of (?:pairs?|items?|shoes?|socks?|tees?|shirts?|caps?|flasks?)|throw in)\b/, score: 2, label: "quantity intent", key: "bulk" },
     { pattern: /\b(socks?|cap|gaiters?|vest|flask|kit)\b/, score: 1, label: "add-on intent", key: "addon" },
     { pattern: /\b(returning|repeat|loyal|bought before|customer already|local)\b/, score: 1, label: "repeat shopper" },
     { pattern: /\b(last season|older model|clearance|sale|price match|competitor|elsewhere|same shoe)\b/, score: 2, label: "market comparison", key: "market" },
@@ -45,10 +59,11 @@ export function analyzeBuyerReason(message: string): BuyerReason {
     { pattern: /\b(today|right now|checkout now|buy now|order now|ready to buy|buying now)\b/, score: 1, label: "ready to buy", key: "ready" },
   ];
   const matched = signals.filter(signal => signal.pattern.test(text));
+  const spoken = matched.map(signal => signal.label).filter(label => STATED[label]?.(text));
   const score = Math.min(4, matched.reduce((sum, signal) => sum + signal.score, 0));
   const primary = matched.slice().sort((a, b) => b.score - a.score)[0];
   return {
-    score, label: primary?.label ?? null, labels: matched.map(signal => signal.label),
+    score, label: primary?.label ?? null, labels: matched.map(signal => signal.label), spoken,
     hasBulkIntent: matched.some(signal => signal.key === "bulk"),
     hasAddOnIntent: matched.some(signal => signal.key === "addon"),
     hasMarketComparison: matched.some(signal => signal.key === "market"),

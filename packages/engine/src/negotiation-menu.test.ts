@@ -15,6 +15,57 @@ function input(overrides: Partial<NegotiationMenuInput> = {}): NegotiationMenuIn
 }
 
 describe("buildNegotiationMenu", () => {
+  it("only calls an item included when it is an add-on beside the main item", () => {
+    const menu = buildNegotiationMenu(input({ main: socks, offered: 17000, reason: analyzeBuyerReason("I want both items"), quantity: 2, requestedItems: [{ variantId: tr2.variantId, quantity: 1 }], allowAlternatives: false }));
+    expect(menu[0]!.offer.items.map(item => item.productId)).toEqual(["socks", "tr2"]);
+    expect(menu[0]!.facts.join(" | ")).not.toContain("Trail Runner 2 included");
+  });
+
+  it("does not say a reason aloud when the words only looked like one", () => {
+    // Each of these trips a pricing label today; none of them is the shopper giving that reason.
+    const looksLike = analyzeBuyerReason("I'm returning these shoes and can't buy right now, saw it cheaper today, I'm local");
+    const menu = buildNegotiationMenu(input({ main: tr2, round: 3, reason: looksLike, allowAlternatives: false }));
+    expect(menu[0]!.offer.total).toBeLessThan(menu[0]!.offer.listTotal);
+    expect(menu[0]!.facts).toEqual([]);
+  });
+
+  it("credits buying more than one item only on an option that holds more than one unit", () => {
+    const menu = buildNegotiationMenu(input({ main: tr2, round: 3, quantity: 1, reason: analyzeBuyerReason("I want this pair, and I'd grab a couple of tees"), allowAlternatives: false }));
+    expect(menu[0]!.offer.items.reduce((units, item) => units + (item.qty || 1), 0)).toBe(1);
+    expect(menu[0]!.facts).not.toContain("for buying more than one item");
+  });
+
+  it("says an option meets the shopper's own number only when its total is at or under it", () => {
+    const menu = buildNegotiationMenu(input({ offered: 12000, reason: analyzeBuyerReason("older model budget") }));
+    const ridgeLite = menu.find(candidate => candidate.offer.items[0]!.title === "Ridge Lite")!;
+    expect(ridgeLite.offer.total).toBeLessThanOrEqual(12000);
+    expect(ridgeLite.facts).toContain("meets your $120 budget");
+    expect(menu[0]!.offer.total).toBeGreaterThan(12000);
+    expect(menu[0]!.facts.join(" ")).not.toContain("$");
+  });
+
+  it("echoes the shopper's own reasons back, but only on an option priced below list", () => {
+    const belowList = buildNegotiationMenu(input({ main: tr2, round: 3, reason: analyzeBuyerReason("buying today for race day"), allowAlternatives: false }));
+    expect(belowList[0]!.offer.total).toBeLessThan(belowList[0]!.offer.listTotal);
+    expect(belowList[0]!.facts).toEqual(["for what you have planned", "since you're ready to check out today"]);
+
+    const atList = buildNegotiationMenu(input({ round: 1, reason: analyzeBuyerReason("buying today"), allowAlternatives: false }));
+    expect(atList[0]!.offer.total).toBe(atList[0]!.offer.listTotal);
+    expect(atList[0]!.facts).toEqual([]);
+  });
+
+  it("never turns a price-match claim into a fact: we did not verify a competitor", () => {
+    const menu = buildNegotiationMenu(input({ main: tr2, round: 3, reason: analyzeBuyerReason("price match, older model, returning customer on a tight budget"), allowAlternatives: false }));
+    expect(menu[0]!.facts).toEqual(["to fit your budget", "for a returning customer"]);
+  });
+
+  it("states which add-on a bundle includes, and nothing about the main item", () => {
+    const menu = buildNegotiationMenu(input({ requestedAddOn: "Merino Socks", allowAlternatives: false }));
+    const bundle = menu.find(candidate => candidate.offer.kind === "bundle")!;
+    expect(bundle.facts).toContain("Merino Socks included");
+    expect(bundle.facts.join(" ")).not.toContain("Trail Runner 3");
+  });
+
   it("passes the owner's max rounds through: round 2 of 2 prices like round 4 of 4", () => {
     const reason = analyzeBuyerReason("price match, buying today, older model");
     const lastOfTwo = buildNegotiationMenu(input({ main: tr2, round: 2, maxRounds: 2, reason, allowAlternatives: false }));
@@ -162,6 +213,7 @@ describe("buildNegotiationMenu", () => {
       expect.objectContaining({ productId: "socks", qty: 2 }),
       expect.objectContaining({ productId: "tr2", qty: 1 }),
     ]);
+    expect(menu[0]?.facts).toContain("cart includes 2 × Merino Socks and 1 × Trail Runner 2");
   });
 
   it("does not replace a missing requested add-on with another add-on", () => {

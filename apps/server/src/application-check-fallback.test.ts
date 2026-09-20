@@ -9,7 +9,8 @@ function db(): OwnerDatabase {
   return { merchantId: "merchant", async loadLatestPolicy() { return policy; }, async appendPolicy(next) { policy = { ...next, updatedAt: new Date().toISOString() }; return policy; }, async verifyBearerToken(value) { return value === "Bearer owner" ? { id: "merchant", ownerUserId: "owner", shopDomain: "test.myshopify.com" } : null; }, async insertDeal(deal) { return { ...deal, id: "deal", profit: deal.agreedTotal - deal.cost, createdAt: new Date().toISOString() }; } };
 }
 /** A shopkeeper LLM that answers every menu with `reply(menu)`. */
-async function offerWith(reply: (menu: Array<{ id: string; total: string }>) => string, message = "Could you do $130? Buying today, price match.") {
+/** `earlier` are turns sent first in the same negotiation, so the final message lands in a later round. */
+async function offerWith(reply: (menu: Array<{ id: string; total: string }>) => string, message = "Could you do $130? Buying today, price match.", earlier: string[] = []) {
   let menu: Array<{ id: string; total: string }> = [];
   const fetchImpl: typeof fetch = async (_url, init) => {
     menu = JSON.parse(JSON.parse(String(init?.body)).content.split("MENU: ")[1]);
@@ -19,7 +20,12 @@ async function offerWith(reply: (menu: Array<{ id: string; total: string }>) => 
   servers.push(server); await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const catalog = await (await fetch(`${base}/api/products`)).json();
-  const result = await (await fetch(`${base}/api/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shopperId: "check-shopper", product: catalog.items.find((p: { title: string }) => p.title === "Trail Runner 2"), productContextSource: "current", message }) })).json();
+  const product = catalog.items.find((p: { title: string }) => p.title === "Trail Runner 2");
+  let result: any; let negotiationId: string | undefined;
+  for (const text of [...earlier, message]) {
+    result = await (await fetch(`${base}/api/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shopperId: "check-shopper", negotiationId, product, productContextSource: "current", message: text }) })).json();
+    negotiationId = result.negotiationId;
+  }
   return { result, menu };
 }
 const dollars = (cents: number) => `$${cents / 100}`;
@@ -88,4 +94,18 @@ test("with the model answering, the last round still sounds like the last round"
 test("a model sentence that arrives without its full stop still goes out as a sentence", async () => {
   const { result, menu } = await offerWith(options => `OPTION: ${options[0]!.id}\nI can do ${options[0]!.total}`, "Could you do $130? I'm a student on a tight budget.");
   expect(result.reply).toBe(`A tight budget. I've been there. I can do ${menu[0]!.total}.`);
+});
+
+test("a reason the engine put on the menu survives the check and reaches the shopper", async () => {
+  const { result, menu } = await offerWith(options => `OPTION: ${options[0]!.id}\nI can do ${options[0]!.total} — ${(options[0] as unknown as { facts: string[] }).facts[0]}.`, "Could you do $132? I'm a returning customer.", ["Could you do $130?", "Could you do $131?"]);
+  const facts = (menu[0] as unknown as { facts: string[] }).facts;
+  expect(facts).toContain("for a returning customer");
+  expect(result.reply).toContain(`I can do ${menu[0]!.total} — for a returning customer.`);
+  expectOnlyCardFigures(result);
+});
+
+test("a reason the engine did not offer is still cut back to the bare price", async () => {
+  const { result, menu } = await offerWith(options => `OPTION: ${options[0]!.id}\nI can do ${options[0]!.total} — it has been sitting for 94 days.`, "Could you do $132? I'm a returning customer.", ["Could you do $130?", "Could you do $131?"]);
+  expect(result.reply).toContain(`I can do ${menu[0]!.total}.`);
+  expect(result.reply).not.toMatch(/94|sitting/);
 });

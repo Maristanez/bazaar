@@ -73,7 +73,8 @@ export function selectCatalogItem(
   if (!productItems.length) return null;
 
   const requestedSize = requestedSizeFrom(rawMessage);
-  if (requestedSize !== null) {
+  if (requestedSize !== null || hasExplicitSizeMention(rawMessage)) {
+    if (requestedSize === null) return null;
     const sized = productItems.find((item) => normalize(item.size || "") === normalize(requestedSize));
     if (!sized) return null;
     return sized.inStock && sized.cost !== null ? sized : null;
@@ -91,7 +92,7 @@ export function selectCatalogItem(
 
   const wantedVariant = stringId(product.selectedVariantId || product.variantId);
   const payloadSelectsThisProduct = productItems.some((item) => productMatches(item, product));
-  const preserveContextVariant = contextItem && productItems.some(item => item.variantId === contextItem.variantId) && (isContextPreservingFollowup(message) || isAccessoryContextMessage(message)) && !payload.variantSelectionChanged;
+  const preserveContextVariant = contextItem && productItems.some(item => item.variantId === contextItem.variantId) && ((payload.negotiationId && payload.variantSelectionChanged === false) || isContextPreservingFollowup(message) || isAccessoryContextMessage(message)) && !payload.variantSelectionChanged;
   if (wantedVariant && payloadSelectsThisProduct && !preserveContextVariant) {
     const selected = productItems.find((item) => item.variantId === wantedVariant || item.variantNumericId === wantedVariant);
     if (!selected) return null;
@@ -225,8 +226,17 @@ function explicitModelWords(message: string): boolean {
 }
 
 function requestedSizeFrom(message: string): string | null {
-  const match = /\b(?:size|sz)\s*(one\s+size|[a-z0-9]+(?:\s*[/\.]\s*[a-z0-9]+)?)\b/i.exec(message);
-  return match?.[1] || null;
+  const pattern = /\b(?:size|sz)\s*[-/]?\s*(one\s+size|[a-z0-9]+(?:\s*[/\.]\s*[a-z0-9]+)?)\b/gi;
+  const matches = [...message.matchAll(pattern)];
+  const affirmative = matches.filter(match => {
+    const prefix = message.slice(Math.max(0, (match.index || 0) - 40), match.index || 0);
+    return !/\b(?:not|no|isn['’]t|do not want|don['’]?t want)(?:\s+(?:the|a|an|old|current))?\s*$/i.test(prefix);
+  });
+  return affirmative.at(-1)?.[1] || null;
+}
+
+function hasExplicitSizeMention(message: string): boolean {
+  return /\b(?:size|sz)\s*[-/]?\s*(?:one\s+size|[a-z0-9]+(?:\s*[/\.]\s*[a-z0-9]+)?)\b/i.test(message);
 }
 
 function normalize(value: string): string {

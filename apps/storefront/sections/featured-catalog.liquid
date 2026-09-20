@@ -1,70 +1,292 @@
-{% assign catalog = collections.all %}
+{% comment %}
+  Home page: a product-led hero, then the catalog as shelves. A dashed trail runs behind the shelves
+  from one heading to the next and draws itself as the shopper scrolls.
+{% endcomment %}
 
-<section class="storefront">
-  <div class="storefront__hero">
-    <p class="storefront__eyebrow">Built for the long way round</p>
-    <h1>Gear that earns its place.</h1>
-    <p>Thoughtful everyday layers, trail-ready essentials, and uncomplicated comfort.</p>
-    <a class="storefront__cta" href="{{ routes.all_products_collection_url }}">Shop all products</a>
-  </div>
+{% liquid
+  assign catalog = collections.all
+  assign wear_handles = 'race-vest,trail-cap,everyday-heavyweight-tee' | split: ','
+  assign hero_product = all_products['trail-runner-3']
+%}
 
-  <div class="storefront__catalog" id="products">
-    <div class="storefront__heading">
-      <div>
-        <p class="storefront__eyebrow">The current edit</p>
-        <h2>Shop the collection</h2>
-      </div>
-      <a href="{{ routes.all_products_collection_url }}">See everything</a>
+{% capture shoes %}{% for product in catalog.products %}{% if product.type == 'Trail Shoes' %}{% render 'product-card', product: product %}{% endif %}{% endfor %}{% endcapture %}
+{% capture kit %}{% for product in catalog.products %}{% if product.type == 'Accessories' %}{% unless wear_handles contains product.handle %}{% render 'product-card', product: product %}{% endunless %}{% endif %}{% endfor %}{% endcapture %}
+{% capture race %}{% for product in catalog.products %}{% if wear_handles contains product.handle %}{% render 'product-card', product: product %}{% endif %}{% endfor %}{% endcapture %}
+{% capture more %}{% for product in catalog.products %}{% unless product.type == 'Trail Shoes' or product.type == 'Accessories' or wear_handles contains product.handle %}{% render 'product-card', product: product %}{% endunless %}{% endfor %}{% endcapture %}
+
+<div class="storefront full-width" data-trail-map>
+  <svg class="storefront__trail" aria-hidden="true" data-trail>
+    <defs>
+      <mask id="storefront-walked" maskUnits="userSpaceOnUse"><path data-trail-mask stroke="#fff" stroke-width="14" fill="none" stroke-linecap="round"/></mask>
+    </defs>
+    <path class="storefront__trail-ahead" data-trail-path/>
+    <path class="storefront__trail-walked" data-trail-path mask="url(#storefront-walked)"/>
+  </svg>
+
+  <section class="storefront__hero">
+    <div class="storefront__hero-copy">
+      <h1>Gear that earns its place.</h1>
+      <p>Thoughtful everyday layers, trail-ready essentials, and uncomplicated comfort.</p>
+      <a class="storefront__cta" href="{{ routes.all_products_collection_url }}">Shop all products</a>
     </div>
-
-    {% if catalog.products_count > 0 %}
-      <div class="storefront__grid">
-        {% for product in catalog.products %}
-          {% render 'product-card', product: product %}
-        {% endfor %}
-      </div>
-    {% else %}
-      <p class="storefront__empty">Products will appear here when they are published to the Online Store channel.</p>
+    {% if hero_product.featured_image %}
+      <a class="storefront__hero-product" href="{{ hero_product.url }}">
+        <span class="storefront__hero-sticker">
+          {{ hero_product.featured_image | image_url: width: 900, height: 900, crop: 'center' | image_tag: widths: '450, 900', sizes: '(max-width: 750px) 60vw, 28rem', fetchpriority: 'high', alt: hero_product.title }}
+        </span>
+        <span class="storefront__hero-tag">{{ hero_product.title | escape }} · {{ hero_product.price | money_without_trailing_zeros }}</span>
+      </a>
     {% endif %}
-  </div>
-</section>
+    <span class="storefront__trail-start" data-trail-stop></span>
+  </section>
+
+  {% if catalog.products_count > 0 %}
+    {% if shoes != blank %}
+      <section class="storefront__shelf" id="shoes">
+        <div class="storefront__shelf-inner">
+          <header class="storefront__heading">
+            <span class="storefront__way" data-trail-stop></span>
+            <div>
+              <h2>Shoes</h2>
+              <p>Three ways down the mountain.</p>
+            </div>
+            <a href="{{ routes.all_products_collection_url }}/trail-shoes">View all</a>
+          </header>
+          <div class="storefront__grid">{{ shoes }}</div>
+        </div>
+      </section>
+    {% endif %}
+
+    {% if kit != blank %}
+      <section class="storefront__shelf storefront__shelf--alt" id="kit">
+        <div class="storefront__shelf-inner">
+          <header class="storefront__heading">
+            <span class="storefront__way storefront__way--end" data-trail-stop></span>
+            <div>
+              <h2>Trail kit</h2>
+              <p>Small things that save long days.</p>
+            </div>
+            <a href="{{ routes.all_products_collection_url }}/accessories">View all</a>
+          </header>
+          <div class="storefront__grid">{{ kit }}</div>
+        </div>
+      </section>
+    {% endif %}
+
+    {% if race != blank %}
+      <section class="storefront__shelf" id="race">
+        <div class="storefront__shelf-inner">
+          <header class="storefront__heading">
+            <span class="storefront__way" data-trail-stop></span>
+            <div>
+              <h2>Wear and carry</h2>
+              <p>Carry it all, keep the sun off.</p>
+            </div>
+            <a href="{{ routes.all_products_collection_url }}">View all</a>
+          </header>
+          <div class="storefront__grid">{{ race }}</div>
+        </div>
+      </section>
+    {% endif %}
+
+    {% if more != blank %}
+      <section class="storefront__shelf storefront__shelf--alt" id="more">
+        <div class="storefront__shelf-inner">
+          <header class="storefront__heading">
+            <span class="storefront__way storefront__way--end" data-trail-stop></span>
+            <div>
+              <h2>More from Trailhead</h2>
+            </div>
+            <a href="{{ routes.all_products_collection_url }}">View all</a>
+          </header>
+          <div class="storefront__grid">{{ more }}</div>
+        </div>
+      </section>
+    {% endif %}
+  {% else %}
+    <p class="storefront__empty">Products will appear here when they are published to the Online Store channel.</p>
+  {% endif %}
+
+  <span class="storefront__trail-finish" data-trail-stop></span>
+</div>
 
 {% stylesheet %}
-  .storefront { padding-bottom: 5rem; }
+  .storefront { position: relative; overflow-x: clip; }
+
+  .storefront__trail { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; overflow: visible; }
+  .storefront__trail path { fill: none; stroke: var(--th-coral); stroke-linecap: round; }
+  .storefront__trail-ahead { stroke-width: 5; stroke-dasharray: 2 16; opacity: 0.4; }
+  .storefront__trail-walked { stroke-width: 5; stroke-dasharray: 14 14; }
+
   .storefront__hero {
-    min-height: min(70vh, 44rem);
+    position: relative;
+    z-index: 2;
     display: grid;
-    align-content: center;
-    gap: 1.25rem;
-    padding: clamp(4rem, 10vw, 9rem) clamp(1.5rem, 7vw, 7rem);
-    background: linear-gradient(120deg, #064e3b 0%, #0f766e 60%, #d7eadf 60%);
-    color: #fff;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(1.5rem, 5vw, 5rem);
+    padding: clamp(3.5rem, 7vw, 6rem) var(--th-gutter) clamp(4rem, 8vw, 6.5rem);
+    background: var(--th-teal);
+    color: var(--th-cream);
+    overflow: hidden;
   }
-  .storefront__hero > * { max-width: 42rem; }
-  .storefront__hero h1 { font-size: clamp(3rem, 8vw, 7rem); line-height: 0.94; letter-spacing: -0.06em; }
-  .storefront__hero p:not(.storefront__eyebrow) { font-size: 1.15rem; line-height: 1.55; }
-  .storefront__eyebrow { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
-  .storefront__cta {
-    width: fit-content;
-    margin-top: 0.75rem;
-    padding: 0.9rem 1.25rem;
-    background: #ea580c;
-    color: #111;
-    font-weight: 800;
+  .storefront__hero-copy {
+    display: grid;
+    gap: 1.4rem;
+    justify-items: start;
+    justify-self: end;
+    width: min(100%, 40rem);
+  }
+  .storefront__hero-product {
+    display: grid;
+    justify-items: end;
+    gap: 1.1rem;
+    width: min(100%, 28rem);
+    color: var(--th-bark);
     text-decoration: none;
   }
-  .storefront__catalog { padding: clamp(3.5rem, 8vw, 7rem) var(--page-margin); }
-  .storefront__heading { display: flex; align-items: end; justify-content: space-between; gap: 1.5rem; margin-bottom: 2rem; }
-  .storefront__heading h2 { font-size: clamp(2rem, 4vw, 3.5rem); letter-spacing: -0.04em; }
-  .storefront__heading > a { color: inherit; font-weight: 700; text-underline-offset: 0.25rem; }
-  .storefront__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(1rem, 2vw, 2rem); }
-  .storefront__empty { padding: 2rem; background: #e8f1f3; }
+  .storefront__hero-sticker {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border: 10px solid #fff;
+    border-radius: 1.75rem;
+    background: #f1e8d8;
+    transform: rotate(4deg);
+    box-shadow: 0 24px 40px -20px rgb(0 20 20 / 60%), 0 3px 6px rgb(47 22 4 / 15%);
+    transition: transform 500ms var(--th-ease);
+  }
+  .storefront__hero-product:hover .storefront__hero-sticker { transform: rotate(0deg) translateY(-8px) scale(1.02); }
+  .storefront__hero-sticker img { width: 100%; height: 100%; object-fit: cover; }
+  .storefront__hero-tag {
+    font-family: var(--th-display);
+    font-weight: 600;
+    font-size: 1.1rem;
+    font-variant-numeric: tabular-nums;
+    background: var(--th-sun);
+    padding: 0.2rem 1rem;
+    border-radius: 999px;
+    transform: rotate(-2deg);
+  }
+  .storefront__hero h1 {
+    font-family: var(--th-display);
+    font-weight: 700;
+    font-size: clamp(2.9rem, 6.4vw, 5.75rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  .storefront__hero p { max-width: 36ch; font-size: 1.2rem; color: var(--th-sky); }
+  .storefront__cta {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    margin-top: 0.6rem;
+    padding: 0.9rem 1.65rem;
+    border-radius: 999px;
+    background: var(--th-coral);
+    color: var(--th-bark);
+    font-family: var(--th-display);
+    font-weight: 600;
+    font-size: 1.1rem;
+    text-decoration: none;
+    box-shadow: 0 10px 22px -12px rgb(47 22 4 / 70%);
+    transition: transform 350ms var(--th-ease), box-shadow 350ms var(--th-ease);
+  }
+  .storefront__cta:hover { transform: translateY(-2px) rotate(-1deg); box-shadow: 0 16px 26px -12px rgb(47 22 4 / 70%); }
+  .storefront__cta:active { transform: translateY(0); }
+  .storefront__trail-start { position: absolute; left: 50%; bottom: -4px; width: 0; height: 0; }
+  .storefront__trail-finish { position: absolute; left: 50%; bottom: 0; width: 0; height: 0; }
+
+  .storefront__shelf { position: relative; padding: clamp(3.5rem, 7vw, 5.25rem) var(--th-gutter) clamp(4rem, 8vw, 6rem); background: var(--th-cream); }
+  .storefront__shelf--alt { background: var(--th-paper); }
+  .storefront__shelf-inner { position: relative; z-index: 2; max-width: var(--th-shelf-width); margin: 0 auto; }
+  .storefront__heading { position: relative; display: flex; align-items: end; justify-content: space-between; gap: 1.25rem; margin-bottom: clamp(1.5rem, 3vw, 2.5rem); }
+  .storefront__heading h2 {
+    font-family: var(--th-display);
+    font-weight: 600;
+    font-size: clamp(2rem, 4.2vw, 3.2rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    color: var(--th-teal);
+  }
+  .storefront__heading p { margin-top: 0.4rem; color: var(--th-bark-soft); }
+  .storefront__heading > a { color: var(--th-teal); font-weight: 700; white-space: nowrap; text-underline-offset: 0.25rem; }
+  .storefront__way {
+    position: absolute;
+    left: -2.1rem;
+    top: 1rem;
+    width: 18px;
+    height: 18px;
+    box-sizing: content-box;
+    border-radius: 50%;
+    background: var(--th-teal);
+    border: 4px solid #fff;
+    box-shadow: 0 3px 6px rgb(47 22 4 / 30%);
+  }
+  .storefront__way--end { left: auto; right: -2.1rem; }
+  .storefront__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(1.25rem, 3.4vw, 3.25rem); }
+  .storefront__empty { position: relative; z-index: 2; margin: 3rem var(--th-gutter); padding: 2rem; background: var(--th-paper); border-radius: 1rem; }
+
   @media (max-width: 750px) {
-    .storefront__hero { background: linear-gradient(150deg, #064e3b 0%, #0f766e 72%, #d7eadf 72%); }
+    .storefront__hero { grid-template-columns: 1fr; }
+    .storefront__hero-copy { justify-self: start; }
+    .storefront__hero-product { width: 62%; justify-self: end; }
+    .storefront__hero-sticker { border-width: 6px; border-radius: 1.25rem; }
     .storefront__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .storefront__heading { align-items: start; flex-direction: column; }
+    .storefront__way { left: -0.4rem; top: -2.1rem; }
+    .storefront__way--end { left: auto; right: -0.4rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .storefront__cta, .storefront__hero-sticker { transition: none; }
   }
 {% endstylesheet %}
+
+{% javascript %}
+  (function () {
+    var map = document.querySelector('[data-trail-map]');
+    if (!map) return;
+    var svg = map.querySelector('[data-trail]');
+    var paths = map.querySelectorAll('[data-trail-path]');
+    var mask = map.querySelector('[data-trail-mask]');
+    var still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var length = 0;
+
+    function lay() {
+      var box = map.getBoundingClientRect();
+      var points = [].map.call(map.querySelectorAll('[data-trail-stop]'), function (stop) {
+        var r = stop.getBoundingClientRect();
+        return [r.left + r.width / 2 - box.left, r.top + r.height / 2 - box.top];
+      });
+      if (points.length < 2) return;
+      var d = 'M' + points[0][0] + ',' + points[0][1];
+      for (var i = 1; i < points.length; i++) {
+        var a = points[i - 1], b = points[i], mid = (a[1] + b[1]) / 2;
+        d += ' C' + a[0] + ',' + mid + ' ' + b[0] + ',' + mid + ' ' + b[0] + ',' + b[1];
+      }
+      svg.setAttribute('viewBox', '0 0 ' + box.width + ' ' + box.height);
+      [].forEach.call(paths, function (path) { path.setAttribute('d', d); });
+      mask.setAttribute('d', d);
+      length = mask.getTotalLength();
+      mask.style.strokeDasharray = length;
+      walk();
+    }
+
+    function walk() {
+      if (!length) return;
+      var box = map.getBoundingClientRect();
+      var walked = still ? 1 : Math.min(1, Math.max(0, (window.innerHeight * 0.7 - box.top) / box.height));
+      mask.style.strokeDashoffset = length * (1 - walked);
+    }
+
+    window.addEventListener('scroll', walk, { passive: true });
+    window.addEventListener('resize', lay);
+    window.addEventListener('load', lay);
+    if ('ResizeObserver' in window) new ResizeObserver(lay).observe(map);
+    lay();
+  })();
+{% endjavascript %}
 
 {% schema %}
 { "name": "Featured catalog", "settings": [], "presets": [{ "name": "Featured catalog" }] }

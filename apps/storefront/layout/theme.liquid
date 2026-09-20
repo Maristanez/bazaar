@@ -39,23 +39,28 @@
       <section
         id="ai-chat-panel"
         class="ai-chat__panel"
+        role="region"
         aria-labelledby="ai-chat-title"
         hidden
       >
         <div class="ai-chat__header">
-          <div>
-            <p class="ai-chat__eyebrow" data-ai-chat-mode>Scripted demo</p>
-            <h2 id="ai-chat-title">Trailhead AI shopkeeper</h2>
+          <span class="ai-chat__sticker ai-chat__sticker--head" data-ai-chat-sticker="head" aria-hidden="true"></span>
+          <div class="ai-chat__who">
+            <h2 id="ai-chat-title">Juniper</h2>
+            <p data-ai-chat-mode>Trailhead's AI shopkeeper. Takes offers.</p>
           </div>
           <div class="ai-chat__header-actions">
             <button
-              class="ai-chat__voice-toggle"
+              class="ai-chat__icon-button ai-chat__voice-toggle"
               type="button"
               data-ai-chat-voice-toggle
               aria-pressed="false"
-              aria-label="Turn voice mode on"
-            >Voice off</button>
-            <button class="ai-chat__close" type="button" data-ai-chat-close aria-label="Close chat">&times;</button>
+              aria-label="Turn spoken replies on"
+              hidden
+            ></button>
+            <button class="ai-chat__icon-button ai-chat__close" type="button" data-ai-chat-close aria-label="Close chat">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
           </div>
         </div>
 
@@ -65,52 +70,58 @@
           </p>
         </div>
 
-        <div class="ai-chat__prompts" aria-label="Suggested chat prompts">
-          <button type="button" data-ai-chat-prompt="Could you make this $5 cheaper?">Make it $5 less</button>
-          <button type="button" data-ai-chat-prompt="Could you give me a student discount?">Student discount</button>
-          <button type="button" data-ai-chat-prompt="If I buy today, could you add socks as a gift?">Gift me socks</button>
+        <div class="ai-chat__foot">
+          <div class="ai-chat__prompts" data-ai-chat-prompts aria-label="Suggested chat prompts">
+            <button type="button" data-ai-chat-prompt="I'm buying two pairs. What can you do?">I'm buying two</button>
+            <button type="button" data-ai-chat-prompt="Could you give me a student discount?">Student discount</button>
+            <button type="button" data-ai-chat-prompt="If I buy today, could you add socks as a gift?">Gift me socks</button>
+          </div>
+
+          <div class="ai-chat__listen" data-ai-chat-listen role="status" hidden>
+            <span>Listening</span>
+            <span class="ai-chat__wave" data-ai-chat-wave aria-hidden="true"></span>
+            <button class="ai-chat__listen-stop" type="button" data-ai-chat-listen-stop aria-label="Stop and send"><i></i></button>
+          </div>
+
+          <form class="ai-chat__form" data-ai-chat-form>
+            <label class="visually-hidden" for="ai-chat-input">Message the Trailhead shopkeeper</label>
+            <input
+              id="ai-chat-input"
+              type="text"
+              name="message"
+              autocomplete="off"
+              placeholder="Make an offer..."
+              data-ai-chat-input
+            >
+            <button
+              class="ai-chat__icon-button ai-chat__mic"
+              type="button"
+              data-ai-chat-mic
+              aria-label="Talk instead of typing"
+              title="Talk instead of typing"
+              hidden
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" /></svg>
+            </button>
+            <button class="ai-chat__icon-button ai-chat__send" type="submit" aria-label="Send">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h13M12 6l6 6-6 6" /></svg>
+            </button>
+          </form>
+
+          <p class="ai-chat__source">Deal opens Shopify Checkout, where you pay.</p>
         </div>
-
-        <form class="ai-chat__form" data-ai-chat-form>
-          <label class="visually-hidden" for="ai-chat-input">Message the Trailhead AI shopkeeper</label>
-          <input
-            id="ai-chat-input"
-            type="text"
-            name="message"
-            autocomplete="off"
-            placeholder="Make an offer..."
-            data-ai-chat-input
-          >
-          <button
-            class="ai-chat__mic"
-            type="button"
-            data-ai-chat-mic
-            aria-label="Start voice input"
-            title="Start voice input"
-            disabled
-          >Mic</button>
-          <button type="submit">Send</button>
-        </form>
-
-        <p class="ai-chat__source">Chat with our AI shopkeeper. Review the items and price on your offer card before checkout.</p>
       </section>
 
       <button
         class="ai-chat__launcher"
         type="button"
-        aria-label="Open Trailhead AI shopkeeper chat"
+        aria-label="Make an offer: open the Trailhead shopkeeper chat"
         aria-expanded="false"
         aria-controls="ai-chat-panel"
         data-ai-chat-toggle
       >
-        <span class="ai-chat__launcher-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false">
-            <path d="M12 3.75c-4.56 0-8.25 3.13-8.25 7 0 2.19 1.19 4.14 3.04 5.42l-.59 2.57a.75.75 0 0 0 1.08.83l2.92-1.55c.58.15 1.18.23 1.8.23 4.56 0 8.25-3.13 8.25-7s-3.69-7.5-8.25-7.5Z" />
-            <path d="M16.75 3.25l.38 1.01c.08.2.23.36.43.43l1.01.38-1.01.38a.78.78 0 0 0-.43.43l-.38 1.01-.38-1.01a.78.78 0 0 0-.43-.43l-1.01-.38 1.01-.38a.78.78 0 0 0 .43-.43l.38-1.01Z" />
-            <path d="M8.5 10.5h7M8.5 13.25h4.75" />
-          </svg>
-        </span>
-        <span>{{ settings.ai_chat_label | default: 'AI chat' }}</span>
+        <span class="ai-chat__sticker ai-chat__sticker--launcher" data-ai-chat-sticker="launcher" aria-hidden="true"></span>
+        <span>Make an offer</span>
       </button>
     </div>
 

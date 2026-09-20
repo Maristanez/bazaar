@@ -5,34 +5,50 @@
   https://shopify.dev/docs/storefronts/themes/architecture/templates/collection
 {% endcomment %}
 
-<div class="collection-heading">
-  <p class="collection-heading__eyebrow">Browse the collection</p>
+<div class="collection-heading full-width">
   <h1>{{ collection.title }}</h1>
+  <p>{{ collection.products_count }} {{ collection.products_count | pluralize: 'product', 'products' }}</p>
 </div>
 
-<div class="collection-products">
+<div class="collection-products full-width">
   {% paginate collection.products by 20 %}
-    {% for product in collection.products %}
-      <div class="collection-product">
-        {% render 'product-card', product: product %}
-      </div>
-    {% endfor %}
+    <div class="collection-products__grid">
+      {% for product in collection.products %}
+        <div class="collection-product">
+          {% render 'product-card', product: product %}
+        </div>
+      {% endfor %}
+    </div>
 
     {{ paginate | default_pagination }}
   {% endpaginate %}
 </div>
 
 {% stylesheet %}
-  .collection-products {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: clamp(1rem, 2vw, 2rem);
-    padding: 0 var(--page-margin) 5rem;
+  .collection-heading {
+    padding: clamp(2.5rem, 6vw, 4.5rem) var(--th-gutter) clamp(2rem, 4vw, 3rem);
+    background: var(--th-teal);
+    color: var(--th-cream);
   }
-  .collection-heading { padding: 4rem var(--page-margin) 2rem; }
-  .collection-heading__eyebrow { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
-  .collection-heading h1 { font-size: clamp(2.5rem, 7vw, 5rem); letter-spacing: -0.05em; }
-  @media (max-width: 750px) { .collection-products { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .collection-heading > * { width: min(100%, var(--th-shelf-width)); margin-inline: auto; }
+  .collection-heading h1 {
+    font-family: var(--th-display);
+    font-weight: 700;
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+  }
+  .collection-heading p { margin-top: 0.6rem; color: var(--th-sky); }
+  .collection-products { padding: clamp(2.5rem, 5vw, 4rem) var(--th-gutter) 6rem; }
+  .collection-products__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(1.25rem, 3.4vw, 3.25rem);
+    width: min(100%, var(--th-shelf-width));
+    margin: 0 auto;
+  }
+  .collection-products .pagination { margin-top: 3rem; text-align: center; font-weight: 700; }
+  @media (max-width: 750px) { .collection-products__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 {% endstylesheet %}
 
 {% schema %}
