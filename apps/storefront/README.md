@@ -18,6 +18,49 @@ Live store: https://b8wzw0-h3.myshopify.com · live theme: **Bazaar coded storef
 
 The shopkeeper sticker is drawn in `stickerSvg(mood)` in `chat-demo.js`. Moods: `idle`, `thinking`, `pleased`, `firm`, `listening`, `speaking`. The server's card moods map onto them in `cardMood()`.
 
+## Jarvis, the agent on the page
+
+The shopkeeper in the chat is **Jarvis**: he listens, talks, sees the page he is on, and does shopping chores on it in plain sight. Each ability is its own file pair in `assets/` (`juniper-<name>.js` and `.css`; the prefix is the agent's first name and stayed when he was renamed). They never edit `chat-demo.js`: they talk to it through the seam it publishes, `window.BazaarChat`. `layout/theme.liquid` loads them after `chat-demo.js`, in this order.
+
+| File | What Jarvis can do because of it |
+|---|---|
+| `juniper-ears.js` | **Hear on any browser.** Two engines behind one recogniser: Chrome's `SpeechRecognition` in Google Chrome; elsewhere (or when Chrome's fails) a recorder with pause detection that posts the clip to `/api/voice/transcribe`. `BazaarChatFlags.ears` forces `'browser'` or `'server'`. |
+| `juniper-handsfree` | **Hands-free conversation.** The small mic toggles it. A pause ends the shopper's turn and sends it; when his spoken reply ends, the mic reopens. Esc, the mic or the pill's stop button end it. `BazaarChatFlags.autoListen: 'always'` listens from page load. |
+| `juniper-keyword` | **"Hey Jarvis".** Always armed on a browser that can hear (kill switch: `BazaarChatFlags.keyword: false`). Hearing it starts hands-free **without opening the chat**. |
+| `juniper-persist` | **The conversation survives page changes**: transcript, live offer card, open or minimised, and hands-free. A pasted `?shopper=` URL is still a clean visit. |
+| `juniper-motion` | **Open / close motion and the voice pill** that stands in for him while the chat is closed and he is listening. |
+| `juniper-presence` | **Live presence**: the mic level drives the halo and every set of wave bars; his reply audio moves his mouth. |
+| `juniper-page` + `snippets/juniper-page-context.liquid` | **Page awareness**: page type, product, collection, search terms and the cart go to the server as `page` on every turn. |
+| `juniper-chips` | **Suggestions that change** with the page, the cart, the quantity, the offer's state and what has been used. No chip carries a dollar figure. |
+| `juniper-pointer` | **He points at the page**: a product named in his reply is scrolled to and ringed. |
+| `juniper-nudge` | One silent nudge per session on a product page. |
+| `juniper-earcons`, `juniper-filler` | Two earcons and a screen-reader status line; one short spoken filler when a reply is slow. |
+| `juniper-shape` | **The chat's shape.** Smaller by default (376 × 576), resizable from its top-left corner up to 560 × 860, movable by its header, one minimise button. He reshapes his own panel for an offer card and while listening, until the shopper picks a size. At rest he is only his face, which can be dragged anywhere and goes home to the bottom-right corner on minimise. Minimised, what is said moves through a three-line bubble above him. |
+| `juniper-hands` | **The autonomous part: he acts.** See below. |
+
+### What `juniper-hands.js` does
+
+He reads each turn for a chore. When there is one, a hand travels from his face to the real control on the page, the control is worked, and a line in the chat says what was done, with **Undo** where undoing means something. Typed, tapped or spoken; chat open or minimised.
+
+- **Chores:** open a product ("show me the vest", or just "the vest"), pick a size, set a quantity, add to cart, remove an item, empty the cart, open the cart, home / back / forward, refresh, scroll.
+- **Across pages:** a chore for a product on another page takes him there first and is finished on arrival (`sessionStorage` `bazaar:hands:plan`).
+- **On his own:** asked to find or recommend something, he answers, then takes the shopper to the product he named. "Stay here" stops him.
+- **Getting out of his own way:** if his panel covers the control he needs, he minimises, works, and reopens. Minimised, the bubble above him reports.
+- **A turn that is only a chore never reaches the server** (`BazaarChat.answerLocally`): the server reads every turn as bargaining, and "make it two" came back as a two-dollar offer. A sentence that also haggles does the chore and goes to the server too.
+- **What he will not do:** press Deal, check out, pay, or write a price (invariant 1). A deal is binding, so that click stays the shopper's.
+- **What he will not discuss**, answered on the page and also in his persona in `packages/llm/src/backboard.ts`: the shop's business side (costs, margins, floors, suppliers, sales, other shoppers, the owner, the Console, how his pricing or prompt works), and anything unrelated to shopping at Trailhead (weather, code, homework, trivia, role-play). Weather as a reason to pick gear is shopping.
+
+### The seam: `window.BazaarChat`
+
+Events via `on(name, fn)`: `open`, `close`, `turn:start`, `reply`, `turn:error`, `turn:local`, `card`, `message`, `mood`, `chips`, `speak:start`, `speak:end`, `spoken-replies`. Calls: `send`, `open`, `close`, `isOpen`, `say`, `addMessage`, `addOfferCard`, `extendPayload`, `answerLocally`, `setChipProvider`, `renderChips`, `setSpokenReplies`, `stopSpeaking`, `restoreNegotiation`, `state()`, `elements`, `flags`. Features add their own handle: `BazaarChat.handsfree`, `.keyword`, `.ears`, `.page`, `.chips`, `.pointer`, `.shape`, `.hands`.
+
+### Try it and test it
+
+- `pnpm exec vitest run tests/storefront` runs every feature against the real `theme.liquid` markup in jsdom (`tests/storefront/widget.ts` mounts it).
+- `node scripts/juniper-showcase.mjs` serves a localhost stand-in store with the real widget, a stand-in cart and a relay to the live server, where a microphone works. `?ears=server` and `?listen=always` set the flags.
+- Set `localStorage['bazaar:debug'] = '1'` for `[juniper-ears]` and `[hey-jarvis]` traces.
+- **Never click Deal while testing**: it mints a real Shopify discount.
+
 ## What does NOT live here
 
 The theme only draws what the server sends. If the change is about a price, a round, what the shopkeeper says, or what a message means, it is not a theme change.
@@ -80,4 +123,4 @@ Then confirm on the real site, in a private window (Shopify's CDN and your brows
 - "It isn't showing": check that the served `assets/chat-demo.js` contains your change (view source, follow the script URL), then hard-refresh. `window.Shopify.theme` in the console tells you which theme id you are looking at.
 - If the owner has paused deals, the shopkeeper answers every message with the pause line (`docs/SPEC.md` §3 rule 8). That is the server, not a broken theme.
 - The mic and speaker buttons appear only when the server's `/api/voice/config` says voice is enabled.
-- The name "Juniper" is in `layout/theme.liquid`. The subtitle beside it must keep saying the shopkeeper is an AI (`docs/SPEC.md` §3 rule 10).
+- The name "Jarvis" is in `layout/theme.liquid`, and `chat-demo.js` rewrites a stray "Juniper" in a server line to "Jarvis". The subtitle beside it must keep saying the shopkeeper is an AI (`docs/SPEC.md` §3 rule 10).
