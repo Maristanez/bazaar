@@ -20,7 +20,9 @@ export type NegotiationOffer = {
   kind: "closed" | "accepted" | "counter" | "bundle";
   items: NegotiationItem[]; listTotal: number; total: number; line: string; badges: string[];
 };
-export type NegotiationOptions = { floorPct: number; now: Date };
+/** discountCapPct: the most the owner lets the shopkeeper take off list (0–40, default 22). It never reaches below the floor. */
+export type NegotiationOptions = { floorPct: number; now: Date; discountCapPct?: number };
+const DEFAULT_DISCOUNT_CAP_PCT = 22;
 export type NegotiationAudit = { cost: number; floor: number; target: number; profit: number };
 type ReasonSignal = { pattern: RegExp; score: number; label: string; key?: string };
 
@@ -82,9 +84,10 @@ export function priceOffer(
   if (offered >= listTotal && !reason.hasAddOnIntent) {
     return { kind: "accepted", items: [mainQty], listTotal, total: listTotal, line: `${main.title} is already ${formatMoney(roundToShopper(main.list))}${quantity > 1 ? " each" : ""}. You can check out at list price, or send me a lower offer to haggle.`, badges: ["list price", "checkout ready"] };
   }
+  const capPct = discountCapOf(options.discountCapPct);
   const pricedMain = { ...main, list: main.list * quantity };
   const baseTarget = targetOf(pricedMain, floor, options.now);
-  const sellerTarget = sellerTargetFor(pricedMain, floor, baseTarget, reason, round);
+  const sellerTarget = sellerTargetFor(pricedMain, floor, baseTarget, reason, round, capPct);
   const ask = sellerAskFor(pricedMain, sellerTarget, round, reason, options.now);
   const safeOffered = roundToShopper(offered);
   const hasConvincingReason = reason.score >= 2 || reason.hasBulkIntent || quantity > 1;
@@ -113,7 +116,7 @@ export function priceOffer(
     return { kind: "accepted", items: [mainQty], listTotal, total: safeOffered, line: `${reasonPrefix(reason)}Deal — I can hold ${formatMoney(safeOffered)} for 15 minutes.`, badges: reasonBadges(reason, ["good intent", "held 15:00"]) };
   }
   const total = round === 1 && reason.score > 0 ? sellerAskFor(pricedMain, sellerTarget, 1, reason, options.now) : ask;
-  const safeTotal = Math.min(listTotal, Math.max(floor, total));
+  const safeTotal = Math.min(listTotal, Math.max(floor, Math.ceil(listTotal * (1 - capPct / 100)), total));
   const line = round === 1 && reason.score > 0
     ? `${reasonPrefix(reason)}I can start at ${formatMoney(safeTotal)}. If you can show stronger intent — bundle, checkout today, or a real comparison — I may be able to sharpen it.`
     : round >= 3 || isLowball
@@ -132,6 +135,10 @@ export function auditOffer(items: readonly (NegotiationItem & { qty?: number })[
   const main = items[0]!;
   const target = Math.ceil(list - urgencyFor(main.stockedAt, now) * (list - floor));
   return { cost, floor, target, profit: total - cost };
+}
+
+function discountCapOf(value: number | undefined): number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 40 ? value : DEFAULT_DISCOUNT_CAP_PCT;
 }
 
 function emptyReason(): BuyerReason {
@@ -181,7 +188,7 @@ function reasonAdjustedTarget(list: number, baseTarget: number, score: number): 
   return Math.ceil(list - strength * (list - baseTarget));
 }
 
-function maxSellerDiscount(reason: BuyerReason, round: number): number {
+function maxSellerDiscount(reason: BuyerReason, round: number, capPct: number): number {
   const baseByScore = [
     [0, 0, 0.04, 0.06],
     [0.02, 0.04, 0.07, 0.09],
@@ -195,7 +202,7 @@ function maxSellerDiscount(reason: BuyerReason, round: number): number {
   if (reason.hasAddOnIntent) discount += 0.02;
   if (reason.isReadyToBuy) discount += 0.02;
   if (reason.hasMarketComparison) discount += 0.02;
-  return Math.min(0.22, discount);
+  return Math.min(capPct / 100, discount);
 }
 
 function sellerTargetFor(
@@ -204,8 +211,9 @@ function sellerTargetFor(
   baseTarget: number,
   reason: BuyerReason,
   round: number,
+  capPct: number,
 ): number {
-  const protectedTarget = roundToShopper(item.list * (1 - maxSellerDiscount(reason, round)));
+  const protectedTarget = roundToShopper(item.list * (1 - maxSellerDiscount(reason, round, capPct)));
   const reasonBaseTarget = reason.score >= 2 && baseTarget >= item.list ? protectedTarget : baseTarget;
   const reasonTarget = reasonAdjustedTarget(item.list, reasonBaseTarget, reason.score);
   return roundToShopper(Math.max(floor, reasonTarget, protectedTarget));

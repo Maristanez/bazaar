@@ -1,5 +1,5 @@
 // @ts-expect-error Node's strip-types runtime requires the explicit extension.
-import { priceOffer, type BuyerReason, type NegotiationItem, type NegotiationOffer, type NegotiationMirror } from "./negotiate.ts";
+import { priceOffer, type BuyerReason, type NegotiationItem, type NegotiationOffer, type NegotiationMirror, type NegotiationOptions } from "./negotiate.ts";
 
 export type NegotiationMenuInput = {
   main: NegotiationItem;
@@ -10,6 +10,8 @@ export type NegotiationMenuInput = {
   quantity: number;
   floorPct: number;
   now: Date;
+  /** Owner settings (SPEC §4.4.1); absent = the defaults. */
+  discountCapPct?: number;
   requestedAddOn?: string;
   requestedItems?: readonly RequestedNegotiationItem[];
   allowAlternatives?: boolean;
@@ -26,14 +28,15 @@ export type NegotiationMenuResult = readonly NegotiationMenuCandidate[];
 
 /** Build safe server-side choices while keeping all pricing in priceOffer. */
 export function buildNegotiationMenu(input: NegotiationMenuInput): NegotiationMenuResult {
-  const { main, mirror, offered, round, reason, quantity, floorPct, now } = input;
+  const { main, mirror, offered, round, reason, quantity, floorPct } = input;
+  const pricing: NegotiationOptions = { floorPct, now: input.now, discountCapPct: input.discountCapPct };
   const hasExplicitItems = Boolean(input.requestedItems?.length);
   const requestedItems = resolveRequestedItems(input.requestedItems, mirror.items, main);
   if (hasExplicitItems && requestedItems.length !== input.requestedItems!.length) return [];
   const requested = findRequestedAddOn(input.requestedAddOn, mirror.items, main);
   const requestedName = normalize(input.requestedAddOn || "");
   const addOns = uniqueAddOns(mirror.items, main, requested);
-  const primary = priceCandidate(main, offered, round, { items: [main] }, reasonFor(reason, false), quantity, floorPct, now);
+  const primary = priceCandidate(main, offered, round, { items: [main] }, reasonFor(reason, false), quantity, pricing);
   const candidates: NegotiationOffer[] = [];
   if (primary) candidates.push(primary);
 
@@ -47,13 +50,13 @@ export function buildNegotiationMenu(input: NegotiationMenuInput): NegotiationMe
           ? addOns.map(addOn => [addOn])
           : [];
   for (const bundleItems of bundleGroups) {
-    const bundle = priceCandidate(main, offered, round, mirrorFor(main, bundleItems), reasonFor(reason, true), quantity, floorPct, now);
+    const bundle = priceCandidate(main, offered, round, mirrorFor(main, bundleItems), reasonFor(reason, true), quantity, pricing);
     if (bundle && bundle.kind === "bundle" && bundleContains(bundle, bundleItems)) candidates.push(bundle);
   }
 
   if (input.allowAlternatives && primary) {
     for (const alternative of alternativesFor(main, mirror.items)) {
-      const alternativeOffer = priceCandidate(alternative, offered, round, { items: [alternative] }, reasonFor(reason, false), quantity, floorPct, now);
+      const alternativeOffer = priceCandidate(alternative, offered, round, { items: [alternative] }, reasonFor(reason, false), quantity, pricing);
       if (!alternativeOffer || alternativeOffer.total >= primary.total || alternativeOffer.listTotal >= primary.listTotal) continue;
       candidates.push(alternativeOffer);
     }
@@ -84,8 +87,8 @@ export function rankNegotiationMenu(choices: NegotiationMenuResult, input: Pick<
     .map((choice, index) => ({ ...choice, id: String.fromCharCode(65 + index) }));
 }
 
-function priceCandidate(main: NegotiationItem, offered: number, round: number, mirror: NegotiationMirror, reason: BuyerReason, quantity: number, floorPct: number, now: Date): NegotiationOffer | null {
-  const offer = priceOffer(main, offered, round, mirror, reason, quantity, { floorPct, now });
+function priceCandidate(main: NegotiationItem, offered: number, round: number, mirror: NegotiationMirror, reason: BuyerReason, quantity: number, pricing: NegotiationOptions): NegotiationOffer | null {
+  const offer = priceOffer(main, offered, round, mirror, reason, quantity, pricing);
   return offer.kind === "closed" ? null : offer;
 }
 
