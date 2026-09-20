@@ -1,7 +1,7 @@
 {
   "404": {
-    "title": "404",
-    "not_found": "Page not found.",
+    "title": "Off the trail.",
+    "not_found": "That page is not here. It may have moved, or the link was wrong.",
     "back_to_shopping": "Back to shopping"
   },
   "blog": {

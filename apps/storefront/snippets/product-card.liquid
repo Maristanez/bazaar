@@ -1,53 +1,94 @@
 {% comment %}
   Compact, reusable product card for collection and home-page grids.
+  The photo is a die-cut sticker: white border, slight tilt, straightens on hover.
 {% endcomment %}
 
 <article class="product-card">
   <a class="product-card__image" href="{{ product.url }}" aria-label="View {{ product.title | escape }}">
     {% if product.featured_image %}
-      {{ product.featured_image | image_url: width: 720, height: 900, crop: 'center' | image_tag: loading: 'lazy', widths: '360, 540, 720' }}
+      {{ product.featured_image | image_url: width: 720, height: 720, crop: 'center' | image_tag: loading: 'lazy', widths: '360, 540, 720', sizes: '(max-width: 750px) 50vw, 25rem' }}
     {% else %}
       <span class="product-card__placeholder" aria-hidden="true">{{ product.title | slice: 0, 1 }}</span>
     {% endif %}
   </a>
   <div class="product-card__details">
     <h3><a href="{{ product.url }}">{{ product.title | escape }}</a></h3>
-    <p class="product-card__price">{{ product.price | money }}</p>
+    <p class="product-card__price">{{ product.price | money_without_trailing_zeros }}</p>
   </div>
 </article>
 
 {% stylesheet %}
   .product-card {
+    --tilt: -2deg;
     display: grid;
-    gap: 0.8rem;
+    gap: 1.1rem;
+    align-content: start;
   }
+  .product-card:nth-child(3n + 2), :nth-child(3n + 2) > .product-card { --tilt: 1.5deg; }
+  .product-card:nth-child(3n), :nth-child(3n) > .product-card { --tilt: -1deg; }
 
   .product-card__image {
     display: grid;
-    aspect-ratio: 4 / 5;
+    aspect-ratio: 1;
     overflow: hidden;
-    background: #d7eadf;
-    color: #064e3b;
+    border: 8px solid #fff;
+    border-radius: 1.5rem;
+    background: #f1e8d8;
+    color: var(--th-teal);
+    transform: rotate(var(--tilt));
+    box-shadow: 0 18px 30px -18px rgb(47 22 4 / 55%), 0 3px 6px rgb(47 22 4 / 12%);
+    transition: transform 500ms var(--th-ease), box-shadow 500ms var(--th-ease);
   }
 
   .product-card__image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 220ms ease;
   }
 
-  .product-card__image:hover img { transform: scale(1.04); }
+  .product-card:hover .product-card__image,
+  .product-card__image:focus-visible {
+    transform: rotate(0deg) translateY(-8px) scale(1.02);
+    box-shadow: 0 34px 40px -22px rgb(47 22 4 / 55%), 0 4px 8px rgb(47 22 4 / 12%);
+  }
 
   .product-card__placeholder {
     display: grid;
     place-items: center;
+    font-family: var(--th-display);
     font-size: 3rem;
     font-weight: 700;
   }
 
-  .product-card__details { display: grid; gap: 0.25rem; }
-  .product-card h3 { font-size: 1rem; line-height: 1.3; }
+  .product-card__details { display: grid; gap: 0.5rem; justify-items: start; }
+  .product-card h3 {
+    font-family: var(--th-display);
+    font-weight: 600;
+    font-size: clamp(1.15rem, 2vw, 1.6rem);
+    line-height: 1.1;
+  }
   .product-card a { color: inherit; text-decoration: none; }
-  .product-card__price { font-weight: 700; }
+  .product-card h3 a:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--th-coral);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.18em;
+  }
+  .product-card__price {
+    font-family: var(--th-display);
+    font-weight: 600;
+    font-size: 1.1rem;
+    font-variant-numeric: tabular-nums;
+    background: var(--th-sun);
+    padding: 0.1rem 0.75rem;
+    border-radius: 999px;
+  }
+
+  @media (max-width: 750px) {
+    .product-card { gap: 0.8rem; }
+    .product-card__image { border-width: 5px; border-radius: 1rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .product-card__image { transition: none; }
+  }
 {% endstylesheet %}
