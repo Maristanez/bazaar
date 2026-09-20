@@ -44,6 +44,18 @@
   var lastBotMessage = null;
   var speakTag = null;
   var currentMood = 'idle';
+  var lastCard = null;
+  // The seam for the juniper-*.js feature files: they listen and call in through window.BazaarChat and never edit
+  // this file. A listener that throws must not take the chat down with it.
+  var listeners = {};
+  var payloadExtenders = [];
+  var chipProvider = null;
+  var flags = { voiceStaysOnClose: false };
+  function emit(name, detail) {
+    (listeners[name] || []).slice().forEach(function (listener) {
+      try { listener(detail || {}); } catch (error) { if (window.console) window.console.error('[bazaar-chat:' + name + ']', error); }
+    });
+  }
   // Suggestions once an offer is on the table. No figures here: every dollar amount comes from the card.
   var CHIPS_AFTER = [['Is that your best?'], ['Meet me in the middle'], ['What would move it?']];
   var CHIP_REMOVE_ADD_ON = ['Skip the add-on', 'Could you do it without the add-on? Just the main item.'];
@@ -82,6 +94,7 @@
     currentMood = mood;
     var head = widget.querySelector('[data-ai-chat-sticker="head"]');
     if (head) head.innerHTML = stickerSvg(mood);
+    emit('mood', { mood: mood });
   }
 
   function cardMood(card) {
@@ -90,11 +103,17 @@
     return told || (card.round >= (card.maxRounds || 4) ? 'firm' : 'pleased');
   }
 
-  function renderChips(labels) {
+  function renderChips(labels, stage) {
     if (!promptsBox) return;
+    if (chipProvider) {
+      var provided = null;
+      try { provided = chipProvider({ labels: labels, stage: stage || 'offer', card: lastCard }); } catch (error) { provided = null; }
+      if (Array.isArray(provided)) labels = provided;
+    }
     promptsBox.innerHTML = labels.map(function (chip) {
       return '<button type="button" data-ai-chat-prompt="' + escapeHtml(chip[1] || chip[0]) + '">' + escapeHtml(chip[0]) + '</button>';
     }).join('');
+    emit('chips', { labels: labels, stage: stage || 'offer' });
   }
 
   Array.prototype.forEach.call(widget.querySelectorAll('[data-ai-chat-sticker]'), function (node) { node.innerHTML = stickerSvg('idle'); });
@@ -170,6 +189,8 @@
   // drops the carried product, round and thread. What the shopkeeper remembers about the shopper is untouched.
   function startCleanVisit() {
     if (!endpoint || !new URLSearchParams(window.location.search).get('shopper')) return;
+    // A page reached from inside the chat, or with hands-free on, carries the conversation (juniper-persist.js sets this).
+    try { if (window.sessionStorage.getItem('bazaar:carry') === '1') return; } catch (error) { /* storage blocked: a clean visit */ }
     var url = endpoint.replace(/\/api\/(?:chat|accept|offers)$/i, '') + '/api/session/reset';
     try {
       var pending = window.fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shopperId: shopperId }) });
@@ -233,6 +254,9 @@
       quantitySelectionChanged = false;
     }
     lastSentProductKey = key;
+    payloadExtenders.forEach(function (extend) {
+      try { extend(payload); } catch (error) { /* a feature file must never block a turn */ }
+    });
     return payload;
   }
 
@@ -337,6 +361,7 @@
     if (activeAudio) {
       activeAudio.pause();
       activeAudio = null;
+      emit('speak:end', { spoken: true });
     }
     if (activeAudioUrl) {
       window.URL.revokeObjectURL(activeAudioUrl);
@@ -345,7 +370,7 @@
   }
 
   function speakReply(text) {
-    if (!voiceEnabled || !voiceAvailable || !text) return Promise.resolve();
+    if (!voiceEnabled || !voiceAvailable || !text) { emit('speak:end', { spoken: false }); return Promise.resolve(); }
     stopSpeaking();
     return window.fetch(apiUrl('/api/voice/speak'), {
       method: 'POST',
@@ -366,9 +391,12 @@
         lastBotMessage.appendChild(speakTag);
         setMood('speaking');
       }
+      emit('speak:start', { audio: activeAudio, text: text });
       return activeAudio.play();
     }).catch(function () {
+      var wasPlaying = Boolean(activeAudio);
       stopSpeaking();
+      if (!wasPlaying) emit('speak:end', { spoken: false });
     });
   }
 
@@ -473,14 +501,16 @@
     panel.hidden = false;
     toggle.setAttribute('aria-expanded', 'true');
     window.setTimeout(function () { input.focus(); }, 80);
+    emit('open');
   }
 
   function closeChat() {
     if (recording) stopRecording();
-    stopSpeaking();
+    if (!flags.voiceStaysOnClose) stopSpeaking();
     panel.hidden = true;
     toggle.setAttribute('aria-expanded', 'false');
     toggle.focus();
+    emit('close');
   }
 
   function addMessage(text, type) {
@@ -498,6 +528,7 @@
       messages.appendChild(message);
     }
     messages.scrollTop = messages.scrollHeight;
+    emit('message', { element: message, type: type, text: text });
     return message;
   }
 
@@ -532,6 +563,8 @@
 
   function addOfferCard(card, sourceProducts) {
     if (!card || !card.option) return;
+    lastCard = card;
+    emit('card', { card: card, products: sourceProducts });
     var negotiationKey = card.negotiationId || card.offerId;
     var priorArticle = offerArticles.get(negotiationKey);
     if (priorArticle && priorArticle.__bazaarCard && priorArticle.__bazaarCard.offerId === card.offerId) {
@@ -629,7 +662,7 @@
     var isFinal = (card.round || 1) >= (card.maxRounds || 4);
     if (rounds) { rounds.innerHTML = roundsMarkup(card); rounds.setAttribute('role', 'img'); rounds.setAttribute('aria-label', statusLabel(card)); }
     article.classList.toggle('is-final', isFinal && card.status === 'live');
-    if (article === currentOfferArticle) renderChips(card.status === 'pending_owner' ? [] : offerChips(card, isFinal));
+    if (article === currentOfferArticle) renderChips(card.status === 'pending_owner' ? [] : offerChips(card, isFinal), card.status === 'pending_owner' ? 'pending_owner' : isFinal ? 'final' : 'offer');
     if (status) status.textContent = statusLabel(card);
     if (title) title.textContent = firstItem.title || 'Trailhead offer';
     if (items) items.innerHTML = offerItemsMarkup(card.option && card.option.items);
@@ -969,6 +1002,7 @@
 
     addMessage(text, 'user');
     input.value = '';
+    emit('turn:start', { text: text });
 
     if (endpoint) {
       setLoading(true);
@@ -977,6 +1011,7 @@
         var context = getContextProduct();
         var reply = shopperReplyText(data.reply || data.text || data.message || 'Here is what I found.');
         replaceMessage(thinking, reply);
+        emit('reply', { text: reply, data: data, element: thinking });
         speakReply(reply);
         var turnProduct = getTurnProduct(text, data.products, data.card);
         var onThisPage = currentProduct && turnProduct && String(turnProduct.handle || '') === String(currentProduct.handle || '');
@@ -997,6 +1032,7 @@
         replaceMessage(thinking, 'The shopkeeper is temporarily unavailable. Please try again.');
         setMood('idle');
         setRowMood(thinking, 'idle');
+        emit('turn:error', { text: text });
       }).finally(function () {
         setLoading(false);
         input.focus();
@@ -1011,6 +1047,38 @@
       addProductCard(getTurnProduct(text));
     }, 350);
   });
+
+  window.BazaarChat = {
+    on: function (name, listener) {
+      (listeners[name] = listeners[name] || []).push(listener);
+      return function () { listeners[name] = (listeners[name] || []).filter(function (entry) { return entry !== listener; }); };
+    },
+    send: function (text) {
+      if (sending || !String(text || '').trim()) return false;
+      input.value = String(text).trim();
+      form.requestSubmit();
+      return true;
+    },
+    open: openChat,
+    close: closeChat,
+    isOpen: function () { return !panel.hidden; },
+    setMood: setMood,
+    stopSpeaking: stopSpeaking,
+    setSpokenReplies: function (on) { voiceEnabled = Boolean(on) && voiceAvailable; syncVoiceUi(); return voiceEnabled; },
+    extendPayload: function (extend) { payloadExtenders.push(extend); },
+    setChipProvider: function (provider) { chipProvider = provider; },
+    renderChips: renderChips,
+    addMessage: addMessage,
+    addOfferCard: addOfferCard,
+    stickerSvg: stickerSvg,
+    apiUrl: apiUrl,
+    flags: flags,
+    elements: { widget: widget, panel: panel, launcher: toggle, messages: messages, form: form, input: input, chips: promptsBox, listenBar: listenBar, wave: waveBox, mic: micButton },
+    state: function () {
+      return { shopperId: shopperId, endpoint: endpoint, currentProduct: currentProduct, products: products, card: lastCard, negotiationId: negotiationId, sending: sending, mood: currentMood, voiceAvailable: voiceAvailable, spokenReplies: voiceEnabled };
+    }
+  };
+  document.dispatchEvent(new CustomEvent('bazaar-chat:ready'));
 
   document.addEventListener('change', function (event) {
     if (event.target && event.target.matches && event.target.matches('select[name="id"], select[id^="ProductSelect-"]')) {

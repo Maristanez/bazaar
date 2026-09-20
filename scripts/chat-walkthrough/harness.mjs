@@ -2,12 +2,19 @@
 // local theme.liquid widget markup, local critical.css, local chat-demo.js,
 // endpoint pointed at this repo's server on :3217.
 import { chromium } from 'playwright';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 export const REPO = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
 export const STORE = 'https://b8wzw0-h3.myshopify.com';
 export const ENDPOINT = `http://localhost:${process.env.WALKTHROUGH_PORT || 3217}`;
+
+// The live page only asks for chat-demo.js and critical.css, so the juniper-* feature files ride along appended to them.
+function themeBundle(base, extension) {
+  const assets = `${REPO}/apps/storefront/assets`;
+  const features = readdirSync(assets).filter((file) => file.startsWith('juniper-') && file.endsWith(extension)).sort();
+  return [base, ...features].map((file) => readFileSync(`${assets}/${file}`, 'utf8')).join(extension === '.js' ? '\n;\n' : '\n');
+}
 
 function localWidget() {
   const liquid = readFileSync(`${REPO}/apps/storefront/layout/theme.liquid`, 'utf8');
@@ -40,9 +47,9 @@ export async function open({ width, height, mobile = false, shopper, path = '/pr
     await route.fulfill({ response: res, body: html });
   });
   await page.route('**/assets/chat-demo.js*', (route) =>
-    route.fulfill({ contentType: 'application/javascript', body: readFileSync(`${REPO}/apps/storefront/assets/chat-demo.js`) }));
+    route.fulfill({ contentType: 'application/javascript', body: themeBundle('chat-demo.js', '.js') }));
   await page.route('**/assets/critical.css*', (route) =>
-    route.fulfill({ contentType: 'text/css', body: readFileSync(`${REPO}/apps/storefront/assets/critical.css`) }));
+    route.fulfill({ contentType: 'text/css', body: themeBundle('critical.css', '.css') }));
   // The theme's fonts are relative urls beside critical.css; until the theme is pushed the live store does not have them.
   await page.route(/\/assets\/(satoshi-variable\.woff2|fredoka-\d+\.ttf)/, (route) => {
     const file = new URL(route.request().url()).pathname.split('/').pop();

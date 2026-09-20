@@ -143,6 +143,29 @@
       ]
     </script>
     <script src="{{ 'chat-demo.js' | asset_url }}" defer></script>
+    {% render 'juniper-page-context' %}
+    {{ 'juniper-handsfree.css' | asset_url | stylesheet_tag }}
+    <script src="{{ 'juniper-handsfree.js' | asset_url }}" defer></script>
+    {{ 'juniper-persist.css' | asset_url | stylesheet_tag }}
+    <script src="{{ 'juniper-persist.js' | asset_url }}" defer></script>
+    {{ 'juniper-motion.css' | asset_url | stylesheet_tag }}
+    <script src="{{ 'juniper-motion.js' | asset_url }}" defer></script>
+    {{ 'juniper-presence.css' | asset_url | stylesheet_tag }}
+    <script src="{{ 'juniper-presence.js' | asset_url }}" defer></script>
+    {{ 'juniper-page.css' | asset_url | stylesheet_tag }}
+    <script src="{{ 'juniper-page.js' | asset_url }}" defer></script>
+    {{ 'juniper-chips.css' | asset_url | stylesheet_tag }}
+    <script src="{{ 'juniper-chips.js' | asset_url }}" defer></script>
+    {{ 'juniper-pointer.css' | asset_url | stylesheet_tag }}
+    <script src="{{ 'juniper-pointer.js' | asset_url }}" defer></script>
+    {{ 'juniper-keyword.css' | asset_url | stylesheet_tag }}
+    <script src="{{ 'juniper-keyword.js' | asset_url }}" defer></script>
+    {{ 'juniper-nudge.css' | asset_url | stylesheet_tag }}
+    <script src="{{ 'juniper-nudge.js' | asset_url }}" defer></script>
+    {{ 'juniper-earcons.css' | asset_url | stylesheet_tag }}
+    <script src="{{ 'juniper-earcons.js' | asset_url }}" defer></script>
+    {{ 'juniper-filler.css' | asset_url | stylesheet_tag }}
+    <script src="{{ 'juniper-filler.js' | asset_url }}" defer></script>
 
     {% sections 'footer-group' %}
   </body>
