@@ -134,6 +134,19 @@
     'other (?:customers|shoppers|people s (?:deals|offers|orders))', 'what did (?:he|she|they|someone else|others) pay', 'shopify (?:admin|settings|plan|account|backend|fees)', 'business (?:model|side|plan)', 'commerce side', 'merchant side',
     'how (?:are|were) you (?:programmed|built|trained|configured|set up)', 'how (?:do|does) (?:you|the (?:shop|store)) (?:decide|set|calculate|work out) (?:the |your )?(?:prices?|discounts?|offers?)', 'pricing (?:algorithm|engine|rules|strategy|model)', 'the (?:algorithm|engine)', 'profits?', 'margins?', 'mark ?ups?', 'negotiation (?:rules|engine|settings|strategy)', 'inventory (?:levels|count|numbers)', 'stock age'
   ].join('|') + ')\\b');
+  // He is a shopkeeper, not a general assistant. The plainly unrelated is turned away here, on the page; the
+  // server persona turns away the rest. Weather as a reason to buy ("good in the rain?") is shopping and passes.
+  var OFF_TOPIC = new RegExp('\\b(?:' + [
+    'what s the weather', 'how s the weather', 'weather (?:today|tomorrow|tonight|this week|forecast|in [a-z]+|like)', 'forecast', 'is it (?:going to|gonna) (?:rain|snow)', 'will it (?:rain|snow)', 'temperature (?:outside|today|in [a-z]+)',
+    'linked list', 'binary (?:tree|search)', 'hash ?map', 'data structure', 'leetcode', 'big o', 'recursion', 'python', 'javascript', 'typescript', 'java', 'c\\+\\+', 'rust lang', 'golang', 'sql', 'html', 'css', 'regex', 'kubernetes', 'docker', 'git (?:commit|rebase|merge)',
+    '(?:write|code|build|make|create|debug|fix|refactor|explain)(?: me)?(?: an?| some| the| this| my)? (?:code|function|script|program|app|website|algorithm|query|bug|essay|poem|haiku|song|lyrics|story|speech|cover letter|resume|email)',
+    'homework', 'solve (?:this|for|the)', 'equation', 'integral', 'derivative', 'calculus', 'algebra', 'what is \\d+ (?:plus|minus|times|divided by|x|\\+|\\*)', 'square root', 'translate', 'how do you say',
+    'capital of', 'president', 'prime minister', 'election', 'politic[a-z]*', 'the news', 'headlines', 'war in', 'stock market', 'bitcoin', 'crypto[a-z]*', 'invest[a-z]*', 'mortgage',
+    'recipe', 'how (?:do i|to) cook', 'movie', 'netflix', 'tv show', 'celebrity', 'football score', 'who won the', 'horoscope', 'zodiac', 'meaning of life', 'tell me a (?:joke|story|riddle|fun fact)', 'sing (?:me )?a',
+    'medical advice', 'diagnos[a-z]*', 'legal advice', 'lawyer', 'my (?:girlfriend|boyfriend|wife|husband|ex)\\b', 'relationship advice',
+    'ignore (?:all |your |the |any )?(?:previous |prior |above )?(?:instructions|rules|prompt)', 'pretend (?:you are|to be)', 'act as (?:an?|my)', 'you are now', 'role ?play', 'jailbreak', 'developer mode', 'dan mode',
+    'chat ?gpt', 'openai', 'anthropic', 'claude', 'gemini', 'what (?:model|llm|ai) are you', 'who (?:made|built|created|trained) you'
+  ].join('|') + ')\\b');
   var CART = '(?:cart|bag|basket|trolley)';
   function understand(text, context) {
     var said = tidy(plain(text));
@@ -143,6 +156,7 @@
     // sentence, only a chore that names the cart outright is a chore.
     var haggling = HAGGLING.test(String(text || ''));
     if (BACK_OFFICE.test(said)) return { kind: 'private' };
+    if (OFF_TOPIC.test(said)) return { kind: 'offtopic' };
     // The two things that stay in the shopper's own hand. Said plainly, on the page, without a trip to the server.
     if (/\b(check ?out|pay(?: now| for (?:it|this|them))?|place (?:the |my )?order|buy (?:it )?now)\b/.test(said) && !/\bcheck out the\b/.test(said)) return { kind: 'refuse', what: 'checkout' };
     if (/\b(?:press|click|tap|hit|push|accept|confirm|take)(?: on)? (?:the |that |this |a )?deal\b/.test(plain(text))) return { kind: 'refuse', what: 'deal' };
@@ -423,6 +437,11 @@
       travel(document.querySelector('header a[href$="/cart"], a[href="/cart"], a[aria-label="Cart"]'), function () { line.done('Opening your cart'); afterTurn(function () { go('/cart'); }); });
       return;
     }
+    if (action.kind === 'offtopic') {
+      var shopOnly = 'That is outside my shop, so I will pass on it. I do Trailhead: finding gear, sizes and fit, your cart, and working out a deal. What are you shopping for?';
+      try { if (chat.say) chat.say(shopOnly); else chat.addMessage(shopOnly, 'bot'); } catch (error) { /* said nothing; still not sent */ }
+      return;
+    }
     if (action.kind === 'private') {
       var aside = 'That is the shop\'s side of the counter, so I will leave it there. I can help you find gear, check a size, fill your cart, or work out a deal.';
       try { if (chat.say) chat.say(aside); else chat.addMessage(aside, 'bot'); } catch (error) { /* said nothing; still not sent */ }
@@ -620,7 +639,7 @@
         if (!chore) return false;
         run(chore);
         // Haggling in the same breath still goes to her; a refusal or an "I did not catch that" never does.
-        return chore.kind === 'private' || chore.kind === 'refuse' || chore.kind === 'unsure' || !HAGGLING.test(String(text || ''));
+        return chore.kind === 'private' || chore.kind === 'offtopic' || chore.kind === 'refuse' || chore.kind === 'unsure' || !HAGGLING.test(String(text || ''));
       } catch (error) {
         if (window.console) window.console.error('[juniper-hands]', error);
         return false;
