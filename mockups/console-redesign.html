@@ -174,10 +174,60 @@ main { max-width: 1360px; margin: 0 auto; padding: 18px 24px 40px; display: grid
   .forecast { padding: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation-duration: 1ms !important; transition-duration: 1ms !important; } .bar i { animation: none; } }
+
+/* ---- prototype switcher (not part of the design) ---- */
+.switcher { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 50; display: flex; align-items: center; gap: 4px; background: #111; color: #fff; border-radius: 999px; padding: 5px; box-shadow: 0 10px 30px #0008; font-size: .82rem; }
+.switcher button { min-height: 34px; width: 34px; padding: 0; border-radius: 50%; background: #333; color: #fff; }
+.switcher span { padding: 0 .8rem; font-weight: 700; white-space: nowrap; }
+body { padding-bottom: 70px; }
+.suggest { display: grid; gap: 4px; padding-bottom: 4px; }
+.suggest p { font-size: .76rem; color: var(--bark-2); }
+
+/* ---- Variant B: story first ---- */
+.vB { display: grid; gap: 18px; }
+.story { padding: 22px 26px; display: grid; gap: 16px; }
+.story .top { display: flex; justify-content: space-between; align-items: end; gap: 1rem; flex-wrap: wrap; }
+.story h2 { font-size: 1.55rem; max-width: 30ch; }
+.story h2 b { color: var(--teal); font-weight: 600; }
+.lanes { display: grid; gap: 10px; }
+.lane { display: grid; grid-template-columns: 150px minmax(0, 1fr) 96px; align-items: center; gap: 12px; font-size: .84rem; }
+.lane .name { font-weight: 800; } .lane .name small { display: block; font-weight: 500; color: var(--bark-2); font-size: .72rem; }
+.lane .track { display: flex; height: 30px; border-radius: 8px; overflow: hidden; box-shadow: inset 0 0 0 1.5px var(--trail); }
+.lane.me .track { height: 46px; box-shadow: inset 0 0 0 2px var(--teal); }
+.seg2 { display: grid; place-items: center; font-size: .74rem; font-weight: 800; white-space: nowrap; overflow: hidden; transition: flex-basis 320ms cubic-bezier(.16, 1, .3, 1); }
+.seg2.full { background: var(--teal); color: var(--cream); } .seg2.saved { background: var(--sky); color: var(--teal); } .seg2.sale { background: #7fb8b3; color: var(--bark); } .seg2.gone { background: transparent; color: var(--bark-2); }
+.lane .money { text-align: right; font-weight: 800; font-size: 1rem; } .lane.me .money { font-family: Fredoka, sans-serif; font-weight: 600; font-size: 1.4rem; color: var(--teal); }
+.tuner { padding: 16px 22px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: 8px 22px; align-items: end; }
+.tuner .ctl small { display: none; }
+.tuner .act { display: grid; gap: 6px; min-width: 190px; }
+.vB .lower { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+.mini { padding: 16px 20px; display: grid; gap: 10px; }
+.mini .ledger2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; }
+.mini .ledger2 div b { display: block; font-family: Fredoka, sans-serif; font-weight: 600; font-size: 1.5rem; color: var(--teal); line-height: 1.1; }
+.mini .ledger2 div span { font-size: .76rem; color: var(--bark-2); }
+details.more-settings { border-top: 1px dashed var(--trail); padding-top: 10px; } details.more-settings summary { cursor: pointer; font-weight: 800; font-size: .86rem; }
+
+/* ---- Variant C: live desk + receipt ---- */
+.vC { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 18px; align-items: start; }
+.vC .desk { display: grid; gap: 18px; }
+.vC .rows { max-height: 300px; }
+.receipt { padding: 20px 22px 22px; display: grid; gap: 4px; position: sticky; top: 84px; }
+.receipt h2 { margin-bottom: 4px; }
+.receipt .ln { display: flex; justify-content: space-between; gap: 1rem; font-size: .9rem; padding: 5px 0; }
+.receipt .ln.rule { border-top: 1px dashed var(--trail); margin-top: 4px; padding-top: 9px; }
+.receipt .ln.total { font-family: Fredoka, sans-serif; font-weight: 600; font-size: 1.5rem; color: var(--teal); border-top: 2px solid var(--bark); margin-top: 6px; padding-top: 10px; }
+.receipt .roi { font-size: .82rem; color: var(--bark-2); }
+.receipt .roi b { color: var(--teal-ink); }
+.vC .tune { padding: 0; } .vC .tune > summary { list-style: none; cursor: pointer; padding: 16px 22px; display: flex; justify-content: space-between; align-items: center; font-family: Fredoka, sans-serif; font-weight: 550; font-size: 1.2rem; }
+.vC .tune > summary::-webkit-details-marker { display: none; } .vC .tune > summary span { font-family: Satoshi, sans-serif; font-size: .8rem; font-weight: 700; color: var(--teal); }
+.vC .tune .inner { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 0 22px; padding: 0 22px 20px; }
+.vC .tune .controls { box-shadow: none; max-height: 560px; min-height: 0; } .vC .tune .controls .scroll { padding: 0 8px 0 0; } .vC .tune .forecast { box-shadow: none; padding: 0; }
+@media (max-width: 1100px) { .vB .lower, .vC, .vC .tune .inner { grid-template-columns: minmax(0, 1fr); } .tuner { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .lane { grid-template-columns: 96px minmax(0, 1fr) 72px; } .receipt { position: static; } }
 </style>
 </head>
+<!-- PROTOTYPE (throwaway). Three structurally different Console layouts on one page, switchable via ?variant=A|B|C and the floating bar (or arrow keys). Figures: toy model, illustrative. -->
 <body>
-<p class="proto">Layout prototype (CR0) · illustrative figures from a toy model · not connected to the store</p>
+<p class="proto">Prototype · three layouts, switch with ← → · illustrative figures from a toy model</p>
 <header class="topbar">
   <div class="brand">
     <span class="sticker" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21V3M5 6h12l3 3-3 3H5zM4 16h11"/></svg></span>
@@ -190,88 +240,10 @@ main { max-width: 1360px; margin: 0 auto; padding: 18px 24px 40px; display: grid
   </div>
 </header>
 
-<main>
-  <section class="paper ledger" aria-label="Real deals">
-    <div class="lead"><b>What your shopkeeper earned</b><span id="ledgerCount">on 3 real deals · all products</span></div>
-    <div class="fig" id="kSaved"><b>2</b><span>customers saved</span></div>
-    <div class="fig" id="kRev"><b>$253</b><span>revenue recovered</span></div>
-    <div class="fig" id="kProfit"><b>$97</b><span>profit recovered</span></div>
-    <div class="fig" id="kCost"><b>$0.04</b><span>agent cost</span></div>
-    <div class="aside"><b class="pos" id="kBanner">+$14</b><span>vs a 20% banner</span><button class="quiet small" id="fakeDeal" style="margin-top:4px">Simulate a deal landing</button></div>
-  </section>
-
-  <div class="cols">
-    <section class="paper controls" aria-label="Shopkeeper controls">
-      <div class="scroll">
-        <h2>Your shopkeeper</h2>
-        <div class="group"><h3>Pricing</h3>
-          <label class="ctl" data-k="floor"><span class="row">Floor over cost <output></output></span><input type="range" min="0" max="60" value="25"><small>The lowest it may go alone.</small></label>
-          <label class="ctl" data-k="cap"><span class="row">Most it may take off list <output></output></span><input type="range" min="0" max="40" value="22"><small id="bindsHint"></small></label>
-        </div>
-        <div class="group"><h3>Behaviour</h3>
-          <label class="ctl" data-k="rounds"><span class="row">Rounds of haggling <output></output></span><input type="range" min="2" max="6" value="4"></label>
-          <div class="ctl"><span class="row">Voice</span>
-            <div class="seg" role="radiogroup" aria-label="Voice">
-              <label><input type="radio" name="tone" value="friendly" checked>Friendly</label>
-              <label><input type="radio" name="tone" value="brisk">Brisk</label>
-              <label><input type="radio" name="tone" value="playful">Playful</label>
-            </div>
-            <small id="toneSample"></small>
-          </div>
-          <label class="switch">Ask me about thin-margin deals<input type="checkbox" checked></label>
-        </div>
-        <div class="group"><h3>Guardrails</h3>
-          <label class="ctl" data-k="lowball"><span class="row">Lowball cutoff <output></output></span><input type="range" min="0" max="80" step="5" value="40"><small>Below this it counters without the AI, and the round doesn't count.</small></label>
-          <div class="ctl"><span class="row">Rate limit <output>30 / hour · 30 / min</output></span><small>Per network address. Changing a shopper id doesn't reset it.</small></div>
-          <div class="ctl"><span class="row">Blocked <output id="blockedCount">1</output></span>
-            <ul class="blocked-list" id="blockedList"><li><span>24.114.x.x · 6 lowballs in 2 min</span><button class="quiet small">Unblock</button></li></ul></div>
-          <p class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.500-1-8-4-8-9V6z"/><path d="M8.500 12l2.500 2.500 4.500-5"/></svg>20 attacks · 0 breaches</p>
-        </div>
-        <div class="group"><h3>Products</h3>
-          <ul class="products" id="products"></ul>
-        </div>
-      </div>
-      <div class="adopt">
-        <div class="btns"><button id="adopt" disabled>Adopt changes</button><button class="quiet" id="reset" disabled>Undo</button></div>
-        <p id="adoptNote" role="status">Live settings. Move a control to try it on 300 shoppers first.</p>
-      </div>
-    </section>
-
-    <section class="paper forecast" aria-label="Forecast">
-      <div class="fhead">
-        <div><h2>Forecast</h2><p>300 simulated shoppers · the same ones every run · never added to your real figures</p></div>
-        <select id="picker" aria-label="Product"><option>Trail Runner 2 · $149</option><option>Trail Runner 3 · $189</option><option>Race Vest · $129</option><option>All products (best-seller)</option></select>
-      </div>
-      <p class="verdict" id="verdict"></p>
-      <div class="stores">
-        <div class="store"><h4>No shopkeeper</h4><p class="sub">List price only. Anyone who won't pay it leaves.</p><div id="sNone"></div></div>
-        <div class="store"><h4>20% banner</h4><p class="sub">Everyone gets the sale, even those who'd pay full.</p><div id="sBanner"></div></div>
-        <div class="store me"><h4>Your shopkeeper</h4><p class="sub">Only shoppers who ask get a deal.</p><div id="sAgent"></div></div>
-      </div>
-      <div class="chart"><svg id="chart" viewBox="0 0 640 250" role="img" aria-label="One dot per simulated shopper, placed at the price they paid"></svg></div>
-      <div class="legend"><span style="--c:var(--p1)">Bargain hunter</span><span style="--c:var(--p2)">Budget runner</span><span style="--c:var(--p3)">Gear nerd</span><span style="--c:var(--p4)">Impatient</span><span style="--c:var(--p5)">Loyal</span><span class="walk">Walked</span></div>
-    </section>
-
-    <div class="rail">
-      <section class="needs" id="needs" aria-label="Needs you">
-        <h2>Needs you</h2>
-        <p>Trail Runner 2 · size 10 · storefront</p>
-        <p class="offer">$90 <span style="font-size:.9rem;font-family:Satoshi;font-weight:700">offered</span></p>
-        <p class="line"><span>Your profit</span><b>$12 · 15% over cost</b></p>
-        <p class="line"><span>Your floor</span><span>$98</span></p>
-        <div class="bar"><i></i></div>
-        <div class="btns"><button id="approve">Approve</button><button class="quiet" id="decline">Decline</button></div>
-        <p id="needsNote" role="status" style="font-size:.8rem"></p>
-      </section>
-      <section class="paper feed" aria-label="Live feed">
-        <div class="fh"><h2>Live</h2><span>newest first · click a row</span></div>
-        <div class="rows" id="rows"></div>
-      </section>
-    </div>
-  </div>
-</main>
-
+<main></main>
+<div class="switcher" aria-label="Prototype variant switcher"><button data-sw="prev" aria-label="Previous variant">←</button><span></span><button data-sw="next" aria-label="Next variant">→</button></div>
 <script>
+
 const $ = s => document.querySelector(s), money = n => (n < 0 ? "−$" : "$") + Math.abs(Math.round(n)).toLocaleString("en-CA");
 const LIST = 149, COST = 78, BANNER = LIST * 0.8;
 const PERSONAS = [{ share: .25, lo: 80, hi: 125, open: .5, pat: 4 }, { share: .25, lo: 95, hi: 140, open: .72, pat: 3 }, { share: .2, lo: 120, hi: 175, open: .85, pat: 5 }, { share: .15, lo: 100, hi: 165, open: .8, pat: 1 }, { share: .15, lo: 135, hi: 190, open: .93, pat: 2 }];
@@ -313,50 +285,74 @@ function chart(res, s) {
   refs.forEach(([v, l]) => { const x = X(v); up = x - lastX < 46 ? !up : false; lastX = x; const y = up ? 12 : 26;
     out += `<line class="ref" x1="${x}" x2="${x}" y1="${y + 4}" y2="${base}"/><text class="reflabel" x="${x}" y="${y}" text-anchor="middle">${l} $${Math.round(v)}</text>`; });
   out += `<line x1="0" x2="${W}" y1="${base}" y2="${base}" stroke="var(--trail)"/><text x="0" y="${base + 16}">${walked} walked away</text><text x="${x1}" y="${base + 16}" text-anchor="end">price paid →</text>`;
-  $("#chart").innerHTML = out;
+  root.querySelectorAll("[data-role=chart]").forEach(el => el.innerHTML = out);
 }
 
+
+const VARIANTS = { A: ["Workbench — controls · forecast · live", "<div class=\"vA\" style=\"display:grid;gap:18px\"><section class=\"paper ledger\" aria-label=\"Real deals\">\n    <div class=\"lead\"><b>What your shopkeeper earned</b><span data-role=\"ledgerCount\">on 3 real deals \u00b7 all products</span></div>\n    <div class=\"fig\" data-fig=\"kSaved\"><b>2</b><span>customers saved</span></div>\n    <div class=\"fig\" data-fig=\"kRev\"><b>$253</b><span>revenue recovered</span></div>\n    <div class=\"fig\" data-fig=\"kProfit\"><b>$97</b><span>profit recovered</span></div>\n    <div class=\"fig\" data-fig=\"kCost\"><b>$0.04</b><span>agent cost</span></div>\n    <div class=\"aside\"><b class=\"pos\" data-role=\"kBanner\">+$14</b><span>vs a 20% banner</span><button class=\"quiet small\" data-act=\"fakeDeal\" style=\"margin-top:4px\">Simulate a deal landing</button></div>\n  </section><div class=\"cols\"><section class=\"paper controls\" aria-label=\"Shopkeeper controls\">\n      <div class=\"scroll\">\n        <h2>Your shopkeeper</h2><div class=\"suggest\"><button class=\"quiet\" data-act=\"suggest\">Suggest settings for most profit</button><p data-role=\"suggestNote\"></p></div>\n        <div class=\"group\"><h3>Pricing</h3>\n          <label class=\"ctl\" data-k=\"floor\"><span class=\"row\">Floor over cost <output></output></span><input type=\"range\" min=\"0\" max=\"60\" value=\"25\"><small>The lowest it may go alone.</small></label>\n          <label class=\"ctl\" data-k=\"cap\"><span class=\"row\">Most it may take off list <output></output></span><input type=\"range\" min=\"0\" max=\"40\" value=\"22\"><small data-role=\"bindsHint\"></small></label>\n        </div>\n        <div class=\"group\"><h3>Behaviour</h3>\n          <label class=\"ctl\" data-k=\"rounds\"><span class=\"row\">Rounds of haggling <output></output></span><input type=\"range\" min=\"2\" max=\"6\" value=\"4\"></label>\n          <div class=\"ctl\"><span class=\"row\">Voice</span>\n            <div class=\"seg\" role=\"radiogroup\" aria-label=\"Voice\">\n              <label><input type=\"radio\" name=\"tone\" value=\"friendly\" checked>Friendly</label>\n              <label><input type=\"radio\" name=\"tone\" value=\"brisk\">Brisk</label>\n              <label><input type=\"radio\" name=\"tone\" value=\"playful\">Playful</label>\n            </div>\n            <small data-role=\"toneSample\"></small>\n          </div>\n          <label class=\"switch\">Ask me about thin-margin deals<input type=\"checkbox\" checked></label>\n        </div>\n        <div class=\"group\"><h3>Guardrails</h3>\n          <label class=\"ctl\" data-k=\"lowball\"><span class=\"row\">Lowball cutoff <output></output></span><input type=\"range\" min=\"0\" max=\"80\" step=\"5\" value=\"40\"><small>Below this it counters without the AI, and the round doesn't count.</small></label>\n          <div class=\"ctl\"><span class=\"row\">Rate limit <output>30 / hour \u00b7 30 / min</output></span><small>Per network address. Changing a shopper id doesn't reset it.</small></div>\n          <div class=\"ctl\"><span class=\"row\">Blocked <output data-role=\"blockedCount\">1</output></span>\n            <ul class=\"blocked-list\" data-role=\"blockedList\"><li><span>24.114.x.x \u00b7 6 lowballs in 2 min</span><button class=\"quiet small\">Unblock</button></li></ul></div>\n          <p class=\"badge\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M12 3l8 3v6c0 5-3.5 8-8 9-4.500-1-8-4-8-9V6z\"/><path d=\"M8.500 12l2.500 2.500 4.500-5\"/></svg>20 attacks \u00b7 0 breaches</p>\n        </div>\n        <div class=\"group\"><h3>Products</h3>\n          <ul class=\"products\" data-role=\"products\"></ul>\n        </div>\n      </div>\n      <div class=\"adopt\">\n        <div class=\"btns\"><button data-act=\"adopt\" disabled>Adopt changes</button><button class=\"quiet\" data-act=\"reset\" disabled>Undo</button></div>\n        <p data-role=\"adoptNote\" role=\"status\">Live settings. Move a control to try it on 300 shoppers first.</p>\n      </div>\n    </section><section class=\"paper forecast\" aria-label=\"Forecast\">\n      <div class=\"fhead\">\n        <div><h2>Forecast</h2><p>300 simulated shoppers \u00b7 the same ones every run \u00b7 never added to your real figures</p></div>\n        <select data-role=\"picker\" aria-label=\"Product\"><option>Trail Runner 2 \u00b7 $149</option><option>Trail Runner 3 \u00b7 $189</option><option>Race Vest \u00b7 $129</option><option>All products (best-seller)</option></select>\n      </div>\n      <p class=\"verdict\" data-role=\"verdict\"></p>\n      <div class=\"stores\">\n        <div class=\"store\"><h4>No shopkeeper</h4><p class=\"sub\">List price only. Anyone who won't pay it leaves.</p><div data-role=\"sNone\"></div></div>\n        <div class=\"store\"><h4>20% banner</h4><p class=\"sub\">Everyone gets the sale, even those who'd pay full.</p><div data-role=\"sBanner\"></div></div>\n        <div class=\"store me\"><h4>Your shopkeeper</h4><p class=\"sub\">Only shoppers who ask get a deal.</p><div data-role=\"sAgent\"></div></div>\n      </div>\n      <div class=\"chart\"><svg data-role=\"chart\" viewBox=\"0 0 640 250\" role=\"img\" aria-label=\"One dot per simulated shopper, placed at the price they paid\"></svg></div>\n      <div class=\"legend\"><span style=\"--c:var(--p1)\">Bargain hunter</span><span style=\"--c:var(--p2)\">Budget runner</span><span style=\"--c:var(--p3)\">Gear nerd</span><span style=\"--c:var(--p4)\">Impatient</span><span style=\"--c:var(--p5)\">Loyal</span><span class=\"walk\">Walked</span></div>\n    </section><div class=\"rail\"><section class=\"needs\" data-role=\"needs\" aria-label=\"Needs you\">\n        <h2>Needs you</h2>\n        <p>Trail Runner 2 \u00b7 size 10 \u00b7 storefront</p>\n        <p class=\"offer\">$90 <span style=\"font-size:.9rem;font-family:Satoshi;font-weight:700\">offered</span></p>\n        <p class=\"line\"><span>Your profit</span><b>$12 \u00b7 15% over cost</b></p>\n        <p class=\"line\"><span>Your floor</span><span>$98</span></p>\n        <div class=\"bar\"><i></i></div>\n        <div class=\"btns\"><button data-act=\"approve\">Approve</button><button class=\"quiet\" data-act=\"decline\">Decline</button></div>\n        <p data-role=\"needsNote\" role=\"status\" style=\"font-size:.8rem\"></p>\n      </section><section class=\"paper feed\" aria-label=\"Live feed\">\n        <div class=\"fh\"><h2>Live</h2><span>newest first \u00b7 click a row</span></div>\n        <div class=\"rows\" data-role=\"rows\"></div>\n      </section></div></div></div>"], B: ["Story first — what happens to 300 shoppers", "<div class=\"vB\"><section class=\"paper story\" aria-label=\"What happens to 300 shoppers\">\n  <div class=\"top\"><h2 data-role=\"headline\"></h2><select aria-label=\"Product\"><option>Trail Runner 2 \u00b7 $149</option><option>Trail Runner 3 \u00b7 $189</option><option>All products (best-seller)</option></select></div>\n  <div class=\"lanes\" data-role=\"lanes\"></div>\n  <p style=\"font-size:.78rem;color:var(--bark-2)\">300 simulated shoppers \u00b7 the same ones every run \u00b7 simulated, never added to your real figures</p>\n</section><section class=\"paper tuner\" aria-label=\"Tune\"><label class=\"ctl\" data-k=\"floor\"><span class=\"row\">Floor over cost <output></output></span><input type=\"range\" min=\"0\" max=\"60\" step=\"1\"></label><label class=\"ctl\" data-k=\"cap\"><span class=\"row\">Most off list <output></output></span><input type=\"range\" min=\"0\" max=\"40\" step=\"1\"></label><label class=\"ctl\" data-k=\"rounds\"><span class=\"row\">Rounds <output></output></span><input type=\"range\" min=\"2\" max=\"6\" step=\"1\"></label><label class=\"ctl\" data-k=\"lowball\"><span class=\"row\">Lowball cutoff <output></output></span><input type=\"range\" min=\"0\" max=\"80\" step=\"5\"></label><div class=\"act\"><div class=\"btns\" style=\"display:grid;grid-template-columns:1fr auto;gap:8px\"><button data-act=\"adopt\" disabled>Adopt</button><button class=\"quiet\" data-act=\"reset\" disabled>Undo</button></div><button class=\"quiet small\" data-act=\"suggest\">Suggest settings for most profit</button></div><p data-role=\"adoptNote\" role=\"status\" style=\"grid-column:1/-1;font-size:.78rem;color:var(--bark-2)\"></p></section><div class=\"lower\"><section class=\"paper forecast\" aria-label=\"Where the deals landed\"><h2>Where the deals landed</h2><div class=\"chart\"><svg data-role=\"chart\" viewBox=\"0 0 640 250\" role=\"img\" aria-label=\"One dot per simulated shopper\"></svg></div></section><section class=\"paper mini\" aria-label=\"Real deals\"><h2>Real deals so far</h2><div class=\"ledger2\">\n<div><b data-k2=\"saved\">2</b><span>customers saved</span></div><div><b data-k2=\"profit\">$97</b><span>profit recovered</span></div>\n<div><b data-k2=\"rev\">$253</b><span>revenue recovered</span></div><div><b data-k2=\"cost\">$0.04</b><span>agent cost</span></div></div>\n<p style=\"font-size:.78rem;color:var(--bark-2)\">on 3 real deals \u00b7 <b class=\"pos\">+$14</b> vs a 20% banner</p>\n<details class=\"more-settings\"><summary>Voice, guardrails and products</summary><p style=\"font-size:.8rem;color:var(--bark-2);margin-top:6px\">Tone preset, ask-me switch, rate limit, blocklist, firm-price products \u2014 tucked away because they don't move the numbers above.</p></details></section><div class=\"rail\"><section class=\"needs\" data-role=\"needs\" aria-label=\"Needs you\">\n        <h2>Needs you</h2>\n        <p>Trail Runner 2 \u00b7 size 10 \u00b7 storefront</p>\n        <p class=\"offer\">$90 <span style=\"font-size:.9rem;font-family:Satoshi;font-weight:700\">offered</span></p>\n        <p class=\"line\"><span>Your profit</span><b>$12 \u00b7 15% over cost</b></p>\n        <p class=\"line\"><span>Your floor</span><span>$98</span></p>\n        <div class=\"bar\"><i></i></div>\n        <div class=\"btns\"><button data-act=\"approve\">Approve</button><button class=\"quiet\" data-act=\"decline\">Decline</button></div>\n        <p data-role=\"needsNote\" role=\"status\" style=\"font-size:.8rem\"></p>\n      </section><section class=\"paper feed\" aria-label=\"Live feed\">\n        <div class=\"fh\"><h2>Live</h2><span>newest first \u00b7 click a row</span></div>\n        <div class=\"rows\" data-role=\"rows\"></div>\n      </section></div></div></div>"], C: ["Live desk + receipt — tuning tucked away", "<div class=\"vC\"><div class=\"desk\"><section class=\"needs\" data-role=\"needs\" aria-label=\"Needs you\">\n        <h2>Needs you</h2>\n        <p>Trail Runner 2 \u00b7 size 10 \u00b7 storefront</p>\n        <p class=\"offer\">$90 <span style=\"font-size:.9rem;font-family:Satoshi;font-weight:700\">offered</span></p>\n        <p class=\"line\"><span>Your profit</span><b>$12 \u00b7 15% over cost</b></p>\n        <p class=\"line\"><span>Your floor</span><span>$98</span></p>\n        <div class=\"bar\"><i></i></div>\n        <div class=\"btns\"><button data-act=\"approve\">Approve</button><button class=\"quiet\" data-act=\"decline\">Decline</button></div>\n        <p data-role=\"needsNote\" role=\"status\" style=\"font-size:.8rem\"></p>\n      </section><section class=\"paper feed\" aria-label=\"Live feed\">\n        <div class=\"fh\"><h2>Live</h2><span>newest first \u00b7 click a row</span></div>\n        <div class=\"rows\" data-role=\"rows\"></div>\n      </section><details class=\"paper tune\"><summary>Tune your shopkeeper <span>try settings on 300 shoppers \u2192</span></summary><div class=\"inner\"><section class=\"paper controls\" aria-label=\"Shopkeeper controls\">\n      <div class=\"scroll\">\n        <h2>Your shopkeeper</h2><div class=\"suggest\"><button class=\"quiet\" data-act=\"suggest\">Suggest settings for most profit</button><p data-role=\"suggestNote\"></p></div>\n        <div class=\"group\"><h3>Pricing</h3>\n          <label class=\"ctl\" data-k=\"floor\"><span class=\"row\">Floor over cost <output></output></span><input type=\"range\" min=\"0\" max=\"60\" value=\"25\"><small>The lowest it may go alone.</small></label>\n          <label class=\"ctl\" data-k=\"cap\"><span class=\"row\">Most it may take off list <output></output></span><input type=\"range\" min=\"0\" max=\"40\" value=\"22\"><small data-role=\"bindsHint\"></small></label>\n        </div>\n        <div class=\"group\"><h3>Behaviour</h3>\n          <label class=\"ctl\" data-k=\"rounds\"><span class=\"row\">Rounds of haggling <output></output></span><input type=\"range\" min=\"2\" max=\"6\" value=\"4\"></label>\n          <div class=\"ctl\"><span class=\"row\">Voice</span>\n            <div class=\"seg\" role=\"radiogroup\" aria-label=\"Voice\">\n              <label><input type=\"radio\" name=\"tone\" value=\"friendly\" checked>Friendly</label>\n              <label><input type=\"radio\" name=\"tone\" value=\"brisk\">Brisk</label>\n              <label><input type=\"radio\" name=\"tone\" value=\"playful\">Playful</label>\n            </div>\n            <small data-role=\"toneSample\"></small>\n          </div>\n          <label class=\"switch\">Ask me about thin-margin deals<input type=\"checkbox\" checked></label>\n        </div>\n        <div class=\"group\"><h3>Guardrails</h3>\n          <label class=\"ctl\" data-k=\"lowball\"><span class=\"row\">Lowball cutoff <output></output></span><input type=\"range\" min=\"0\" max=\"80\" step=\"5\" value=\"40\"><small>Below this it counters without the AI, and the round doesn't count.</small></label>\n          <div class=\"ctl\"><span class=\"row\">Rate limit <output>30 / hour \u00b7 30 / min</output></span><small>Per network address. Changing a shopper id doesn't reset it.</small></div>\n          <div class=\"ctl\"><span class=\"row\">Blocked <output data-role=\"blockedCount\">1</output></span>\n            <ul class=\"blocked-list\" data-role=\"blockedList\"><li><span>24.114.x.x \u00b7 6 lowballs in 2 min</span><button class=\"quiet small\">Unblock</button></li></ul></div>\n          <p class=\"badge\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M12 3l8 3v6c0 5-3.5 8-8 9-4.500-1-8-4-8-9V6z\"/><path d=\"M8.500 12l2.500 2.500 4.500-5\"/></svg>20 attacks \u00b7 0 breaches</p>\n        </div>\n        <div class=\"group\"><h3>Products</h3>\n          <ul class=\"products\" data-role=\"products\"></ul>\n        </div>\n      </div>\n      <div class=\"adopt\">\n        <div class=\"btns\"><button data-act=\"adopt\" disabled>Adopt changes</button><button class=\"quiet\" data-act=\"reset\" disabled>Undo</button></div>\n        <p data-role=\"adoptNote\" role=\"status\">Live settings. Move a control to try it on 300 shoppers first.</p>\n      </div>\n    </section><section class=\"paper forecast\" aria-label=\"Forecast\">\n      <div class=\"fhead\">\n        <div><h2>Forecast</h2><p>300 simulated shoppers \u00b7 the same ones every run \u00b7 never added to your real figures</p></div>\n        <select data-role=\"picker\" aria-label=\"Product\"><option>Trail Runner 2 \u00b7 $149</option><option>Trail Runner 3 \u00b7 $189</option><option>Race Vest \u00b7 $129</option><option>All products (best-seller)</option></select>\n      </div>\n      <p class=\"verdict\" data-role=\"verdict\"></p>\n      <div class=\"stores\">\n        <div class=\"store\"><h4>No shopkeeper</h4><p class=\"sub\">List price only. Anyone who won't pay it leaves.</p><div data-role=\"sNone\"></div></div>\n        <div class=\"store\"><h4>20% banner</h4><p class=\"sub\">Everyone gets the sale, even those who'd pay full.</p><div data-role=\"sBanner\"></div></div>\n        <div class=\"store me\"><h4>Your shopkeeper</h4><p class=\"sub\">Only shoppers who ask get a deal.</p><div data-role=\"sAgent\"></div></div>\n      </div>\n      <div class=\"chart\"><svg data-role=\"chart\" viewBox=\"0 0 640 250\" role=\"img\" aria-label=\"One dot per simulated shopper, placed at the price they paid\"></svg></div>\n      <div class=\"legend\"><span style=\"--c:var(--p1)\">Bargain hunter</span><span style=\"--c:var(--p2)\">Budget runner</span><span style=\"--c:var(--p3)\">Gear nerd</span><span style=\"--c:var(--p4)\">Impatient</span><span style=\"--c:var(--p5)\">Loyal</span><span class=\"walk\">Walked</span></div>\n    </section></div></details></div><aside class=\"paper receipt\" aria-label=\"Real deals\">\n<h2>Today's takings</h2><p style=\"font-size:.78rem;color:var(--bark-2)\">real deals only \u00b7 all products</p>\n<div class=\"ln rule\"><span>Customers saved</span><b>2</b></div><div class=\"ln\"><span>Revenue recovered</span><b>$253.00</b></div>\n<div class=\"ln\"><span>Profit recovered</span><b>$97.00</b></div><div class=\"ln\"><span>Agent cost</span><b>\u2212$0.04</b></div>\n<div class=\"ln total\"><span>You kept</span><span>$96.96</span></div>\n<p class=\"roi\"><b>$2,425 of profit for every $1</b> the shopkeeper cost you. A 20% banner would have made $14 less on these deals.</p>\n<div class=\"ln rule\"><span>If every shopper were like the forecast</span></div><p class=\"roi\" data-role=\"verdict\"></p></aside></div>"] };
+const root = document.querySelector("main");
+const all = (r, f) => root.querySelectorAll(`[data-role=${r}]`).forEach(f);
 const TONES = { friendly: "“I can do $133 — it's been on the shelf a while.”", brisk: "“The price is $133.”", playful: "“Tell you what, $133 and it's yours.”" };
 const PRODUCTS = [["Trail Runner 2", "ok"], ["Trail Runner 3", "ok"], ["Race Vest", "ok"], ["Trail Socks", "ok"], ["Gaiters", "date"], ["Soft Flask 500", "ok"], ["Headlamp", "cost"], ["Trail Cap", "ok"], ["Poles", "ok"]];
-function render() {
-  const a = run(live), b = run(draft), dirty = JSON.stringify(live) !== JSON.stringify(draft);
-  document.querySelectorAll(".ctl[data-k]").forEach(el => { const k = el.dataset.k, v = draft[k]; el.querySelector("input").value = v; el.classList.toggle("changed", v !== live[k]);
-    el.querySelector("output").textContent = k === "rounds" ? v : k === "lowball" ? (v ? `${v}% of list · $${Math.round(LIST * v / 100)}` : "off") : k === "floor" ? `${v}% · $${Math.ceil(COST * (1 + v / 100))}` : `${v}% · $${Math.ceil(LIST * (1 - v / 100))}`; });
-  const floorP = Math.ceil(COST * (1 + draft.floor / 100)), capP = Math.ceil(LIST * (1 - draft.cap / 100));
-  $("#bindsHint").textContent = capP > floorP ? `This is the limit right now: $${capP} beats the $${floorP} floor.` : `The floor is the limit right now: $${floorP} beats $${capP}.`;
-  $("#toneSample").textContent = TONES[draft.tone] + " Wording only — never changes a price.";
-  $("#sNone").innerHTML = cell("Buy", b.none.buyers, a.none.buyers, count) + cell("Profit", b.none.profit, a.none.profit, money);
-  $("#sBanner").innerHTML = cell("Buy", b.banner.buyers, a.banner.buyers, count) + cell("Profit", b.banner.profit, a.banner.profit, money);
-  $("#sAgent").innerHTML = cell("Customers saved", b.saved, a.saved, count) + cell("Profit", b.agent.profit, a.agent.profit, money) + cell("Deals missed", b.missed, a.missed, count, false) + cell("Lowballs countered", b.lowballs, a.lowballs, count, false);
-  const vsNone = b.agent.profit - b.none.profit, vsBan = b.agent.profit - b.banner.profit;
-  $("#verdict").innerHTML = `${dirty ? "With these settings" : "As you're set up now"}, the shopkeeper makes <b class="${vsNone >= 0 ? "pos" : "neg"}">${money(vsNone)}</b> ${vsNone >= 0 ? "more" : "less"} than no shopkeeper, and <b class="${vsBan >= 0 ? "pos" : "neg"}">${money(Math.abs(vsBan))}</b> ${vsBan >= 0 ? "more" : "less"} than a 20% banner.`;
-  chart(b, draft);
-  $("#adopt").disabled = $("#reset").disabled = !dirty;
-  if (dirty) $("#adoptNote").textContent = "Not live yet. Shoppers still get your adopted settings.";
-  $("#products").innerHTML = PRODUCTS.map(([name, st], i) => `<li><span>${name}</span><label class="switch" style="font-size:.72rem;font-weight:600;gap:.4rem">Firm price<input type="checkbox" aria-label="Firm price for ${name}" ${i === 1 ? "checked" : ""}></label><span class="meta">${st === "cost" ? '<span class="tag miss-cost">No cost in Shopify · closed to offers</span>' : st === "date" ? '<span class="tag miss-date">No stock date · treated as new</span>' : `<span class="tag binds">${capP > floorP ? "cap" : "floor"} is the limit</span>`}</span></li>`).join("");
-}
-document.querySelectorAll(".ctl[data-k] input").forEach(i => i.addEventListener("input", e => { draft[e.target.closest(".ctl").dataset.k] = +e.target.value; render(); }));
-document.querySelectorAll("input[name=tone]").forEach(i => i.addEventListener("change", e => { draft.tone = e.target.value; render(); }));
-$("#adopt").onclick = () => { Object.assign(live, draft); render(); $("#adoptNote").textContent = "Adopted. Your shopkeeper uses this from the next shopper message."; };
-$("#reset").onclick = () => { draft = { ...live }; document.querySelector(`input[name=tone][value=${live.tone}]`).checked = true; render(); $("#adoptNote").textContent = "Back to your live settings."; };
-
 const FEED = [
   { t: "20:14", head: "Picked B · TR2 + gaiters $158", what: "Offer $120 on Trail Runner 2 · round 2 of 4", more: "Floor $98 · ask $135 · menu A–D · last season's stock, can bend · gpt-4.1-mini · 1.1 s · $0.0004", surf: "Storefront" },
   { t: "20:13", head: "Lowball · countered at $149", what: "Offer $12 on Trail Runner 2 · no AI call · round not used", more: "Under the 40% cutoff ($60). Code picked option A with the fact “ships today”.", surf: "Storefront" },
   { t: "20:11", head: "Blocked by filter", what: "31 messages in a minute from 24.114.x.x", more: "Rate limit. No AI call was made.", surf: "Storefront", blocked: true },
-  { t: "20:09", head: "Settled · $133", what: "Trail Runner 2 · size 10 · profit $55", more: "Customer saved: asked for less than list. Code minted a single-use 15-minute discount.", surf: "ChatGPT" },
+  { t: "20:09", head: "Settled · $133", what: "Trail Runner 2 · size 10 · profit $55", more: "Customer saved: asked for less than list.", surf: "ChatGPT" },
   { t: "20:06", head: "Blocked by check", what: "The AI named $99, which isn't on the menu", more: "Fell back to option A and the template line. The shopper never saw $99.", surf: "Storefront", blocked: true },
 ];
-$("#rows").innerHTML = FEED.map(r => `<details class="${r.blocked ? "blocked" : ""}"><summary><b>${r.head}</b><time>${r.t}</time><span class="what">${r.what}</span></summary><div class="more"><p>${r.more}</p><div class="acts"><span class="chip">${r.surf}</span><button class="quiet small">Block this shopper</button></div></div></details>`).join("");
-
+let note = "Live settings. Move a control to try it on 300 shoppers first.";
+function lanes(b) {
+  const lane = (cls, name, sub, segs, profit) => `<div class="lane ${cls}"><span class="name">${name}<small>${sub}</small></span><span class="track">${segs.map(([k, n, l]) => `<span class="seg2 ${k}" style="flex: 0 0 ${n / 3}%">${n > 22 ? `${n} ${l}` : n > 9 ? n : ""}</span>`).join("")}</span><span class="money">${money(profit)}</span></div>`;
+  const full = b.agent.buyers - b.saved;
+  return lane("", "No shopkeeper", "list price only", [["full", b.none.buyers, "pay list"], ["gone", 300 - b.none.buyers, "leave"]], b.none.profit)
+    + lane("", "20% banner", "sale for everyone", [["sale", b.banner.buyers, "buy at 20% off"], ["gone", 300 - b.banner.buyers, "leave"]], b.banner.profit)
+    + lane("me", "Your shopkeeper", "deals only for those who ask", [["full", full, "pay list"], ["saved", b.saved, "saved"], ["gone", 300 - b.agent.buyers, "leave"]], b.agent.profit);
+}
+function render() {
+  const a = run(live), b = run(draft), dirty = JSON.stringify(live) !== JSON.stringify(draft);
+  root.querySelectorAll(".ctl[data-k]").forEach(el => { const k = el.dataset.k, v = draft[k]; el.querySelector("input").value = v; el.classList.toggle("changed", v !== live[k]);
+    el.querySelector("output").textContent = k === "rounds" ? v : k === "lowball" ? (v ? `${v}% · $${Math.round(LIST * v / 100)}` : "off") : k === "floor" ? `${v}% · $${Math.ceil(COST * (1 + v / 100))}` : `${v}% · $${Math.ceil(LIST * (1 - v / 100))}`; });
+  const floorP = Math.ceil(COST * (1 + draft.floor / 100)), capP = Math.ceil(LIST * (1 - draft.cap / 100));
+  all("bindsHint", el => el.textContent = capP > floorP ? `This is the limit right now: $${capP} beats the $${floorP} floor.` : `The floor is the limit right now: $${floorP} beats $${capP}.`);
+  all("toneSample", el => el.textContent = TONES[draft.tone] + " Wording only — never changes a price.");
+  all("sNone", el => el.innerHTML = cell("Buy", b.none.buyers, a.none.buyers, count) + cell("Profit", b.none.profit, a.none.profit, money));
+  all("sBanner", el => el.innerHTML = cell("Buy", b.banner.buyers, a.banner.buyers, count) + cell("Profit", b.banner.profit, a.banner.profit, money));
+  all("sAgent", el => el.innerHTML = cell("Customers saved", b.saved, a.saved, count) + cell("Profit", b.agent.profit, a.agent.profit, money) + cell("Deals missed", b.missed, a.missed, count, false) + cell("Lowballs countered", b.lowballs, a.lowballs, count, false));
+  const vsNone = b.agent.profit - b.none.profit, vsBan = b.agent.profit - b.banner.profit;
+  all("verdict", el => el.innerHTML = `${dirty ? "With these settings" : "As you're set up now"}, the shopkeeper makes <b class="${vsNone >= 0 ? "pos" : "neg"}">${money(vsNone)}</b> ${vsNone >= 0 ? "more" : "less"} than no shopkeeper, and <b class="${vsBan >= 0 ? "pos" : "neg"}">${money(Math.abs(vsBan))}</b> ${vsBan >= 0 ? "more" : "less"} than a 20% banner.`);
+  all("headline", el => el.innerHTML = `${300 - b.none.buyers} of 300 shoppers won't pay list. Your shopkeeper keeps <b>${b.saved}</b> of them${dirty ? ` <span style="font-size:.9rem;color:var(--bark-2)">(was ${a.saved})</span>` : ""}.`);
+  all("lanes", el => el.innerHTML = lanes(b));
+  chart(b, draft);
+  root.querySelectorAll("[data-act=adopt],[data-act=reset]").forEach(el => el.disabled = !dirty);
+  all("adoptNote", el => el.textContent = dirty ? "Not live yet. Shoppers still get your adopted settings." : note);
+  all("products", el => el.innerHTML = PRODUCTS.map(([name, st], i) => `<li><span>${name}</span><label class="switch" style="font-size:.72rem;font-weight:600;gap:.4rem">Firm price<input type="checkbox" aria-label="Firm price for ${name}" ${i === 1 ? "checked" : ""}></label><span class="meta">${st === "cost" ? '<span class="tag miss-cost">No cost in Shopify · closed to offers</span>' : st === "date" ? '<span class="tag miss-date">No stock date · treated as new</span>' : `<span class="tag binds">${capP > floorP ? "cap" : "floor"} is the limit</span>`}</span></li>`).join(""));
+}
+function mount(key) {
+  root.innerHTML = VARIANTS[key][1];
+  all("rows", el => el.innerHTML = FEED.map(r => `<details class="${r.blocked ? "blocked" : ""}"><summary><b>${r.head}</b><time>${r.t}</time><span class="what">${r.what}</span></summary><div class="more"><p>${r.more}</p><div class="acts"><span class="chip">${r.surf}</span><button class="quiet small">Block this shopper</button></div></div></details>`).join(""));
+  const tone = root.querySelector(`input[name=tone][value=${draft.tone}]`); if (tone) tone.checked = true;
+  document.querySelector(".switcher span").textContent = `${key} — ${VARIANTS[key][0]}`;
+  render();
+}
+root.addEventListener("input", e => { const c = e.target.closest(".ctl[data-k]"); if (c && e.target.type === "range") { draft[c.dataset.k] = +e.target.value; render(); } });
+root.addEventListener("change", e => { if (e.target.name === "tone") { draft.tone = e.target.value; render(); } });
 let deals = 3, saved = 2, rev = 253, prof = 97, cost = .04, ban = 14;
-$("#fakeDeal").onclick = () => { deals++; saved++; rev += 127; prof += 49; cost += .01; ban += 8;
-  [["#kSaved", saved], ["#kRev", money(rev)], ["#kProfit", money(prof)], ["#kCost", "$" + cost.toFixed(2)]].forEach(([id, v]) => { const el = $(id); el.querySelector("b").textContent = v; el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); });
-  $("#kBanner").textContent = "+" + money(ban); $("#ledgerCount").textContent = `on ${deals} real deals · all products`; };
-const resolve = msg => { $("#needs").classList.add("done"); $("#needsNote").textContent = msg; };
-$("#approve").onclick = () => resolve("Approved at $90. The shopper's card updated."); $("#decline").onclick = () => resolve("Declined. The shopkeeper restated its final offer of $133.");
-let paused = false; $("#pauseBtn").onclick = () => { paused = !paused; $("#livePill").textContent = paused ? "Paused" : "Deals live"; $("#livePill").classList.toggle("paused", paused); $("#pauseBtn").textContent = paused ? "Resume" : "PAUSE"; };
-render();
+root.addEventListener("click", e => { const act = e.target.closest("[data-act]")?.dataset.act; if (!act) return;
+  if (act === "adopt") { Object.assign(live, draft); note = "Adopted. Your shopkeeper uses this from the next shopper message."; render(); }
+  if (act === "reset") { draft = { ...live }; note = "Back to your live settings."; mount(current); }
+  if (act === "suggest") { let best = null; for (let f = 0; f <= 60; f += 5) for (let c = 0; c <= 40; c += 2) { const p = run({ ...draft, floor: f, cap: c }).agent.profit; if (!best || p > best.p) best = { p, f, c }; }
+    draft.floor = best.f; draft.cap = best.c; render(); all("suggestNote", el => el.textContent = `Most forecast profit: floor ${best.f}%, up to ${best.c}% off. Nothing is live until you adopt.`); }
+  if (act === "approve" || act === "decline") { all("needs", el => el.classList.add("done")); all("needsNote", el => el.textContent = act === "approve" ? "Approved at $90. The shopper's card updated." : "Declined. The shopkeeper restated its final offer of $133."); }
+  if (act === "fakeDeal") { deals++; saved++; rev += 127; prof += 49; cost += .01; ban += 8;
+    [["kSaved", saved], ["kRev", money(rev)], ["kProfit", money(prof)], ["kCost", "$" + cost.toFixed(2)]].forEach(([id, v]) => root.querySelectorAll(`[data-fig=${id}]`).forEach(el => { el.querySelector("b").textContent = v; el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }));
+    all("kBanner", el => el.textContent = "+" + money(ban)); all("ledgerCount", el => el.textContent = `on ${deals} real deals · all products`); } });
+let paused = false; document.querySelector("#pauseBtn").onclick = () => { paused = !paused; const pill = document.querySelector("[data-role=livePill], #livePill"); pill.textContent = paused ? "Paused" : "Deals live"; pill.classList.toggle("paused", paused); document.querySelector("#pauseBtn").textContent = paused ? "Resume" : "PAUSE"; };
+const keys = Object.keys(VARIANTS); let current = new URLSearchParams(location.search).get("variant"); if (!keys.includes(current)) current = "A";
+function go(d) { current = keys[(keys.indexOf(current) + d + keys.length) % keys.length]; history.replaceState(null, "", "?variant=" + current); mount(current); window.scrollTo(0, 0); }
+document.querySelector("[data-sw=prev]").onclick = () => go(-1); document.querySelector("[data-sw=next]").onclick = () => go(1);
+addEventListener("keydown", e => { if (e.target.matches("input, textarea, select, [contenteditable]")) return; if (e.key === "ArrowLeft") go(-1); if (e.key === "ArrowRight") go(1); });
+mount(current);
 </script>
 </body>
 </html>
