@@ -96,6 +96,10 @@
         })
       };
       currentPage.cartItemCount = currentPage.cart.itemCount;
+      // The cart usually arrives after the first "page ready" announcement (chips build their opening row before it
+      // lands); saying the page is ready again, now that it carries the cart, lets chips pick up a cart-based reason
+      // without waiting on the shopper's first turn.
+      if (typeof window.CustomEvent === 'function') document.dispatchEvent(new window.CustomEvent('bazaar-page:ready', { detail: currentPage }));
     }).catch(function () {
       if (timer) window.clearTimeout(timer);
     });
@@ -123,7 +127,10 @@
       return response && response.ok ? response.json() : null;
     }).then(function (data) {
       if (shopperHasSpoken || !data || typeof data.greeting !== 'string' || !data.greeting.trim()) return;
-      chat.addMessage(data.greeting.trim(), 'bot');
+      // say() (not addMessage) so the line is read aloud when spoken replies are on — a silent bubble in hands-free
+      // would leave the shopper waiting on a voice that never speaks.
+      if (typeof chat.say === 'function') chat.say(data.greeting.trim());
+      else chat.addMessage(data.greeting.trim(), 'bot');
     }).catch(function () { /* no opening is a fine opening */ });
   }
 
@@ -140,6 +147,10 @@
 
     chat.on('turn:start', function () { shopperHasSpoken = true; });
     chat.on('open', function () { refreshCart(); });
+
+    // Hands-free hears the shopper well before a turn is committed (the recogniser waits out ~1.2s of quiet first);
+    // treating any caption as "spoken" stops Juniper's page-aware opening from landing over the shopper mid-sentence.
+    document.addEventListener('bazaar-voice:caption', function () { shopperHasSpoken = true; });
 
     document.addEventListener('change', function (event) {
       var target = event.target;

@@ -138,6 +138,38 @@ describe("juniper-page — the page-aware opening in hands-free", () => {
     expect(greetings(mounted.requests)).toHaveLength(0);
   });
 
+  // The recogniser reports a caption well before a turn is committed (it waits out ~1.2s of quiet first). If the
+  // opening only watched for "turn:start" it could still land — and be read aloud — over a shopper already talking.
+  it("a caption heard before the greeting lands cancels it, even with no committed turn yet", async () => {
+    let release: (value: unknown) => void = () => {};
+    const mounted = mount({ routes: { "/api/greeting": () => new Promise((resolve) => { release = resolve; }) } });
+    voiceState(mounted.window, true);
+    await settled(mounted);
+    mounted.window.document.dispatchEvent(new mounted.window.CustomEvent("bazaar-voice:caption", { detail: { text: "hi", final: false } }));
+    release({ ok: true, json: async () => ({ greeting: "Back among the socks, I see." }) });
+    await settled(mounted);
+    expect(mounted.document.body.textContent).not.toContain("Back among the socks");
+  });
+
+  // A silent bubble is no opening at all in hands-free: the shopper is listening, not reading. The seam's say()
+  // (addMessage + speakReply) is what makes the line audible.
+  it("with spoken replies on, the page-aware opening is read aloud, not just shown", async () => {
+    const enableVoice = (window: any) => {
+      window.MediaRecorder = function () {};
+      Object.defineProperty(window.navigator, "mediaDevices", { value: { getUserMedia: async () => ({}) }, configurable: true });
+      window.URL.createObjectURL = () => "blob:x";
+      window.URL.revokeObjectURL = () => {};
+      window.Audio = function () { return { addEventListener() {}, play: async () => {}, pause() {} }; };
+    };
+    const mounted = mount({
+      routes: { ...routes, "/api/voice/config": () => ({ enabled: true }) },
+      before: (window) => { enableVoice(window); window.sessionStorage.setItem("bazaar:handsfree", "1"); },
+    });
+    mounted.chat.setSpokenReplies(true);
+    await settled(mounted);
+    expect(mounted.requests.some((request) => request.path === "/api/voice/speak" && request.body.text === "Back among the socks, I see.")).toBe(true);
+  });
+
   it("an opening that arrives after the shopper spoke is dropped, and an empty one shows nothing", async () => {
     let release: (value: unknown) => void = () => {};
     const late = mount({ routes });
