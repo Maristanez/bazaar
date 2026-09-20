@@ -2,10 +2,10 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "pnpm --dir apps/web build"
+    "buildCommand": "pnpm build"
   },
   "deploy": {
-    "startCommand": "pnpm --dir apps/server start",
+    "startCommand": "pnpm start",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 100
   }
