@@ -317,7 +317,8 @@ const server = createServer(async (request, response) => {
       const payload = await readJson(request);
       const shopperId = requireShopperId(payload);
       if (backboard && !owner?.getPolicy().paused) {
-        const answer = await backboard.greet({ shopperId, productTitle: stringOrNull(payload.product?.title) || undefined });
+        const page = publicPageOrNull(payload.page);
+        const answer = await backboard.greet({ shopperId, productTitle: stringOrNull(payload.product?.title) || undefined, ...(page ? { page } : {}) });
         logBackboardRun("greeting", answer.trace);
         greeting = answer.greeting;
       }
@@ -364,6 +365,7 @@ const server = createServer(async (request, response) => {
         negotiationId,
         model: `${backboardProvider}/${backboardModel}`,
         pageUrl: stringOrNull(payload.pageUrl),
+        page: publicPageOrNull(payload.page),
         product: matched?.publicProduct || enrichPublicProduct(publicObjectOrNull(payload.product), mirror),
         products: publicProducts(mirror),
         lastProducts: resolveShopperProducts(payload.shopperId, mirror),
@@ -1394,6 +1396,7 @@ async function answerWithBackboard(context, fallbackLine) {
       shopperMessage: context.message,
       product: context.product || undefined,
       products: context.products,
+      ...(context.page ? { page: context.page } : {}),
     });
     logBackboardRun("question", answer.trace);
     return answer.reply;
@@ -1947,6 +1950,50 @@ function stringOrNull(value) {
 function publicObjectOrNull(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value;
+}
+
+// Where the shopper is, as their browser reports it: conversation context for the shopkeeper and nothing more. Only the
+// fields below survive, as short plain text and small whole numbers; a price, an id used for pricing, customer data or
+// anything nested is dropped, so the engine still prices from the mirror alone (invariant 1). Not a page → null.
+function publicPageOrNull(value) {
+  const source = publicObjectOrNull(value);
+  if (!source) return null;
+  const text = (entry, pattern) => {
+    if (typeof entry !== "string" && typeof entry !== "number") return undefined;
+    const clean = String(entry).replace(/[<>\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120).trim();
+    return clean && (!pattern || pattern.test(clean)) ? clean : undefined;
+  };
+  const slug = entry => text(entry, /^[a-z0-9][a-z0-9_.\/-]{0,79}$/i);
+  const count = (entry, maximum) => Number.isSafeInteger(entry) && entry >= 0 && entry <= maximum ? entry : undefined;
+  const flag = entry => typeof entry === "boolean" ? entry : undefined;
+  const pick = (entry, fields) => {
+    const from = publicObjectOrNull(entry);
+    if (!from) return undefined;
+    const kept = {};
+    for (const [key, read] of Object.entries(fields)) {
+      const cleaned = read(from[key]);
+      if (cleaned !== undefined) kept[key] = cleaned;
+    }
+    return Object.keys(kept).length ? kept : undefined;
+  };
+  const list = (read, maximum) => entry => {
+    if (!Array.isArray(entry)) return undefined;
+    const kept = entry.slice(0, maximum).map(read).filter(item => item !== undefined);
+    return kept.length ? kept : undefined;
+  };
+  const cartLine = entry => pick(entry, { handle: slug, title: text, variantTitle: text, quantity: item => count(item, 999) });
+  const page = pick(source, {
+    pageType: slug,
+    template: slug,
+    path: entry => text(String(typeof entry === "string" ? entry : "").split(/[?#]/)[0], /^\/[^\s]*$/),
+    product: entry => pick(entry, { id: item => text(item, /^\d{1,20}$/), handle: slug, title: text, type: text, available: flag }),
+    collection: entry => pick(entry, { handle: slug, title: text, productHandles: list(slug, 12) }),
+    search: entry => pick(entry, { terms: text, resultsCount: item => count(item, 100000) }),
+    cartItemCount: entry => count(entry, 9999),
+    cart: entry => pick(entry, { itemCount: item => count(item, 9999), items: list(cartLine, 10) }),
+    selection: entry => pick(entry, { variantId: item => text(item, /^\d{1,20}$/), variantTitle: text, quantity: item => count(item, 999) }),
+  });
+  return page || null;
 }
 
 server.on("close", () => owner?.dispose());
