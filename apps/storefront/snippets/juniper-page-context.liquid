@@ -1,2 +1,38 @@
-{%- comment -%} V5 page awareness: where the shopper is, as JSON for juniper-page.js. No prices beyond what the page already shows. {%- endcomment -%}
-<script type="application/json" data-ai-chat-page>{ "pageType": {{ request.page_type | json }} }</script>
+{%- comment -%}
+  V5 page awareness: where the shopper is, as JSON for juniper-page.js. Conversation context only — no prices, no
+  customer data. Every value goes through `| json`, so a title or search term can never close the script tag.
+{%- endcomment -%}
+<script type="application/json" data-ai-chat-page>
+{
+  "pageType": {{ request.page_type | json }},
+  "template": {{ template.name | json }},
+  "path": {{ request.path | json }},
+  {%- if product %}
+  "product": {
+    "id": {{ product.id | json }},
+    "handle": {{ product.handle | json }},
+    "title": {{ product.title | json }},
+    "type": {{ product.type | json }},
+    "available": {{ product.available | json }}
+  },
+  {%- endif %}
+  {%- if collection %}
+  "collection": {
+    "handle": {{ collection.handle | json }},
+    "title": {{ collection.title | json }},
+    "productHandles": [
+      {%- for item in collection.products limit: 12 -%}
+        {{ item.handle | json }}{% unless forloop.last %},{% endunless %}
+      {%- endfor -%}
+    ]
+  },
+  {%- endif %}
+  {%- if request.page_type == 'search' and search.performed %}
+  "search": {
+    "terms": {{ search.terms | json }},
+    "resultsCount": {{ search.results_count | json }}
+  },
+  {%- endif %}
+  "cartItemCount": {{ cart.item_count | json }}
+}
+</script>
