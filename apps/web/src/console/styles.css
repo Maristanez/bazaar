@@ -162,6 +162,13 @@ input { accent-color: var(--color-teal); caret-color: var(--color-teal); }
 .product-flags li.flag-amber { background: #f3ead6; border-left-color: #b8905a; }
 .product-flags strong { display: block; font-size: .85rem; }
 .product-flags span { display: block; }
+.all-clear { margin: 8px 0 0; font-size: .82rem; color: #5c503e; }
+.sweeteners { margin-top: 24px; }
+.sweeteners h3 { font-size: .9rem; font-weight: 700; margin: 0 0 6px; }
+.sweeteners ul { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; }
+.sweeteners li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; font-size: .82rem; background: #fff8ec; border-radius: 6px; }
+.sweeteners li span { color: #5c503e; }
+.sweeteners-note { font-size: .75rem; color: #5c503e; margin-top: 12px; }
 .approvals { margin-top: 20px; display: grid; gap: 16px; }
 .approval-card > p { font-size: .85rem; }
 .approval-card .approval-offer { font-size: 2rem; font-weight: 800; margin: 14px 0 4px; }
