@@ -1,4 +1,4 @@
-# The Bazaar
+# Dealify
 
 **Hack the North 2026 · team of 3 · code window Sat 19 Sep 00:00 → Sun 20 Sep 08:00 EDT (32 h)**
 
